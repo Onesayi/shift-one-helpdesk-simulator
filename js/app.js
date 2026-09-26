@@ -594,7 +594,7 @@ function renderPricing() {
         : `<button class="btn lg block" disabled title="Add a payment link in js/config.js">Coming soon</button>`;
       return `<div class="plan ${p.highlight ? 'hl' : ''}">${p.highlight ? '<span class="ribbon">Most popular</span>' : ''}
         <h3>${esc(p.name)}</h3><p class="muted">${esc(p.blurb)}</p>
-        <div class="price">${p.price === null ? '<b>Let\'s talk</b>' : p.price === 0 ? '<b>Free</b>' : `<b>${esc(CONFIG.currency)}${p.price}</b>`}<span>${esc(p.per)}</span></div>
+        <div class="price">${p.price === null ? '<b>Let\'s talk</b>' : p.price === 0 ? '<b>Free</b>' : `<b>${esc(CONFIG.currency)}${p.price.toLocaleString('en-US')}</b>`}<span>${esc(p.per)}</span></div>
         <ul>${p.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>${btn}</div>`;
     }).join('')}</div>
     <p class="muted small center">Payments are handled by a secure hosted checkout. Card details never touch this site.${CONFIG.bookingUrl ? ` Prefer to pick a time first? <a href="${esc(CONFIG.bookingUrl)}" target="_blank" rel="noopener">See availability</a>.` : ''}</p>

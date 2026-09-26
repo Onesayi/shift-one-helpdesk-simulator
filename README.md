@@ -189,8 +189,8 @@ The simulator is free. I also offer paid coaching built around it:
 | Plan | Price | What you get |
 |---|---|---|
 | **Self-study** | Free | The full simulator |
-| **1:1 Tutoring** | $25 / 60 min | Live coached shift + report debrief |
-| **Interview Prep Pack** | $80 / 4 sessions | Mock help desk interview, job-matched scenarios, CV feedback |
+| **1:1 Tutoring** | R450 / 60 min | Live coached shift + report debrief |
+| **Interview Prep Pack** | R1,500 / 4 sessions | Mock help desk interview, job-matched scenarios, CV feedback |
 | **Classroom & Bootcamp** | Quote | Group workshops, lesson plans, custom scenario packs |
 
 Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tutoring & Pricing** page. Payments use hosted checkout links (Paystack in South Africa, or Stripe elsewhere), so no backend or card data touches the site. Setup: [docs/BILLING.md](docs/BILLING.md).

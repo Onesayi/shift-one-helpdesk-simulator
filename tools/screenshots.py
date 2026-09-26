@@ -1,7 +1,8 @@
 ﻿"""Regenerate every README image: screenshots, the demo GIF and the banner.
 
 Usage (from the repo root):
-    python tools/screenshots.py
+    python tools/screenshots.py              # everything
+    python tools/screenshots.py pricing      # just the named screenshots
 
 Needs Microsoft Edge or Google Chrome (headless) and Pillow (`pip install pillow`).
 """
@@ -11,6 +12,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 from pathlib import Path
 
@@ -42,25 +44,32 @@ FLOW_STEPS = 7
 
 
 def find_browser():
-    candidates = [
+    """Chrome first: Edge silently refuses to run headless while an update is staged."""
+    if os.environ.get("SCREENSHOT_BROWSER"):
+        return os.environ["SCREENSHOT_BROWSER"]
+    candidates = [shutil.which(n) for n in ("google-chrome", "chromium", "chromium-browser", "chrome")]
+    candidates += [
+        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        shutil.which("msedge"),
         os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
         os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
-        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     ]
-    for name in ("msedge", "google-chrome", "chromium", "chromium-browser", "chrome"):
-        found = shutil.which(name)
-        if found:
-            candidates.insert(0, found)
     for c in candidates:
-        if os.path.exists(c):
+        if c and os.path.exists(c):
             return c
-    sys.exit("No Edge/Chrome found for headless screenshots.")
+    sys.exit("No Chrome/Edge found for headless screenshots (or set SCREENSHOT_BROWSER).")
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args):
         pass
+
+    def end_headers(self):
+        # headless browsers reuse their cache between runs; always serve fresh files
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
 
 
 def serve():
@@ -71,10 +80,18 @@ def serve():
 
 
 def capture(browser, url, path, w, h, budget=12000):
-    subprocess.run([
-        browser, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
-        f"--window-size={w},{h}", f"--virtual-time-budget={budget}", f"--screenshot={path}", url,
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # A throwaway profile stops headless runs from attaching to an already-open
+    # browser window (which silently skips the screenshot) or reusing its cache.
+    path = Path(path)
+    before = path.stat().st_mtime if path.exists() else 0
+    with tempfile.TemporaryDirectory() as profile:
+        subprocess.run([
+            browser, "--headless=new", f"--user-data-dir={profile}", "--no-first-run", "--disable-gpu",
+            "--hide-scrollbars", "--force-device-scale-factor=1",
+            f"--window-size={w},{h}", f"--virtual-time-budget={budget}", f"--screenshot={path}", url,
+        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if not path.exists() or path.stat().st_mtime == before:
+        sys.exit(f"Screenshot was not written: {path}")
 
 
 def main():
@@ -83,10 +100,15 @@ def main():
     FRAMES.mkdir(parents=True, exist_ok=True)
     httpd = serve()
     base = f"http://127.0.0.1:{PORT}/tools"
+    only = set(sys.argv[1:])  # e.g. `python tools/screenshots.py pricing queue` redoes just those
     try:
         for name, (page, w, h, budget) in SHOTS.items():
+            if only and name not in only:
+                continue
             print("shot", name)
             capture(browser, f"{base}/{page}", OUT / f"{name}.png", w, h, budget)
+        if only:
+            return
 
         print("gif frames")
         frames = []

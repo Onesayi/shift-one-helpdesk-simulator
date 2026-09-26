@@ -8,7 +8,7 @@ const CONFIG = {
   repoUrl: 'https://github.com/Onesayi/shift-one-helpdesk-simulator',
   contactEmail: '',            // e.g. 'you@example.com'; used for "Contact" buttons
   bookingUrl: '',              // optional Cal.com / Calendly page for scheduling sessions
-  currency: '$',
+  currency: 'R',
 
   plans: [
     {
@@ -24,7 +24,7 @@ const CONFIG = {
     {
       id: 'session',
       name: '1:1 Tutoring',
-      price: 25,
+      price: 450,
       per: 'per 60-min session',
       blurb: 'Work a live shift while a tutor coaches you.',
       features: ['Live, screen-shared shift', 'Debrief of your shift report', 'Explain-your-fix practice', 'Personal study plan'],
@@ -35,7 +35,7 @@ const CONFIG = {
     {
       id: 'pack',
       name: 'Interview Prep Pack',
-      price: 80,
+      price: 1500,
       per: '4 sessions',
       blurb: 'From zero to interview-ready for a Tier 1 role.',
       features: ['Everything in 1:1 Tutoring', 'Mock help desk interview', 'Scenarios matched to your target job', 'Feedback on the IT section of your CV'],
