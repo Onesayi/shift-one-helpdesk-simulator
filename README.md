@@ -193,7 +193,7 @@ The simulator is free. I also offer paid coaching built around it:
 | **Interview Prep Pack** | $80 / 4 sessions | Mock help desk interview, job-matched scenarios, CV feedback |
 | **Classroom & Bootcamp** | Quote | Group workshops, lesson plans, custom scenario packs |
 
-Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tutoring & Pricing** page. Payments use hosted checkout links (e.g. Stripe Payment Links), so no backend or card data touches the site. Setup: [docs/BILLING.md](docs/BILLING.md).
+Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tutoring & Pricing** page. Payments use hosted checkout links (Paystack in South Africa, or Stripe elsewhere), so no backend or card data touches the site. Setup: [docs/BILLING.md](docs/BILLING.md).
 
 ## 🧠 Skills demonstrated
 
@@ -232,7 +232,20 @@ Source-available for portfolio review and personal learning. Commercial use, red
 
 ## 👤 Author
 
-**Alistair Nhiwatiwa**. IT support and help desk tutoring.
-GitHub: [@Onesayi](https://github.com/Onesayi)
+**Alistair Nhiwatiwa**, IT Support Technician · CompTIA Network+ · studying toward CCNA
+Eight years as the sole IT support function for a 24/7 hotel and spa in Kempton Park, South Africa.
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Alistair_Nhiwatiwa-0a66c2?logo=linkedin&logoColor=white)](https://linkedin.com/in/onesayi-alistair-nhiwatiwa-81426174)
+[![GitHub](https://img.shields.io/badge/GitHub-Onesayi-181717?logo=github)](https://github.com/Onesayi)
+[![YouTube](https://img.shields.io/badge/YouTube-PacketPath_Academy-ff0000?logo=youtube&logoColor=white)](https://www.youtube.com/playlist?list=PLFZtPsciWGKA21PdcfbpKMSxO2_qmacv3)
+
+**More of my work**
+
+| Project | What it is |
+|---|---|
+| [CCNA Mega Lab](https://github.com/Onesayi/ccna-mega-lab) | Two-site enterprise network in Packet Tracer: OSPF, VLANs, EtherChannel, HSRP, NAT, IPv6 |
+| [Active Directory & SIEM Lab](https://github.com/Onesayi/active-directory-siem-lab) | Domain controller, Sysmon and Splunk with simulated attacks and documented detections |
+| [ConnectWise PSA Tutorial](https://github.com/Onesayi/connectwise-psa-tutorial) | Seven-lesson beginner guide to the MSP ticketing platform |
+| [PacketPath Academy](https://www.youtube.com/playlist?list=PLFZtPsciWGKA21PdcfbpKMSxO2_qmacv3) | YouTube channel on networking fundamentals and CCNA prep |
 
 <sub>Brightline Logistics and everyone who works there are fictional. Product names such as Windows and Microsoft 365 are used only to make the simulation realistic.</sub>

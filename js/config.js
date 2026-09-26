@@ -1,5 +1,6 @@
 // Site configuration: branding, contact and billing.
-// Billing uses hosted payment pages (e.g. Stripe Payment Links), so no backend is needed.
+// Billing uses hosted payment pages (Paystack Payment Pages in South Africa, Stripe Payment Links elsewhere),
+// so no backend is needed.
 // See docs/BILLING.md for setup. Leave a link empty and its button shows "Coming soon".
 
 const CONFIG = {
@@ -28,7 +29,7 @@ const CONFIG = {
       blurb: 'Work a live shift while a tutor coaches you.',
       features: ['Live, screen-shared shift', 'Debrief of your shift report', 'Explain-your-fix practice', 'Personal study plan'],
       cta: 'Book a session',
-      paymentLink: '',         // Stripe Payment Link URL
+      paymentLink: '',         // Paystack Payment Page or Stripe Payment Link URL
       highlight: true,
     },
     {
