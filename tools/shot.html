@@ -1,0 +1,109 @@
+﻿<!DOCTYPE html>
+<!-- Screenshot harness: loads the real app, then stages a scene from the URL hash.
+     Used by tools/screenshots.py. Example: /tools/shot.html?theme=dark#directory -->
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="../css/styles.css"></head>
+<body>
+<div id="app" data-phase="start"><header id="topbar"></header><nav id="sidebar"></nav><main id="main"></main><aside id="ticketpanel"></aside></div>
+<div id="modal-root"></div><div id="toasts"></div>
+<script src="../js/config.js"></script><script src="../js/data.js"></script><script src="../js/scenarios.js"></script><script src="../js/app.js"></script>
+<script>
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const scene = location.hash.slice(1);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  document.documentElement.dataset.theme = params.get('theme') || 'light';
+  const close = (id, cat, note, a = 'resolve', team) => {
+    G.active = id; if (!ticket(id).assigned) ACT.assign();
+    Object.assign(G.drafts, { ['cat-' + id]: cat, ['note-' + id]: note, ['team-' + id]: team });
+    a === 'resolve' ? ACT.resolve() : ACT.escalate();
+  };
+  const backdate = sec => { G.t0 -= sec * 1000; spawnDue(); G.tickets.forEach(t => { t.arrived = t.at; t.thread[0].at = t.at; }); };
+  const clearToasts = () => { document.getElementById('toasts').innerHTML = ''; };
+
+  // Solutions reused across scenes
+  const solve = {
+    async lockout() { sendVerification('pnair'); ask(ticket('INC-20114'), 'know'); await sleep(2600); dirAction('unlock', 'pnair');
+      close('INC-20114', 'Account & Access', 'Verified identity with a code to her registered mobile, then unlocked the account. She knew her password (caps lock), so no reset.'); },
+    async wifi() { netAction('AP-CAFE-01', 'poe'); await sleep(5300); close('INC-20115', 'Network', 'AP-CAFE-01 was hung after the power flicker. Power-cycled its PoE port on FL1-SW-01; AP back online.'); },
+    tz() { G.remote.device = 'BL-DT-2210'; runCmd('tzutil /s "Mountain Standard Time"'); close('INC-20116', 'Software', 'Device was set up at HQ with Pacific time. Set time zone to Mountain Standard Time (Denver) with tzutil.'); },
+    async access() { ask(ticket('INC-20117'), 'approve'); await sleep(5600); W().users.jmorales.groups.push('FS-Finance-RW'); record('group-add', { user: 'jmorales', group: 'FS-Finance-RW' });
+      close('INC-20117', 'Account & Access', 'Tom Becker approved in the ticket. Added Jordan to FS-Finance-RW; asked him to sign out and back in.'); },
+    adware() { G.remote.device = 'BL-LT-1033'; ['DealFinder Pro', 'QuickSearch Toolbar', 'Free PDF Merge'].forEach(n => { uninstall(n); ACT.modalOk(); });
+      close('INC-20118', 'Software', 'Uninstalled DealFinder Pro and QuickSearch Toolbar adware plus the Free PDF Merge bundler.'); },
+    printer() { ask(ticket('INC-20119'), 'scope'); serverSvc('PRINT01', 'Spooler', 'start'); close('INC-20119', 'Hardware & Printing', 'Whole floor affected, so checked PRINT01: Print Spooler had crashed. Started it; 23 queued jobs printed.'); },
+    dns() { G.remote.device = 'BL-DT-2304'; runCmd('nslookup intranet'); runCmd('netsh interface ip set dns "Ethernet" dhcp'); runCmd('ipconfig /flushdns');
+      close('INC-20120', 'Network', 'DNS was hard-coded to 8.8.8.8 by a contractor. Set adapter back to DHCP DNS and flushed the cache.'); },
+  };
+
+  if (scene === 'start') { render(); return; }
+  if (scene === 'pricing') {
+    // ?links=demo shows the buttons as they look once payment links are configured
+    if (params.get('links') === 'demo') CONFIG.plans.forEach(p => { if (p.cta && p.action !== 'play') p.paymentLink = '#'; });
+    ACT.pricing(); return;
+  }
+
+  newGame(params.get('mode') || 'shift');
+
+  if (scene === 'queue') {
+    backdate(175);
+    await solve.wifi();
+    G.active = 'INC-20119'; ACT.assign(); ask(ticket('INC-20119'), 'scope'); await sleep(1600);
+    G.view = 'queue'; render(); clearToasts();
+  }
+  if (scene === 'directory') {
+    G.active = 'INC-20114'; ACT.assign(); sendVerification('pnair'); await sleep(2600);
+    G.view = 'dir'; G.dir.user = 'pnair'; G.dir.tab = 'authentication'; render(); clearToasts();
+  }
+  if (scene === 'terminal') {
+    backdate(165); G.active = 'INC-20120'; ACT.assign(); ask(ticket('INC-20120'), 'change'); await sleep(1600);
+    G.remote.device = 'BL-DT-2304'; G.remote.term = []; G.remote.tab = 'terminal'; G.view = 'remote';
+    ['ipconfig /all', 'nslookup intranet', 'ping 10.20.0.40'].forEach(runCmd); clearToasts();
+  }
+  if (scene === 'remote') {
+    backdate(85); G.active = 'INC-20118'; ACT.assign(); ask(ticket('INC-20118'), 'install'); await sleep(1600);
+    G.remote.device = 'BL-LT-1033'; G.view = 'remote'; G.remote.tab = 'overview'; render(); clearToasts();
+  }
+  if (scene === 'apps') {
+    backdate(85); G.active = 'INC-20118'; ACT.assign();
+    G.remote.device = 'BL-LT-1033'; G.view = 'remote'; G.remote.tab = 'apps'; render(); clearToasts();
+  }
+  if (scene === 'server') { G.active = 'INC-20115'; ACT.assign(); ask(ticket('INC-20115'), 'scope'); await sleep(1600); G.view = 'server'; render(); clearToasts(); }
+  if (scene === 'network') { G.active = 'INC-20115'; ACT.assign(); G.view = 'server'; G.server.tab = 'network'; render(); clearToasts(); }
+  if (scene === 'servers') { backdate(125); G.active = 'INC-20119'; ACT.assign(); G.view = 'server'; G.server.tab = 'servers'; render(); clearToasts(); }
+  if (scene === 'cfo') {
+    backdate(325); G.active = 'INC-20124'; ACT.assign(); sendVerification('dokafor'); await sleep(2600); ask(ticket('INC-20124'), 'call'); await sleep(1600);
+    G.view = 'kb'; G.kb.article = 'KB-402'; render(); clearToasts();
+  }
+  if (scene === 'closed') {
+    await solve.lockout(); await sleep(1800); G.active = 'INC-20114'; G.queueFilter = 'all'; render(); clearToasts();
+  }
+  if (scene === 'report') {
+    G.mode = 'practice'; spawnDue();
+    await solve.lockout(); await solve.wifi(); solve.tz(); await solve.access(); solve.adware(); solve.printer(); solve.dns();
+    Object.assign(W().users.hkowalski, { last: 'Whitfield', display: 'Hana Whitfield', email: 'hwhitfield@brightline.com' }); record('edit-profile', { user: 'hkowalski' });
+    close('INC-20121', 'Account & Access', 'Name updated.');
+    sendVerification('nlindqvist'); await sleep(2600); G.drafts['m-must'] = true; dirAction('reset', 'nlindqvist'); ACT.modalOk();
+    close('INC-20122', 'Security', 'Verified user, reset password with must-change. Escalating the phishing report to Security.', 'escalate', 'Security');
+    W().users.kdoyle.disabled = true; record('disable', { user: 'kdoyle' }); W().users.kdoyle.groups.slice().forEach(g => removeGroup('kdoyle', g)); dirAction('revoke', 'kdoyle');
+    close('INC-20123', 'Account & Access', 'Matched EMP-1187, disabled the account, removed all groups and signed out sessions.');
+    sendVerification('dokafor'); await sleep(2600);
+    close('INC-20124', 'Security', 'Requester could not pass verification; classic social engineering. No changes made, escalated.', 'escalate', 'Security');
+    netAction('FL2-SW-01', 'restart'); ACT.modalOk();
+    await sleep(500); endShift(); clearToasts();
+  }
+  // GIF storyboard: the lockout ticket, start to finish
+  if (scene.startsWith('flow')) {
+    const n = +scene.slice(4);
+    G.active = 'INC-20114';
+    if (n >= 1) { ACT.assign(); }
+    if (n >= 2) { ask(ticket('INC-20114'), 'know'); await sleep(1600); }
+    if (n >= 3) { sendVerification('pnair'); await sleep(2600); }
+    if (n === 3) { G.view = 'dir'; G.dir.user = 'pnair'; G.dir.tab = 'authentication'; render(); }
+    if (n >= 4) { G.view = 'dir'; G.dir.user = 'pnair'; G.dir.tab = 'authentication'; dirAction('unlock', 'pnair'); }
+    if (n >= 5) { G.drafts['open-close-INC-20114'] = true; G.drafts['cat-INC-20114'] = 'Account & Access';
+      G.drafts['note-INC-20114'] = 'Verified identity with a code to her registered mobile, then unlocked the account. She knew her password, so no reset.'; render(); }
+    if (n >= 6) { ACT.resolve(); await sleep(1800); G.view = 'queue'; G.queueFilter = 'all'; render(); }
+    if (n < 4 || n === 5) clearToasts();
+  }
+})();
+</script></body></html>

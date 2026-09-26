@@ -1,0 +1,111 @@
+﻿"""Regenerate every README image: screenshots, the demo GIF and the banner.
+
+Usage (from the repo root):
+    python tools/screenshots.py
+
+Needs Microsoft Edge or Google Chrome (headless) and Pillow (`pip install pillow`).
+"""
+import functools
+import http.server
+import os
+import shutil
+import subprocess
+import sys
+import threading
+from pathlib import Path
+
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "docs" / "screenshots"
+FRAMES = ROOT / "docs" / ".frames"
+PORT = 8799
+
+# name: (page, width, height, virtual-time budget ms)
+SHOTS = {
+    "start": ("shot.html#start", 1440, 900, 4000),
+    "queue": ("shot.html#queue", 1440, 900, 12000),
+    "directory-dark": ("shot.html?theme=dark#directory", 1440, 900, 8000),
+    "terminal": ("shot.html#terminal", 1440, 900, 8000),
+    "remote-desktop": ("shot.html#remote", 1440, 900, 8000),
+    "apps": ("shot.html#apps", 1440, 900, 6000),
+    "server-room-dark": ("shot.html?theme=dark#server", 1440, 900, 8000),
+    "network": ("shot.html#network", 1440, 900, 6000),
+    "servers": ("shot.html#servers", 1440, 900, 6000),
+    "social-engineering": ("shot.html#cfo", 1440, 900, 10000),
+    "ticket-closed": ("shot.html#closed", 1440, 900, 10000),
+    "report": ("shot.html#report", 1440, 1600, 45000),
+    "pricing": ("shot.html?links=demo#pricing", 1440, 960, 4000),
+    "mobile": ("mobile.html", 1100, 900, 16000),
+}
+FLOW_STEPS = 7
+
+
+def find_browser():
+    candidates = [
+        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    ]
+    for name in ("msedge", "google-chrome", "chromium", "chromium-browser", "chrome"):
+        found = shutil.which(name)
+        if found:
+            candidates.insert(0, found)
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    sys.exit("No Edge/Chrome found for headless screenshots.")
+
+
+class QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+
+def serve():
+    handler = functools.partial(QuietHandler, directory=str(ROOT))
+    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd
+
+
+def capture(browser, url, path, w, h, budget=12000):
+    subprocess.run([
+        browser, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
+        f"--window-size={w},{h}", f"--virtual-time-budget={budget}", f"--screenshot={path}", url,
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def main():
+    browser = find_browser()
+    OUT.mkdir(parents=True, exist_ok=True)
+    FRAMES.mkdir(parents=True, exist_ok=True)
+    httpd = serve()
+    base = f"http://127.0.0.1:{PORT}/tools"
+    try:
+        for name, (page, w, h, budget) in SHOTS.items():
+            print("shot", name)
+            capture(browser, f"{base}/{page}", OUT / f"{name}.png", w, h, budget)
+
+        print("gif frames")
+        frames = []
+        for i in range(FLOW_STEPS):
+            p = FRAMES / f"flow{i}.png"
+            capture(browser, f"{base}/shot.html#flow{i}", p, 1440, 900)
+            frames.append(Image.open(p).convert("RGB").resize((960, 600), Image.LANCZOS))
+        durations = [1400, 1400, 1800, 2200, 1800, 2200, 3200]
+        palette_frames = [f.quantize(colors=256, method=Image.Quantize.MEDIANCUT) for f in frames]
+        palette_frames[0].save(ROOT / "docs" / "demo.gif", save_all=True, append_images=palette_frames[1:],
+                               duration=durations, loop=0, optimize=True)
+
+        print("banner")
+        capture(browser, f"{base}/banner.html", ROOT / "docs" / "banner.png", 1280, 640)
+    finally:
+        httpd.shutdown()
+        shutil.rmtree(FRAMES, ignore_errors=True)
+    print("done ->", OUT)
+
+
+if __name__ == "__main__":
+    main()
