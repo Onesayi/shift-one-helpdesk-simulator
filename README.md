@@ -16,7 +16,7 @@
 ![Dark mode](https://img.shields.io/badge/theme-light_%2F_dark-111827)
 ![License](https://img.shields.io/badge/license-source--available-orange)
 
-[Features](#-features) · [Screenshots](#-screenshots) · [Scenarios](#-scenarios) · [How grading works](#-how-grading-works) · [Run it](#-run-it-locally) · [Tutoring](#-tutoring--pricing) · [Roadmap](#-roadmap)
+[Features](#-features) · [Service Coordinator mode](#-new-service-coordinator-mode) · [Screenshots](#-screenshots) · [Scenarios](#-scenarios) · [How grading works](#-how-grading-works) · [Run it](#-run-it-locally) · [Tutoring](#-tutoring--pricing) · [Roadmap](#-roadmap)
 
 </div>
 
@@ -50,6 +50,33 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 | 📊 **Shift report** | Letter grade, per-ticket breakdown of what you did well and what cost points, "collateral damage" section |
 | ⏱️ **Two modes** | Timed shift (tickets arrive over ~6 minutes) or untimed practice |
 | 🌗 **Polish** | Light/dark theme, fully responsive, keyboard-friendly, zero dependencies |
+
+## 🗓️ New: Service Coordinator mode
+
+**Run the dispatch desk at a managed service provider.** A second simulator ([`dispatch.html`](dispatch.html)) puts you in the MSP service coordinator's seat, the remote role that MSP staffing firms like Support Adventure place with MSPs. You don't fix tickets. You triage them, answer the phones, keep clients inside their SLAs, chase approvals and vendors, and put the right technician on the right job at the right time.
+
+| | |
+|---|---|
+| 🏢 **Northbound IT** | A fictional MSP with 5 technicians (Tier 1 to Tier 3, a field tech, a remote engineer in Cape Town) and 5 clients on premium, standard, co-managed and block-hours agreements |
+| 📞 **Live phones** | Calls ring on a sim clock. Miss one and it becomes a voicemail and an unhappy client |
+| 🧭 **Triage** | Impact × urgency matrix, boards, skills, remote vs onsite, estimates, plus overrides for security incidents and backups |
+| 🗓️ **Dispatch Board** | Today and tomorrow for every tech: lunch, meetings, project time, travel, existing jobs. It blocks double-booking and warns about skills, onsite windows, block hours and approvals |
+| 🧑‍🔧 **Simulated technicians** | Booked work runs itself. The wrong skills bounce back, P1s can pull a tech off other work, and a tech goes home sick mid-morning |
+| 🤝 **Coordination** | Client message templates, authorized-contact approvals, Service Manager and Account Manager escalations, ISP and RMA vendor cases, merging duplicates, closing with a reason |
+| 📈 **KPI report** | Time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches and technician utilization, plus per-ticket feedback explaining the right call |
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/coordinator-board.png" alt="Service Board with a P1 waiting on the ISP"><p align="center"><b>Service Board</b>: a P1 clinic outage waiting on the ISP, with the client updated</p></td>
+<td width="50%"><img src="docs/screenshots/coordinator-dispatch-dark.png" alt="Dispatch Board in dark mode"><p align="center"><b>Dispatch Board</b>: five technicians, skills, lunches, travel and a live now-line</p></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/coordinator-call.png" alt="Incoming call from a client"><p align="center"><b>Phones</b>: answer before it goes to voicemail</p></td>
+<td><img src="docs/screenshots/coordinator-report.png" alt="Coordinator shift report"><p align="center"><b>Shift report</b>: KPIs, utilization and per-ticket feedback</p></td>
+</tr>
+</table>
+
+18 tickets, including a clinic-wide outage that needs an ISP case, three duplicate reports of one M365 outage, a paralegal asking for partner-only files, a client out of prepaid hours, an RMA install that has to fit a dental clinic's lunch hour, and a lookalike-domain request to forward the managing partner's mail to Gmail. Design notes, the research behind it and a tutor answer key are in **[docs/COORDINATOR.md](docs/COORDINATOR.md)**.
 
 ## 📸 Screenshots
 
@@ -134,7 +161,7 @@ cd shift-one-helpdesk-simulator
 python -m http.server 8765
 ```
 
-Open **http://localhost:8765**. (Double-clicking `index.html` works too.)
+Open **http://localhost:8765** for the help desk simulator, or **http://localhost:8765/dispatch.html** for Service Coordinator mode. (Double-clicking either HTML file works too.)
 
 ### Deploy your own copy
 
@@ -164,13 +191,17 @@ flowchart TB
 ```
 
 ```
-├── index.html            app shell
-├── css/styles.css        design tokens, light/dark themes, responsive layout
+├── index.html            help desk simulator shell
+├── dispatch.html         Service Coordinator mode shell
+├── css/
+│   ├── styles.css        design tokens, light/dark themes, responsive layout
+│   └── dispatch.css      dispatch board, call card, coordinator extras
 ├── js/
 │   ├── config.js         branding, pricing plans, payment links  ← edit me
 │   ├── data.js           the simulated company + knowledge base
 │   ├── scenarios.js      tickets and their graders
-│   └── app.js            engine, tools, rendering
+│   ├── app.js            engine, tools, rendering
+│   └── dispatch/         Service Coordinator mode: MSP data, scenarios, engine
 ├── docs/                 guides, screenshots, banner, demo GIF
 ├── tools/                screenshot automation (headless browser + Pillow)
 └── .github/              Pages deployment, issue templates
@@ -197,6 +228,8 @@ Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tuto
 
 ## 🧠 Skills demonstrated
 
+**Service coordination:** PSA-style triage (impact × urgency), SLA management, skills-based dispatch and scheduling, client communication, approvals from authorized contacts, vendor/RMA management, block-hours billing, major incident handling.
+
 **IT support:** Active Directory concepts (accounts, groups, lockout policy), identity verification, least privilege, DNS/DHCP, Wi-Fi and PoE, print servers, Windows services, adware removal, phishing response, offboarding, ITIL-style incident management (priority, SLA, escalation, documentation).
 
 **Software:** vanilla JavaScript state management, event-sourced scoring, accessible responsive UI with CSS design tokens and dark mode, automated screenshot and GIF pipeline (headless Chromium + Pillow), CI/CD to GitHub Pages.
@@ -207,6 +240,7 @@ Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tuto
 - [x] Timed + practice modes, shift report
 - [x] Light/dark theme, mobile layout
 - [x] Tutoring & pricing page with payment links
+- [x] Service Coordinator mode: MSP dispatch board, phones, SLAs, approvals, vendors
 - [ ] Randomised scenario variants (different users/devices each run)
 - [ ] Mail admin tool: message trace, quarantine release
 - [ ] Asset management + hardware shipping tickets
@@ -248,4 +282,4 @@ Eight years as the sole IT support function for a 24/7 hotel and spa in Kempton 
 | [ConnectWise PSA Tutorial](https://github.com/Onesayi/connectwise-psa-tutorial) | Seven-lesson beginner guide to the MSP ticketing platform |
 | [PacketPath Academy](https://www.youtube.com/playlist?list=PLFZtPsciWGKA21PdcfbpKMSxO2_qmacv3) | YouTube channel on networking fundamentals and CCNA prep |
 
-<sub>Brightline Logistics and everyone who works there are fictional. Product names such as Windows and Microsoft 365 are used only to make the simulation realistic.</sub>
+<sub>Brightline Logistics, Northbound IT, their clients and everyone who works there are fictional. Support Adventure is mentioned only to describe the real-world role this mode trains for; this project isn't affiliated with them. Product names such as Windows and Microsoft 365 are used only to make the simulation realistic.</sub>

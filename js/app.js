@@ -572,7 +572,7 @@ function render() {
 
 function topbarStart() {
   return `<button class="brand as-link" data-act="home">${logo()}<span>Shift One</span><small>Help Desk Simulator</small></button><div class="grow"></div>
-    <nav class="top-links"><button class="${!G && PAGE === 'pricing' ? 'on' : ''}" data-act="pricing">Tutoring &amp; Pricing</button>${CONFIG.repoUrl ? `<a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">GitHub</a>` : ''}</nav>${themeBtn()}`;
+    <nav class="top-links"><a href="dispatch.html">Service Coordinator</a><button class="${!G && PAGE === 'pricing' ? 'on' : ''}" data-act="pricing">Tutoring &amp; Pricing</button>${CONFIG.repoUrl ? `<a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">GitHub</a>` : ''}</nav>${themeBtn()}`;
 }
 
 function planHref(p) {
@@ -862,6 +862,7 @@ function renderStart() {
       <p>You're the new service desk technician at <b>Brightline Logistics</b>. Tickets arrive. Users are waiting. Work them with real tools: a directory, remote desktop, a command prompt, and a server room. You're graded on what actually changed, how safely you did it, and how fast.</p>
       <div class="row gap wrap"><button class="btn primary lg" data-act="start" data-m="shift">Start timed shift</button><button class="btn lg" data-act="start" data-m="practice">Practice mode (no timer)</button></div>
       ${best ? `<p class="muted small">Best shift score: <b>${esc(best)}</b></p>` : ''}
+      <a class="kb-link" href="dispatch.html">New: run an MSP dispatch desk in Service Coordinator mode →</a>
       <button class="kb-link" data-act="pricing">Want a coach while you play? See tutoring options →</button></div>
     <div class="features">
       ${[['Ticket Queue', 'Prioritise by impact, ask the right questions, write notes the next tech can use.'],

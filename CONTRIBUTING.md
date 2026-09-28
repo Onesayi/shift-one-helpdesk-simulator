@@ -21,6 +21,7 @@ python -m http.server 8765
 - World data and KB: `js/data.js`
 - Engine and UI: `js/app.js`
 - Styles: `css/styles.css` (use the CSS variables and check both themes)
+- Service Coordinator mode: `dispatch.html`, `js/dispatch/`, `css/dispatch.css` (see [docs/COORDINATOR.md](docs/COORDINATOR.md))
 
 Before opening a PR:
 

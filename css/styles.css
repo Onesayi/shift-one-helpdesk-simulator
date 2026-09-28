@@ -324,7 +324,10 @@ textarea { resize: vertical; }
 .btn:disabled:hover { border-color: var(--border); color: inherit; }
 .site-foot { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12.5px; }
 .site-foot a, .pricing a:not(.btn) { color: var(--accent); }
-.hero .kb-link { font-size: 14px; margin-top: 4px; }
+.hero .kb-link { font-size: 14px; margin-top: 12px; display: flex; }
+.hero .kb-link + .kb-link { margin-top: 4px; }
+a.kb-link { text-decoration: none; }
+a.kb-link:hover { text-decoration: underline; }
 .coach-cta { display: flex; align-items: center; gap: 16px; justify-content: space-between; border-left: 4px solid var(--accent); }
 
 /* ---------- Responsive ---------- */

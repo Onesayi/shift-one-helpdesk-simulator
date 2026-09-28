@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!-- Screenshot harness for Service Coordinator mode: loads the real app, then stages a scene from the URL hash.
+     Used by tools/screenshots.py. Example: /tools/dispatch-shot.html?theme=dark#dispatch -->
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="../css/styles.css"><link rel="stylesheet" href="../css/dispatch.css"></head>
+<body>
+<div id="app" data-phase="start"><header id="topbar"></header><nav id="sidebar"></nav><main id="main"></main><aside id="ticketpanel"></aside></div>
+<div id="modal-root"></div><div id="call-root"></div><div id="toasts"></div>
+<script src="../js/config.js"></script><script src="../js/dispatch/data.js"></script><script src="../js/dispatch/scenarios.js"></script><script src="../js/dispatch/app.js"></script>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const scene = location.hash.slice(1);
+  document.documentElement.dataset.theme = params.get('theme') || 'light';
+  if (scene === 'start') { render(); return; }
+
+  // Deterministic staging: the clock is paused and advanced minute by minute.
+  newGame('practice');
+  G.speed = 0;
+  const advTo = hhmm => { const [h, m] = hhmm.split(':').map(Number); while (G.phase === 'play' && now() < h * 60 + m) { G.clock += 1; onMinute(now()); } };
+  const tri = (id, pri, board, skill, where, est) => { Object.assign(G.drafts, { [`tri-${id}-board`]: board, [`tri-${id}-pri`]: pri, [`tri-${id}-skill`]: skill, [`tri-${id}-where`]: where, [`tri-${id}-est`]: String(est) }); saveTriage(ticket(id)); };
+  const msg = (id, kind) => { G.drafts['tpl-' + id] = kind; sendMessage(ticket(id)); };
+  const book = (id, tech, start, dur, where) => { G.pick = id; openSchedule(tech, start); Object.assign(G.drafts, { 'sc-tech': tech, 'sc-start': String(start), 'sc-dur': String(dur), 'sc-where': where }); G.modal.onOk(); G.modal = null; };
+  const close = (id, reason, note) => { G.drafts['reason-' + id] = reason; G.drafts['cnote-' + id] = note; closeTicket(ticket(id)); };
+  const ask = (id, c) => { G.drafts['appr-' + id] = c; requestApproval(ticket(id)); };
+
+  tri('4501', 'P3', 'Help Desk', 'Printers', 'remote', 30); msg('4501', 'ack'); book('4501', 'ana', 510, 30, 'remote'); msg('4501', 'sched');
+  advTo('08:06'); tri('4502', 'P3', 'Infrastructure', 'Servers', 'remote', 30); book('4502', 'maya', 525, 30, 'remote');
+  advTo('08:12'); close('4503', 'noise', 'OAK-LAB VMs power off nightly per client notes. Expected alert.');
+  advTo('08:15'); answerCall(); tri('4504', 'P4', 'Projects & Onboarding', 'Onboarding', 'remote', 120); book('4504', 'ana', DAY + 540, 120, 'remote');
+  advTo('08:31'); tri('4505', 'P4', 'Help Desk', 'M365', 'remote', 15); msg('4505', 'ack'); ask('4505', 'msantos');
+  advTo('08:40'); answerCall(); tri('4506', 'P1', 'Infrastructure', 'Firewall', 'remote', 60); notify(ticket('4506'), 'sm'); book('4506', 'sipho', 525, 60, 'remote'); msg('4506', 'sched');
+  advTo('08:57'); G.drafts['vendor-4506'] = 'Comcast Business (ISP)'; vendorCase(ticket('4506'));
+  advTo('09:03'); msg('4506', 'update');
+
+  if (scene === 'board') {
+    advTo('09:07');
+    G.view = 'board'; G.active = '4506'; G.drafts['open-msg-4506'] = false;
+  } else if (scene === 'dispatch') {
+    advTo('09:10');
+    tri('4507', 'P2', 'Help Desk', 'M365', 'remote', 60); msg('4507', 'ack');
+    G.drafts['merge-4508'] = '4507'; merge(ticket('4508'));
+    G.drafts['merge-4509'] = '4507'; merge(ticket('4509'));
+    G.pick = '4507'; G.active = '4507'; G.view = 'dispatch';
+  } else if (scene === 'call') {
+    advTo('09:25');
+    G.view = 'board'; G.active = '4505';
+  } else if (scene === 'report') {
+    // A decent shift with a few realistic mistakes, so the report shows both kinds of feedback.
+    advTo('09:08'); tri('4507', 'P3', 'Help Desk', 'M365', 'remote', 60); msg('4507', 'ack'); book('4507', 'ana', 555, 60, 'remote');
+    G.drafts['merge-4508'] = '4507'; merge(ticket('4508'));
+    advTo('09:26'); answerCall(); tri('4510', 'P3', 'Help Desk', 'Mac', 'remote', 90); book('4510', 'ana', 660, 90, 'remote');
+    advTo('09:40'); if (ticket('4506').status === 'Completed') { msg('4506', 'resolved'); }
+    advTo('09:50'); book('4471', 'maya', 630, 60, 'remote'); msg('4471', 'update');
+    ['4501', '4502', '4506'].forEach(id => { const t = ticket(id); if (t.status === 'Completed') { if (t.contact && !t.s.noResponseSla && id !== '4506') msg(id, 'resolved'); } });
+    advTo('09:53'); ['4501', '4502', '4506'].forEach(id => { if (ticket(id).status === 'Completed') close(id, 'resolved', 'Technician completed the work and the client confirmed.'); });
+    advTo('10:16'); tri('4511', 'P2', 'Infrastructure', 'Backup', 'remote', 60); book('4511', 'maya', 750, 60, 'remote');
+    advTo('10:45'); tri('4512', 'P2', 'Infrastructure', 'Servers', 'remote', 60); msg('4512', 'ack'); book('4512', 'sipho', 660, 60, 'remote');
+    advTo('11:00'); answerCall(); tri('4513', 'P1', 'Security', 'Security', 'remote', 60); notify(ticket('4513'), 'sm');
+    book('4513', 'maya', 660, 60, 'remote'); msg('4513', 'sched');
+    advTo('11:30'); answerCall(); tri('4514', 'P2', 'Field Services', 'Hardware', 'onsite', 30); book('4514', 'luis', 750, 30, 'onsite'); msg('4514', 'sched');
+    advTo('12:05'); tri('4515', 'P3', 'Field Services', 'Hardware', 'onsite', 60); book('4515', 'luis', DAY + 720, 60, 'onsite'); msg('4515', 'sched');
+    advTo('13:02'); tri('4516', 'P2', 'Security', 'Security', 'remote', 45); ask('4516', 'msantos');
+    advTo('13:06'); book('4516', 'maya', 900, 45, 'remote');
+    advTo('16:40'); G.tickets.filter(t => isOpen(t) && t.status === 'Completed').forEach(t => { if (t.contact && !t.s.noResponseSla) msg(t.id, 'resolved'); });
+    advTo('16:43'); G.tickets.filter(t => isOpen(t) && t.status === 'Completed').forEach(t => close(t.id, 'resolved', 'Technician completed the work and the client confirmed.'));
+    endShift();
+  }
+  render();
+  document.getElementById('toasts').innerHTML = '';
+  setInterval(() => { document.getElementById('toasts').innerHTML = ''; }, 50);
+})();
+</script>
+</body></html>

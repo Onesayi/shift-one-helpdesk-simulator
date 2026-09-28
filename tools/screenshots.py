@@ -39,6 +39,10 @@ SHOTS = {
     "report": ("shot.html#report", 1440, 1600, 45000),
     "pricing": ("shot.html?links=demo#pricing", 1440, 960, 4000),
     "mobile": ("mobile.html", 1100, 900, 16000),
+    "coordinator-board": ("dispatch-shot.html#board", 1440, 900, 4000),
+    "coordinator-dispatch-dark": ("dispatch-shot.html?theme=dark#dispatch", 1440, 900, 4000),
+    "coordinator-call": ("dispatch-shot.html#call", 1440, 900, 4000),
+    "coordinator-report": ("dispatch-shot.html#report", 1440, 1600, 4000),
 }
 FLOW_STEPS = 7
 
