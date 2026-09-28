@@ -825,7 +825,7 @@ function renderDispatch() {
     const appts = G.appts.filter(a => a.tech === id && a.start >= day && a.start < day + DAY && a.state !== 'cancelled').map(a => {
       const tk = ticket(a.ticket), bad = a.state === 'missed' || (a.state === 'booked' && sick != null && a.start >= sick);
       return (a.onsite ? `<div class="blk k-travel" style="${pos(a.start - TRAVEL_MIN, TRAVEL_MIN)}" title="Travel"><span>Travel</span></div>` : '') +
-        `<button class="appt s-${a.state} ${bad ? 'conflict' : ''} ${tk.id === G.active ? 'sel' : ''}" style="${pos(a.start, a.dur)}" data-act="appt" data-a="${a.id}" title="#${tk.id} ${esc(tk.title)} · ${hm(a.start)}–${hm(a.start + a.dur)}">
+        `<button class="appt s-${a.state} ${bad ? 'conflict' : ''} ${tk.id === G.active ? 'sel' : ''}" style="${pos(a.start, a.dur)}" data-act="appt" data-a="${a.id}" title="#${tk.id} ${esc(tk.title)} · ${hm(a.start)}–${hm((a.start + a.dur) % DAY)}">
           <b>#${tk.id}</b> <span>${esc(client(tk).name)}</span></button>`;
     }).join('');
     return `<div class="drow"><div class="dtech"><b>${esc(x.name)}</b><div class="muted small">${esc(x.role)}</div><div class="small"><span class="dot ${cls}"></span>${esc(label)}</div>
@@ -866,7 +866,7 @@ function renderTicketPanel() {
         <div class="avatar">${esc(name.replace(/^Dr\. /, '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase())}</div>
         <div><b>${esc(name)}</b> ${chips}<div class="muted small">${esc(role)} · ${esc(c.name)} · ${esc(c.agreement)}</div></div>
       </div>
-      <div class="appt-line">${a && a.state !== 'cancelled' ? `${I.dispatch}<span><b>${esc(TECHS[a.tech].name)}</b> · ${hm(a.start)}–${hm(a.start + a.dur)} · ${a.onsite ? 'onsite' : 'remote'} <span class="muted">(${a.state})</span></span>` : `${I.dispatch}<span class="muted">No technician booked</span>`}
+      <div class="appt-line">${a && a.state !== 'cancelled' ? `${I.dispatch}<span><b>${esc(TECHS[a.tech].name)}</b> · ${hm(a.start)}–${hm((a.start + a.dur) % DAY)} · ${a.onsite ? 'onsite' : 'remote'} <span class="muted">(${a.state})</span></span>` : `${I.dispatch}<span class="muted">No technician booked</span>`}
         <div class="grow"></div>
         ${open ? `<button class="btn sm ${needsScheduling(t) ? 'primary' : ''}" data-act="pick" data-id="${t.id}">Schedule</button>${a && a.state === 'booked' ? '<button class="btn sm ghost" data-act="unschedule">Unbook</button>' : ''}` : ''}</div>
     </div>
@@ -1066,7 +1066,7 @@ const ACT = {
     G.active = t.id;
     modal({
       title: `#${t.id} · ${t.title}`,
-      body: `<p>${esc(client(t).name)}<br>${esc(TECHS[a.tech].name)} · ${hm(a.start)}–${hm(a.start + a.dur)} · ${a.onsite ? 'onsite' : 'remote'}<br><span class="muted">Status: ${a.state}</span></p>`,
+      body: `<p>${esc(client(t).name)}<br>${esc(TECHS[a.tech].name)} · ${hm(a.start)}–${hm((a.start + a.dur) % DAY)} · ${a.onsite ? 'onsite' : 'remote'}<br><span class="muted">Status: ${a.state}</span></p>`,
       ok: a.state === 'booked' ? 'Reschedule' : 'Close',
       onOk() { if (a.state === 'booked') { G.pick = t.id; toast('Click a new slot for this ticket.'); } },
     });
