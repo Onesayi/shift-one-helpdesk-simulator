@@ -269,7 +269,7 @@ Source-available for portfolio review and personal learning. Commercial use, red
 **Alistair Nhiwatiwa**, IT Support Technician · CompTIA Network+ · studying toward CCNA
 Eight years as the sole IT support function for a 24/7 hotel and spa in Kempton Park, South Africa.
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Alistair_Nhiwatiwa-0a66c2?logo=linkedin&logoColor=white)](https://linkedin.com/in/onesayi-alistair-nhiwatiwa-81426174)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Alistair_Nhiwatiwa-0a66c2?logo=linkedin&logoColor=white)](https://linkedin.com/in/alistair-nhiwatiwa)
 [![GitHub](https://img.shields.io/badge/GitHub-Onesayi-181717?logo=github)](https://github.com/Onesayi)
 [![YouTube](https://img.shields.io/badge/YouTube-PacketPath_Academy-ff0000?logo=youtube&logoColor=white)](https://www.youtube.com/playlist?list=PLFZtPsciWGKA21PdcfbpKMSxO2_qmacv3)
 
