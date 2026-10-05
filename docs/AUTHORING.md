@@ -88,6 +88,7 @@ Per-ticket wording lives in `CONVERSATION` at the bottom of `scenarios.js`:
   notYet: 'Still "not enough space".',                          // "try again" when not (default: stillBroken)
   errorText: '"There is not enough space on \\\\FS01\\Marketing…"',
   testReply: (w, t) => '…',                                     // full override for "try again"
+  deferReply: 'Five minutes?! …Fine.',                          // reaction to "Can I call you back?"
 },
 ```
 

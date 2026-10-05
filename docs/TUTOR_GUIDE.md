@@ -155,7 +155,7 @@ Directory → Hana → Profile → **Edit name & email**: last name *Whitfield*,
 <details>
 <summary><b>Click to reveal Shift 2 solutions</b></summary>
 
-**Phone rules that apply to every call:** answer within 20 seconds or it goes to voicemail (−10). Answering another call holds the current one; after 45 seconds on hold the caller hangs up (−10). Questions, replies and verification codes need the caller on the line, so use **Call back** for voicemails. Closing while the caller is still on the line earns "first-contact resolution".
+**Phone rules that apply to every call:** answer within 20 seconds or it goes to voicemail (−10). Answering another call holds the current one; after 45 seconds on hold the caller hangs up (−10). Questions, replies and verification codes need the caller on the line, so use **Call back** for voicemails. Closing while the caller is still on the line earns "first-contact resolution". When a critical ticket needs you, **Call back later** promises a callback within 5 minutes and ends the call: calling back in time earns credit, missing the deadline costs −10, and closing without the callback costs −5. This is the best answer to "a call came in while I was on the ransomware ticket".
 
 ### S2-1 · INC-20201: Locked out for the third time (Chris Nguyen) · call
 1. **Verify requester** while he's on the line.
