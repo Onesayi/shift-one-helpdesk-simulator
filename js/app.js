@@ -230,12 +230,16 @@ function ask(t, qid, typed) {
 // ---------------------------------------------------------------------------
 const INTENTS = [
   ['password', /\b(what('?s| is) your (current |new )?password|(tell|give|read|send) me your password|need your password|share your password)\b/i],
-  ['test', /\b(try (it |that |this )?(again|now)|test (it|that|this|again|now)|check (if|whether|again|now|it|that)|is it (working|fixed|ok|okay|better)|does it (work|load)|(working|fixed|sorted) now|able to (save|print|connect|log ?in|sign ?in|open|join)|(try|retry) (saving|printing|connecting|logging|signing|opening|joining))\b/i],
+  // Order matters: the specific intents come before the broad "test" one, so "restart and try again"
+  // is a restart and "what's the error when you try?" asks for the error.
   ['restart', /\b(restart|reboot|turn (it |the \w+ )?off and (back )?on|power (it )?off)\b/i],
   ['signout', /\b(sign|log) ?(out|off)\b|lock and unlock/i],
   ['device', /\b(computer|pc|laptop|device|host) ?name\b|\b(hostname|asset tag|serial number)\b/i],
   ['error', /\b(error|what does it say|what message|screenshot|exact (wording|message))\b/i],
   ['close', /\b(close (the|this|your) ticket|ok(ay)? (to|if i) close|can i close|anything else)\b/i],
+  ['wait', /\b(working on it|looking (into|at) it|give me (a|one) (minute|moment|sec\w*)|bear with me|one moment|hold on|i'?ll (check|look|get back|call you back))\b/i],
+  // any way of asking the user to test: retry, try, see if, connected, working, able to, any luck…
+  ['test', /\b(re-?try\w*|try\w*|test\w*|see (if|whether)|check (if|whether|again|now|it|that)|re-?connect\w*|connected|able to|working|works|does (it|that|this|everything) work|work now|fixed|sorted|resolved|back (up|on|online)|any (luck|better|change|joy)|(can|could) you (now )?(save|print|connect|log ?in|sign ?in|open|join|access|get (in|on)|see|load|use|browse))\b/i],
   ['thanks', /\b(thanks|thank you|cheers|bye|goodbye|have a (good|great|nice))\b/i],
   ['empathy', /\b(sorry|apologi[sz]e|i understand|frustrat|annoying)\b/i],
   ['hello', /^\s*(hi|hello|hey|good (morning|afternoon|evening))\b/i],
@@ -280,6 +284,7 @@ function respond(t, txt) {
     case 'close':
       if (t.expect.action !== 'resolve') return reply('Whatever you think is best, as long as someone is on it.');
       return reply(fixed ? 'Yes, all good. You can close it.' : 'Please don\'t, it\'s still not working!');
+    case 'wait': return reply('OK, no problem. I\'ll wait to hear from you.');
     case 'thanks': return reply('Thanks for your help!');
     case 'empathy': return reply('Thanks, I appreciate that.');
     case 'hello': return reply('Hi! Thanks for picking this up.');
@@ -681,7 +686,13 @@ function netAction(id, kind) {
     const g = G;
     nodes.forEach(x => { x.status = 'booting'; });
     render();
-    setTimeout(() => { if (G !== g) return; nodes.forEach(x => { x.status = 'online'; }); toast(`${nodes.map(x => x.id).join(', ')} back online.`, 'good'); render(); }, ms);
+    setTimeout(() => {
+      if (G !== g) return;
+      // people's devices rejoin an access point once it's back
+      nodes.forEach(x => { x.status = 'online'; if (x.role === 'ap' && !x.clients) x.clients = x.usualClients || 20; });
+      toast(`${nodes.map(x => x.id).join(', ')} back online.`, 'good');
+      render();
+    }, ms);
   };
   if (kind === 'linetest') {
     record('line-test', { target: id });

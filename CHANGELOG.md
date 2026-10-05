@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.2 (2026-10-05)
+
+- Requesters recognise far more ways of being asked to test: "retry", "are you connected?", "see if you can…", "any luck?", "does it work?", "try reconnecting"…
+- "I'm working on it" and "give me a minute" now get a polite "I'll wait" instead of a test result.
+- Error, computer name and close requests are matched before testing, so "what's the error when you try?" gets the error.
+- Access points show clients reconnecting after they come back online (the cafeteria AP showed 0 clients after a power cycle).
+
 ## 1.2.1 (2026-10-05)
 
 - **Typed replies are understood** in both shifts. Typed questions that match a scripted one get its answer and credit. "Try again", restart, sign out and back in, computer name, error message and "OK to close?" get answers based on whether the problem is really fixed. Every ticket has its own confirmation and error wording, and other messages get varied fallbacks.

@@ -157,7 +157,7 @@ const WORLD = {
     { id: 'FL3-SW-01', type: 'Floor Switch', location: 'HQ Floor 3 closet', status: 'online', role: 'floor', note: 'Floor 3. PoE for APs.' },
     { id: 'WAN-DEN-01', type: 'WAN circuit', location: 'HQ ↔ Denver Office', status: 'online', role: 'wan', note: 'Carrier-managed fibre circuit. Lumenline Fiber, circuit LF-88213-DEN.' },
     { id: 'AP-FL1-01', type: 'Access Point', location: 'HQ Floor 1 open office', status: 'online', role: 'ap', uplink: 'FL1-SW-01 port 22', clients: 38 },
-    { id: 'AP-CAFE-01', type: 'Access Point', location: 'Cafeteria (Floor 1)', status: 'offline', role: 'ap', uplink: 'FL1-SW-01 port 24', clients: 0 },
+    { id: 'AP-CAFE-01', type: 'Access Point', location: 'Cafeteria (Floor 1)', status: 'offline', role: 'ap', uplink: 'FL1-SW-01 port 24', clients: 0, usualClients: 22 },
     { id: 'AP-FL2-01', type: 'Access Point', location: 'HQ Floor 2', status: 'online', role: 'ap', uplink: 'FL2-SW-01 port 22', clients: 41 },
     { id: 'AP-FL3-01', type: 'Access Point', location: 'HQ Floor 3', status: 'online', role: 'ap', uplink: 'FL3-SW-01 port 22', clients: 29 },
   ],
