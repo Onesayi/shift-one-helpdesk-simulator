@@ -239,24 +239,36 @@ const INTENTS = [
   ['close', /\b(close (the|this|your) ticket|ok(ay)? (to|if i) close|can i close|anything else)\b/i],
   ['wait', /\b(working on it|looking (into|at) it|give me (a|one) (minute|moment|sec\w*)|bear with me|one moment|hold on|i'?ll (check|look|get back|call you back))\b/i],
   // any way of asking the user to test: retry, try, see if, connected, working, able to, any luck…
-  ['test', /\b(re-?try\w*|try\w*|test\w*|see (if|whether)|check (if|whether|again|now|it|that)|re-?connect\w*|connected|able to|working|works|does (it|that|this|everything) work|work now|fixed|sorted|resolved|back (up|on|online)|any (luck|better|change|joy|more)|gone|stopped|still (seeing|getting|happening|there|showing|appearing|locked|down)|(can|could) you (now )?(save|print|connect|log ?in|sign ?in|open|join|access|get (in|on)|see|load|use|browse))\b/i],
+  ['test', /\b(re-?try\w*|try\w*|test\w*|see (if|whether)|check (if|whether|again|now|it|that|the|your)|(fine|ok|okay|right|correct|good|better|normal|accurate) now|look(s|ing)? (right|ok|okay|correct|good|better|normal)|re-?connect\w*|connected|able to|working|works|does (it|that|this|everything) work|work now|fixed|sorted|resolved|back (up|on|online)|any (luck|better|change|joy|more)|gone|stopped|still (seeing|getting|happening|there|showing|appearing|locked|down)|(can|could) you (now )?(save|print|connect|log ?in|sign ?in|open|join|access|get (in|on)|see|load|use|browse))\b/i],
   ['thanks', /\b(thanks|thank you|cheers|bye|goodbye|have a (good|great|nice))\b/i],
   ['empathy', /\b(sorry|apologi[sz]e|i understand|frustrat|annoying)\b/i],
   ['hello', /^\s*(hi|hello|hey|good (morning|afternoon|evening))\b/i],
 ];
 const FALLBACK = [
-  'Sorry, I\'m not sure what you mean. What would you like me to do?',
+  'Sorry, I\'m not sure what you mean. Do you want me to try it again?',
   'OK. Is there anything you need me to check on my side?',
   'Right... should I try something, or wait for you?',
   'OK, thanks. Let me know when I should try again.',
 ];
+
+// A question or a "check…" about the ticket's own subject ("is the time fine now?", "check the time")
+// means "please test it". Information questions (what/which/who…) are left alone.
+const INFO_QUESTION = /^\s*(what|which|who|where|when|why|how)\b/i;
+const STATUS_CHECK = /\?\s*$|\b(check|look at|confirm|verify|see)\b|\bnow\b/i;
+
+function intentOf(t, txt) {
+  const hit = INTENTS.find(([, re]) => re.test(txt));
+  if (hit) return hit[0];
+  if (t.topic && t.topic.test(txt) && STATUS_CHECK.test(txt) && !INFO_QUESTION.test(txt)) return 'test';
+  return null;
+}
 
 function respond(t, txt) {
   const q = t.questions.find(x => x.keys && x.keys.test(txt));
   if (q) return ask(t, q.id, txt);
   say(t, 'tech', txt);
   const reply = (text, then) => say(t, t.requester, text, t.call === 'live' ? 900 : 1400, then);
-  const intent = (INTENTS.find(([, re]) => re.test(txt)) || [])[0];
+  const intent = intentOf(t, txt);
   const fixed = t.expect.action === 'resolve' && t.evaluate(W(), t).fixed;
   const d = t.device && W().devices[t.device];
   switch (intent) {
