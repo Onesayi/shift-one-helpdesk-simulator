@@ -4,7 +4,7 @@
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="../css/styles.css"></head>
 <body>
 <div id="app" data-phase="start"><header id="topbar"></header><nav id="sidebar"></nav><main id="main"></main><aside id="ticketpanel"></aside></div>
-<div id="modal-root"></div><div id="toasts"></div>
+<div id="modal-root"></div><div id="call-root"></div><div id="toasts"></div>
 <script src="../js/config.js"></script><script src="../js/data.js"></script><script src="../js/scenarios.js"></script><script src="../js/app.js"></script>
 <script>
 (async () => {
@@ -42,7 +42,7 @@
     ACT.pricing(); return;
   }
 
-  newGame(params.get('mode') || 'shift');
+  newGame(params.get('mode') || 'shift', Number(params.get('shift')) || 1);
 
   if (scene === 'queue') {
     backdate(175);
@@ -104,6 +104,64 @@
       G.drafts['note-INC-20114'] = 'Verified identity with a code to her registered mobile, then unlocked the account. She knew her password, so no reset.'; render(); }
     if (n >= 6) { ACT.resolve(); await sleep(1800); G.view = 'queue'; G.queueFilter = 'all'; render(); }
     if (n < 4 || n === 5) clearToasts();
+  }
+
+  // ---- Shift 2: Phones On (use ?shift=2) ----
+  // Skip ahead in shift time so calls queue up without waiting; keep the clock honest.
+  const ff = async sec => { G.t0 -= sec * 1000; spawnDue(); await sleep(50); };
+  if (scene === 'call') {
+    answerCall(); ACT.assign(); sendVerification('cnguyen'); await sleep(2400);
+    ask(ticket('INC-20201'), 'when'); await sleep(1000);
+    await ff(62); ringNext(); G.view = 'queue'; render(); clearToasts();
+  }
+  if (scene === 'voicemail') {
+    await ff(21); if (G.ring) missCall(); ringNext();
+    await ff(40); G.active = 'INC-20201'; G.view = 'dir'; G.dir.user = 'cnguyen'; G.dir.tab = 'authentication'; render(); clearToasts();
+  }
+  if (scene === 'ransom') {
+    await ff(30); G.calls = []; G.ring = null; G.active = 'INC-20202'; ACT.assign(); ask(ticket('INC-20202'), 'source'); await sleep(1600);
+    G.remote.device = 'BL-LT-0660'; G.remote.tab = 'overview'; G.view = 'remote'; G.ring = null; render(); clearToasts();
+  }
+  if (scene === 'mfa') {
+    await ff(105); G.calls = G.calls.filter(s => s.id === 'INC-20204'); G.ring = null; ringNext(); answerCall(); ACT.assign();
+    ask(ticket('INC-20204'), 'caller'); await sleep(1000);
+    G.view = 'dir'; G.dir.user = 'tnakamura'; G.dir.tab = 'authentication'; render(); clearToasts();
+  }
+  if (scene === 'outage') {
+    await ff(150); G.calls = G.calls.filter(s => s.group === 'den-wan'); G.ring = null; ringNext(); answerCall(); ACT.assign();
+    ask(ticket('INC-20205'), 'lights'); await sleep(1000);
+    G.view = 'server'; G.server.tab = 'network'; render(); netAction('WAN-DEN-01', 'linetest'); clearToasts();
+  }
+  if (scene === 'storage') {
+    await ff(200); G.calls = []; G.ring = null; G.active = 'INC-20207'; ACT.assign();
+    G.view = 'server'; G.server.tab = 'servers'; render(); clearToasts();
+  }
+  if (scene === 'start2') { G = null; PAGE = 'start'; render(); }
+  if (scene === 'report2') {
+    G.mode = 'practice';
+    const c2 = (id, cat, note, a = 'resolve', target) => { G.active = id; if (!ticket(id).assigned) ACT.assign();
+      Object.assign(G.drafts, { ['cat-' + id]: cat, ['note-' + id]: note, ['team-' + id]: target, ['link-' + id]: target });
+      a === 'resolve' ? ACT.resolve() : a === 'link' ? ACT.link() : ACT.escalate(); };
+    const take = () => { const l = liveCall(); if (l) endCall(l); answerCall(); };
+    await ff(400);
+    take(); sendVerification('cnguyen'); await sleep(2500); ask(ticket('INC-20201'), 'phone'); await sleep(1000); dirAction('unlock', 'cnguyen');
+    c2('INC-20201', 'Account & Access', 'Lockout source was ActiveSync on his iPhone; user updated the phone, then unlocked.');
+    G.remote.device = 'BL-LT-0660'; isolate(); ACT.modalOk();
+    c2('INC-20202', 'Security', 'Isolated BL-LT-0660 and escalated the ransomware to Security.', 'escalate', 'Security');
+    take(); sendVerification('ndlamini'); await sleep(2500); dirAction('addgroup', 'ndlamini'); G.drafts['m-group'] = 'VPN-Users'; ACT.modalOk();
+    c2('INC-20203', 'Account & Access', 'Verified; restored VPN-Users removed by the cleanup script.');
+    take(); sendVerification('tnakamura'); await sleep(2500); dirAction('reset', 'tnakamura'); ACT.modalOk(); dirAction('revoke', 'tnakamura');
+    c2('INC-20204', 'Security', 'Reset password and signed out sessions, escalated MFA compromise to Security.', 'escalate', 'Security');
+    take(); netAction('WAN-DEN-01', 'linetest'); ACT.modalOk();
+    c2('INC-20205', 'Network', 'Denver WAN circuit LOS from carrier; escalated to Network Engineering.', 'escalate', 'Network Engineering');
+    take(); c2('INC-20206', 'Network', 'Same Denver outage, linked as duplicate.', 'link', 'INC-20205');
+    storageDelete('FS01', 'logs'); ACT.modalOk();
+    c2('INC-20207', 'Server & Storage', 'Cleared D:\\Logs\\Archive per KB-205; disk at 87%.');
+    take(); ask(ticket('INC-20208'), 'calm'); await sleep(900); ask(ticket('INC-20208'), 'browser'); await sleep(900);
+    c2('INC-20208', 'Software', 'Declined admin rights; he joined Webex from the browser.');
+    take(); ask(ticket('INC-20209'), 'policy'); await sleep(900);
+    c2('INC-20209', 'Account & Access', 'Declined resetting a colleague password; manager to request delegated access.');
+    await sleep(500); endShift(); clearToasts();
   }
 })();
 </script></body></html>

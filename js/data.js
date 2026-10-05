@@ -17,6 +17,7 @@ const CATEGORIES = [
   'Network',
   'Security',
   'Email',
+  'Server & Storage',
 ];
 
 const ESCALATION_TEAMS = ['Security', 'Network Engineering', 'Server Team', 'Desktop Support (Tier 2)'];
@@ -33,7 +34,11 @@ const GROUPS = {
   'VPN-Users': 'Allowed to connect with GlobalProtect VPN',
   'Print-Floor2': 'Printers on HQ floor 2',
   'Domain Admins': 'Full administrative control of every server and workstation in the domain.',
+  'Workstation-Admins': 'Local administrator on every workstation. Members can install anything and switch off security tools.',
 };
+
+// Membership in these is never granted by the service desk.
+const ADMIN_GROUPS = ['Domain Admins', 'Workstation-Admins'];
 
 function baseApps() {
   return [
@@ -87,6 +92,9 @@ function user(id, first, last, o) {
     groups: ['All-Staff'],
     devices: [],
     location: 'HQ',
+    lockoutSource: '',   // shown on the Authentication tab
+    history: [],         // "Recent changes" audit entries on the Profile tab
+    signins: [],         // recent sign-ins on the Authentication tab
   }, o);
 }
 
@@ -109,6 +117,10 @@ const WORLD = {
     nlindqvist: user('nlindqvist', 'Nora', 'Lindqvist', { empId: 'EMP-1256', title: 'Customer Service Agent', dept: 'Customer Service', manager: '', phone: 'ext. 4410', location: 'HQ Floor 1', groups: ['All-Staff'], devices: ['BL-DT-2150'] }),
     kdoyle: user('kdoyle', 'Kevin', 'Doyle', { empId: 'EMP-1187', title: 'Sales Representative', dept: 'Sales', manager: '', phone: 'ext. 4322', location: 'HQ Floor 1', groups: ['All-Staff', 'Sales-Team', 'VPN-Users'], devices: ['BL-LT-1188'] }),
     kdoyle2: user('kdoyle2', 'Kevin', 'Doyle', { empId: 'EMP-1302', title: 'Forklift Operator', dept: 'Warehouse', manager: 'akim', phone: 'ext. 5519', location: 'Warehouse', email: 'kevin.doyle@brightline.com', groups: ['All-Staff', 'Warehouse-Team'], devices: [] }),
+    cnguyen: user('cnguyen', 'Chris', 'Nguyen', { empId: 'EMP-0998', title: 'Sales Manager', dept: 'Sales', manager: '', phone: 'ext. 4305', location: 'HQ Floor 1', groups: ['All-Staff', 'Sales-Team', 'VPN-Users'], devices: ['BL-LT-1201'] }),
+    tnakamura: user('tnakamura', 'Tara', 'Nakamura', { empId: 'EMP-1275', title: 'Payroll Specialist', dept: 'Finance', manager: 'tbecker', phone: 'ext. 4125', location: 'HQ Floor 3', groups: ['All-Staff', 'FS-Finance-RW'], devices: ['BL-LT-1202'] }),
+    ndlamini: user('ndlamini', 'Nandi', 'Dlamini', { empId: 'EMP-1318', title: 'Talent Acquisition Partner', dept: 'Human Resources', manager: 'badeyemi', phone: 'ext. 4262', location: 'Remote (works from home)', groups: ['All-Staff', 'FS-HR-RW', 'VPN-Users'], devices: ['BL-LT-1120'] }),
+    mreyes: user('mreyes', 'Maya', 'Reyes', { empId: 'EMP-1066', title: 'Office Manager', dept: 'Operations', manager: '', phone: 'ext. 7101', location: 'Denver Office', groups: ['All-Staff'], devices: ['BL-DT-2212'] }),
   },
   devices: {
     'BL-LT-1042': device('BL-LT-1042', 'pnair', 'Laptop', 'Dell Latitude 5440', '10.20.3.42'),
@@ -131,6 +143,10 @@ const WORLD = {
     'BL-LT-0990': device('BL-LT-0990', 'tbecker', 'Laptop', 'Dell Latitude 7440', '10.20.3.90'),
     'BL-LT-0101': device('BL-LT-0101', 'dokafor', 'Laptop', 'Dell Latitude 9440', '10.20.4.11'),
     'BL-LT-0660': device('BL-LT-0660', 'gfoster', 'Laptop', 'Dell Latitude 5440', '10.20.2.60'),
+    'BL-LT-1201': device('BL-LT-1201', 'cnguyen', 'Laptop', 'Dell Latitude 7440', '10.20.1.21'),
+    'BL-LT-1202': device('BL-LT-1202', 'tnakamura', 'Laptop', 'Dell Latitude 5440', '10.20.3.22'),
+    'BL-LT-1120': device('BL-LT-1120', 'ndlamini', 'Laptop', 'Dell Latitude 5440', '10.99.0.20'),
+    'BL-DT-2212': device('BL-DT-2212', 'mreyes', 'Desktop', 'Dell OptiPlex 7010', '10.40.1.12', { tz: 'Mountain Standard Time' }),
   },
   network: [
     { id: 'FW-01', type: 'Firewall', location: 'Server Room A', status: 'online', role: 'core', note: 'Internet edge' },
@@ -139,6 +155,7 @@ const WORLD = {
     { id: 'FL1-SW-01', type: 'Floor Switch', location: 'HQ Floor 1 closet', status: 'online', role: 'floor', note: 'Floor 1 + cafeteria. PoE for APs.' },
     { id: 'FL2-SW-01', type: 'Floor Switch', location: 'HQ Floor 2 closet', status: 'online', role: 'floor', note: 'Floor 2. PoE for APs.' },
     { id: 'FL3-SW-01', type: 'Floor Switch', location: 'HQ Floor 3 closet', status: 'online', role: 'floor', note: 'Floor 3. PoE for APs.' },
+    { id: 'WAN-DEN-01', type: 'WAN circuit', location: 'HQ ↔ Denver Office', status: 'online', role: 'wan', note: 'Carrier-managed fibre circuit. Lumenline Fiber, circuit LF-88213-DEN.' },
     { id: 'AP-FL1-01', type: 'Access Point', location: 'HQ Floor 1 open office', status: 'online', role: 'ap', uplink: 'FL1-SW-01 port 22', clients: 38 },
     { id: 'AP-CAFE-01', type: 'Access Point', location: 'Cafeteria (Floor 1)', status: 'offline', role: 'ap', uplink: 'FL1-SW-01 port 24', clients: 0 },
     { id: 'AP-FL2-01', type: 'Access Point', location: 'HQ Floor 2', status: 'online', role: 'ap', uplink: 'FL2-SW-01 port 22', clients: 41 },
@@ -233,4 +250,57 @@ const KB = [
 <ul><li>Verify <b>every</b> requester the same way: a code to the registered device.</li>
 <li>Never send passwords to personal email addresses, or change contact details, on request.</li>
 <li>If verification fails, do nothing to the account and <b>escalate to Security</b>.</li></ul>` },
+
+  // ---- Shift 2: Phones On ----
+  { id: 'KB-105', title: 'An account keeps locking again after you unlock it', tags: 'lockout locked again repeated activesync phone mobile source', body: `
+<p>If an account locks again minutes after an unlock, something is still signing in with the <b>old password</b>. Unlocking again won't help, and neither will another reset.</p>
+<ol><li>Directory → Authentication → <b>Last lockout source</b> tells you what is failing.</li>
+<li>Common sources: the Mail app on a phone (ActiveSync), a mapped drive with saved credentials, a second laptop still signed in.</li>
+<li>Have the user update or remove the account on that device <b>first</b>, then unlock.</li>
+<li>Don't reset the password again. Now the phone is wrong twice.</li></ol>` },
+  { id: 'KB-106', title: 'VPN says "not authorized for this gateway"', tags: 'vpn globalprotect remote home not authorized gateway', body: `
+<p>That error means the account isn't in <code>VPN-Users</code>. Password and laptop are fine.</p>
+<ol><li>Check Directory → Profile → <b>Recent changes</b>. The nightly <code>svc-groupcleanup</code> script sometimes removes remote workers by mistake.</li>
+<li>Verify the caller's identity, then restore <code>VPN-Users</code>. Restoring access removed in error doesn't need a new approval; quote the audit entry in your note.</li>
+<li>You <b>can't remote into</b> a laptop that is off the VPN. Fix the access first.</li></ol>` },
+  { id: 'KB-107', title: 'Someone asks for access to a colleague\'s account', tags: 'password colleague another user share mailbox delegate sick leave', body: `
+<p>Never reset or share another person's password, even if a manager asked. Account sharing destroys the audit trail: everything done "as" that person is now on their name.</p>
+<ul><li>Mailbox access goes through <b>delegated access</b>, requested by the person's manager and approved by HR.</li>
+<li>Help with the real need. Is the email also in a shared mailbox, or can the sender resend it?</li>
+<li>Close the ticket as declined, and say what the requester should do instead.</li></ul>` },
+  { id: 'KB-108', title: 'Admin rights requests and upset callers', tags: 'admin rights local administrator install software angry upset caller de-escalation', body: `
+<p>The service desk <b>never</b> grants <code>Workstation-Admins</code> or <code>Domain Admins</code>. Admin rights let malware switch off security tools.</p>
+<ol><li><b>Acknowledge</b> the problem first ("a demo in 10 minutes is stressful"). Never say "calm down".</li>
+<li>Find the real need. Meeting apps (Webex, Zoom, Teams) can almost always be <b>joined from the browser</b> with no install.</li>
+<li>For permanent installs, raise a software request so the app is packaged and approved for everyone.</li></ol>` },
+  { id: 'KB-204', title: 'A whole site is down, and everyone is calling', tags: 'site outage denver wan circuit carrier major incident duplicate link', body: `
+<ol><li>Confirm the scope with the caller: one person, or the whole office?</li>
+<li>Server Room → Network: check the site's <b>WAN circuit</b> and run a <b>line test</b>. "Loss of signal" means a carrier fault.</li>
+<li>Carrier circuits are managed by <b>Network Engineering</b>, who open the case with the carrier. Escalate once.</li>
+<li>Every other caller about the same outage: <b>link their ticket to the first one</b> as a duplicate. Don't open a second escalation.</li>
+<li>Never restart core routers or switches to "try something".</li></ol>` },
+  { id: 'KB-205', title: 'Runbook: FS01 is running out of disk space', tags: 'disk full space fs01 storage not enough space file server', body: `
+<p>Tier 1 is allowed to free space on FS01, but only from two places:</p>
+<ul><li><code>D:\\Temp</code>: installer leftovers.</li>
+<li><code>D:\\Logs\\Archive</code>: rotated application logs older than 30 days.</li></ul>
+<p><b>Never delete:</b> anything under <code>D:\\Shares</code> (that's user data), or <code>System Volume Information</code> (shadow copies: every user's Previous Versions and your fastest restore point).</p>
+<p>If the drive is still above 90% afterwards, escalate to the <b>Server Team</b>.</p>` },
+  { id: 'KB-403', title: 'MFA fatigue: a user approved a sign-in they didn\'t make', tags: 'mfa push approve fatigue bombing authenticator compromise', body: `
+<p>A flood of "Approve sign-in?" prompts means an attacker <b>already has the password</b>. If the user approved one, the attacker is signed in.</p>
+<ol><li>Verify the user.</li>
+<li>Reset the password (must change at next sign-in).</li>
+<li><b>Sign out all sessions</b>.</li>
+<li><b>Reset MFA.</b> Attackers usually register their own phone straight away (check Recent changes and Recent sign-ins).</li>
+<li>Escalate to <b>Security</b>. Mention any emails sent from the account.</li></ol>` },
+  { id: 'KB-404', title: 'Ransomware: the first five minutes', tags: 'ransomware encrypted locked files bitcoin recover isolate', body: `
+<p>Speed matters more than anything else. Encryption spreads to every share the laptop can reach.</p>
+<ol><li>Tell the user: <b>don't switch it off, unplug it or open anything</b>.</li>
+<li>Remote Desktop → Overview → <b>Isolate from network</b>. The security agent keeps working, but the malware can't reach anything else.</li>
+<li>Do <b>not</b> restart, "clean" or restore the device. That destroys the evidence Security needs.</li>
+<li>Escalate to <b>Security</b> immediately: what the user opened, and which shares were mapped.</li></ol>` },
+  { id: 'KB-501', title: 'Handling phone calls', tags: 'phone call hold voicemail callback answer', body: `
+<ul><li>Answer before the call goes to voicemail. A missed call becomes a callback, and the user has already waited.</li>
+<li>Answering another call puts the current caller <b>on hold</b>. Keep it under 45 seconds; after that people hang up.</li>
+<li>You can only ask questions or read back a verification code while the caller is <b>on the line</b>. Call voicemails back.</li>
+<li>Aim to resolve on the first call: fix it while they're still on the line.</li></ul>` },
 ];
