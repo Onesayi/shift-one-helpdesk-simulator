@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 (2026-10-05)
+
+New: **Call back later.** For when a call interrupts a critical ticket.
+
+- On a live call, *Call back later* (or typing "Can I call you back in 5 minutes?") promises a callback and ends the call politely, with no hold timer.
+- The ticket shows **Callback due** with a countdown, then **Callback overdue** in red. Questions need you to call back first.
+- Grading: calling back within 5 minutes earns credit; missing the deadline costs −10 (and the caller lets you know); closing without the promised callback costs −5. A deferred call no longer counts as first-contact resolution.
+- Callers react in character (Ravi's demo is in ten minutes…). No deadline in practice mode. The report shows callbacks kept on time.
+- KB-501 now covers handling calls while you're busy with something urgent.
+
 ## 1.2.3 (2026-10-05)
 
 - Every ticket has a **topic** (time/clock, Wi-Fi/network, printer, VPN…). Asking about it, as in "is the time fine now?" or "check the printer", counts as asking the user to test. Information questions (what/which/who…) don't.

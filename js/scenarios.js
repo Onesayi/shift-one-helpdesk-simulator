@@ -534,6 +534,7 @@ function denverOutage(w, t) {
 //   notYet    what they say when asked to test and it isn't (defaults to stillBroken)
 //   errorText what they read out when asked for the error message
 //   testReply(w, t)  full override for "try again" when "fixed" isn't the whole story
+//   deferReply  how they react to "Can I call you back within 5 minutes?"
 // ---------------------------------------------------------------------------
 const CONVERSATION = {
   'INC-20114': {
@@ -588,6 +589,7 @@ const CONVERSATION = {
     errorText: 'It just says my account is locked! I don\'t have time for this!',
   },
   'INC-20201': {
+    deferReply: "Fine, but I've got a client call at eleven. Please don't forget me.",
     keys: { when: /\b(when did|since when|what time|how long)\b/i, typing: /\b(careful|typ(ing|ed) (it )?wrong|typo|mistyp\w*)\b/i, phone: /\b(phone|iphone|mobile|mail app|activesync|tablet)\b/i },
     confirm: 'I\'m in, and it hasn\'t locked again. My phone\'s syncing too.',
     errorText: '"The user name or password is incorrect", and then "This account has been locked".',
@@ -598,18 +600,22 @@ const CONVERSATION = {
     errorText: 'A text file called HOW_TO_RECOVER_FILES.txt. It says my files are encrypted and I have 72 hours to pay in bitcoin.',
   },
   'INC-20203': {
+    deferReply: "Sure, but please don't forget. My first interview is at one.",
     keys: { error: /\b(error|what does it say|message)\b/i, changed: /\b(chang\w*|new (laptop|password)|anything (new|different)|yesterday)\b/i },
     confirm: 'Connected! The VPN icon is green and I can see the HR drive.',
   },
   'INC-20204': {
+    deferReply: "OK... please be quick, I'm really worried about those emails to the bank.",
     keys: { caller: /\b(number|who (called|rang)|his name|caller|what name)\b/i, pwd: /\b(give (him|them)|codes?|tell (him|them)|did you share)\b/i },
     notYet: 'Outlook still opens, if that\'s what you mean. But what about those emails to the bank?',
   },
   'INC-20205': {
+    deferReply: "OK. The whole office is just sitting here, so please be quick.",
     keys: { scope: /\b(everyone|just you|whole office|anyone else|others|colleagues)\b/i, lights: /\b(lights?|leds?|router|box|modem|comms|cupboard)\b/i },
     notYet: 'Still nothing, I\'m afraid. No email, no files, no internet.',
   },
   'INC-20206': {
+    deferReply: "Sure. Samuel already called you, so I'll wait.",
     keys: { scope: /\b(anyone else|everyone|whole office|others|colleagues)\b/i },
     notYet: 'Still down. The visitor tablet\'s still spinning too.',
   },
@@ -619,6 +625,7 @@ const CONVERSATION = {
     errorText: '"There is not enough space on \\\\FS01\\Marketing. You need an additional 48 MB to copy these files."',
   },
   'INC-20208': {
+    deferReply: "Five minutes?! My demo starts in ten! ...Fine. Be quick.",
     keys: {
       calm: /\b(calm down|relax|rules are rules|no need to shout)\b/i,
       empathy: /\b(understand|stressful|i hear you|sorry|let'?s get you)\b/i,
@@ -629,6 +636,7 @@ const CONVERSATION = {
     testReply: (w, t) => t.flags.alternative ? 'Yes, I\'m in the meeting lobby through the browser. Thanks.' : 'Try WHAT? The installer still wants an administrator!',
   },
   'INC-20209': {
+    deferReply: "Sure, there's a bit of time before three.",
     keys: { policy: /\b(can'?t (reset|give)|cannot|not allowed|delegat\w*|her manager|hr|policy)\b/i, other: /\b(another copy|accounts|supplier|resend|other copy|which invoice|cc)\b/i },
     testReply: (w, t) => t.flags.workaround ? 'All sorted, I found it in the accounts mailbox.' : 'Try what? I still can\'t get into her email.',
   },
@@ -640,7 +648,7 @@ for (const s of SCENARIOS) {
     const q = s.questions.find(x => x.id === qid);
     if (q) q.keys = re;
   }
-  for (const f of ['confirm', 'notYet', 'errorText', 'testReply']) if (c[f]) s[f] = c[f];
+  for (const f of ['confirm', 'notYet', 'errorText', 'testReply', 'deferReply']) if (c[f]) s[f] = c[f];
 }
 
 // What each ticket is about. A question or "check…" that mentions it ("is the time fine now?",

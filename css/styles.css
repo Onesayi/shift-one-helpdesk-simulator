@@ -348,6 +348,8 @@ a.kb-link:hover { text-decoration: underline; }
 .callbar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; flex: none; }
 .callbar.live { background: var(--good-soft); border-color: transparent; color: var(--good); }
 .callbar.hold { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
+.callbar.late { background: var(--bad-soft); border-color: transparent; color: var(--bad); }
+.c-late { color: var(--bad); border-color: transparent; background: var(--bad-soft); }
 .callbar .btn { color: var(--text); }
 .oncall { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--good-soft); color: var(--good); font-weight: 700; font-size: 12.5px; padding: 5px 10px; border-radius: 14px; cursor: pointer; white-space: nowrap; }
 .oncall svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }

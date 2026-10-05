@@ -15,6 +15,7 @@ const store = {
 
 const RING_SEC = 20;  // a call rings this long before it goes to voicemail (timed shifts only)
 const HOLD_MAX = 45;  // callers hang up after this long on hold (timed shifts only)
+const CALLBACK_SEC = 300; // a promised callback is due within this long (timed shifts only)
 
 let G = null;       // the whole game state
 let PAGE = 'start'; // which non-game page shows when no game is running
@@ -155,10 +156,33 @@ function resumeCall(t) {
   const cur = liveCall();
   if (cur && cur !== t) holdCall(cur);
   const back = t.call !== 'hold';
+  const promised = t.call === 'promised';
   t.call = 'live';
   t.holdSince = null;
   if (back) { t.flags.calledBack = true; record('callback', { ticket: t.id }); }
+  if (promised) {
+    const onTime = now() <= t.promiseDue;
+    if (onTime) t.flags.promiseKept = true; else t.flags.promiseBroken = true;
+    say(t, 'system', onTime ? `You called ${who(t.requester)} back as promised. They're on the line.` : `You called ${who(t.requester)} back, later than you promised. They're on the line.`);
+    if (!onTime) say(t, t.requester, 'Finally. I was starting to think you\'d forgotten me.', 900);
+    return;
+  }
   say(t, 'system', back ? `You called ${who(t.requester)} back. They're on the line.` : 'Back on the line.');
+}
+
+// "I'm on something urgent. Can I call you back within 5 minutes?" Frees you without a hold timer,
+// but the promise is graded: call back in time for credit, miss it and it costs points.
+// alreadySaid: the tech's own typed words are already in the thread (free-text "can I call you back?")
+function deferCall(t, alreadySaid) {
+  if (t.call !== 'live') return;
+  t.call = 'promised';
+  t.flags.deferred = true;
+  t.promiseDue = G.mode === 'shift' ? now() + CALLBACK_SEC : Infinity;
+  record('call-defer', { ticket: t.id });
+  if (!alreadySaid) say(t, 'tech', 'I\'m working on an urgent issue right now. Can I call you back within 5 minutes?');
+  say(t, t.requester, t.deferReply || 'Sure, no problem. Speak soon.', 900, () => {
+    say(t, 'system', G.mode === 'shift' ? `Call ended. Callback promised within ${CALLBACK_SEC / 60} minutes.` : 'Call ended. Callback promised.');
+  });
 }
 
 function endCall(t, text = 'Call ended.') {
@@ -237,7 +261,8 @@ const INTENTS = [
   ['device', /\b(computer|pc|laptop|device|host) ?name\b|\b(hostname|asset tag|serial number)\b/i],
   ['error', /\b(error|what does it say|what message|screenshot|exact (wording|message))\b/i],
   ['close', /\b(close (the|this|your) ticket|ok(ay)? (to|if i) close|can i close|anything else)\b/i],
-  ['wait', /\b(working on it|looking (into|at) it|give me (a|one) (minute|moment|sec\w*)|bear with me|one moment|hold on|i'?ll (check|look|get back|call you back))\b/i],
+  ['defer', /\b((call|ring) you back|get back to you (shortly|soon|in))\b/i],
+  ['wait', /\b(working on it|looking (into|at) it|give me (a|one) (minute|moment|sec\w*)|bear with me|one moment|hold on|i'?ll (check|look|get back))\b/i],
   // any way of asking the user to test: retry, try, see if, connected, working, able to, any luck…
   ['test', /\b(re-?try\w*|try\w*|test\w*|see (if|whether)|check (if|whether|again|now|it|that|the|your)|(fine|ok|okay|right|correct|good|better|normal|accurate) now|look(s|ing)? (right|ok|okay|correct|good|better|normal)|re-?connect\w*|connected|able to|working|works|does (it|that|this|everything) work|work now|fixed|sorted|resolved|back (up|on|online)|any (luck|better|change|joy|more)|gone|stopped|still (seeing|getting|happening|there|showing|appearing|locked|down)|(can|could) you (now )?(save|print|connect|log ?in|sign ?in|open|join|access|get (in|on)|see|load|use|browse))\b/i],
   ['thanks', /\b(thanks|thank you|cheers|bye|goodbye|have a (good|great|nice))\b/i],
@@ -296,6 +321,9 @@ function respond(t, txt) {
     case 'close':
       if (t.expect.action !== 'resolve') return reply('Whatever you think is best, as long as someone is on it.');
       return reply(fixed ? 'Yes, all good. You can close it.' : 'Please don\'t, it\'s still not working!');
+    case 'defer':
+      if (t.call === 'live') return deferCall(t, true);
+      return reply('OK, no problem. I\'ll wait to hear from you.');
     case 'wait': return reply('OK, no problem. I\'ll wait to hear from you.');
     case 'thanks': return reply('Thanks for your help!');
     case 'empathy': return reply('Thanks, I appreciate that.');
@@ -367,7 +395,10 @@ function closeTicket(t, action, target) {
   if (t.channel === 'phone') {
     if (t.flags.missed) ded.push([10, 'Missed the call. It went to voicemail and the user waited for a callback.']);
     if (t.flags.hungUp) ded.push([10, `Left ${who(t.requester)} on hold until they hung up.`]);
-    if (t.call === 'live' && !t.flags.missed && !t.flags.hungUp) good.push('Closed while the caller was still on the line (first-contact resolution).');
+    if (t.call === 'live' && !t.flags.missed && !t.flags.hungUp && !t.flags.deferred) good.push('Closed while the caller was still on the line (first-contact resolution).');
+    if (t.flags.promiseKept) good.push(`Asked to call back while busy, and called back within ${CALLBACK_SEC / 60} minutes as promised.`);
+    if (t.flags.promiseBroken) ded.push([10, `Promised to call back within ${CALLBACK_SEC / 60} minutes and didn't.`]);
+    else if (t.call === 'promised') ded.push([5, 'Closed the ticket without making the callback you promised.']);
   }
   t.toneDed.forEach(d => ded.push(d));
   if (t.flags.confirmed && action === 'resolve') good.push('Had the user test the fix before closing.');
@@ -921,6 +952,7 @@ function renderCall() {
 function chanChip(t) {
   if (t.channel !== 'phone') return '';
   if (t.flags.missed && !t.flags.calledBack) return '<span class="chan c-vm">Voicemail</span>';
+  if (t.call === 'promised') return now() > t.promiseDue ? '<span class="chan c-late">Callback overdue</span>' : '<span class="chan c-hold">Callback due</span>';
   const label = { live: 'On call', hold: 'On hold' }[t.call] || 'Call';
   return `<span class="chan c-phone ${t.call === 'live' ? 'c-live' : t.call === 'hold' ? 'c-hold' : ''}">${label}</span>`;
 }
@@ -1005,9 +1037,16 @@ function renderTicketPanel() {
     </div>`}`;
 }
 
+const dueText = t => t.promiseDue === Infinity ? 'no deadline in practice'
+  : now() > t.promiseDue ? `${fmt(now() - t.promiseDue)} late` : `due in ${fmt(t.promiseDue - now())}`;
+
 function renderCallBar(t) {
   const since = t.call === 'hold' ? t.holdSince : null;
-  if (t.call === 'live') return `<div class="callbar live">${I.phone}<b>On the line</b><span class="grow"></span><button class="btn sm" data-act="hold">Hold</button><button class="btn sm danger-ghost" data-act="endcall">End call</button></div>`;
+  if (t.call === 'live') return `<div class="callbar live">${I.phone}<b>On the line</b><span class="grow"></span><button class="btn sm" data-act="hold">Hold</button>${t.flags.deferred ? '' : '<button class="btn sm" data-act="defer" title="Promise to call back within 5 minutes and end the call">Call back later</button>'}<button class="btn sm danger-ghost" data-act="endcall">End call</button></div>`;
+  if (t.call === 'promised') {
+    const late = now() > t.promiseDue;
+    return `<div class="callbar ${late ? 'late' : 'hold'}">${I.phone}<b>${late ? 'Callback overdue' : 'Callback promised'}</b><span class="muted small" data-due="${t.id}">${dueText(t)}</span><span class="grow"></span><button class="btn sm primary" data-act="callback">Call back</button></div>`;
+  }
   if (t.call === 'hold') return `<div class="callbar hold">${I.phone}<b>On hold</b><span class="muted small" data-hold="${t.id}">${fmt(now() - since)}${G.mode === 'shift' ? ` · hangs up at ${fmt(HOLD_MAX)}` : ''}</span><span class="grow"></span><button class="btn sm primary" data-act="resume">Resume</button></div>`;
   const why = t.flags.hungUp ? 'Caller hung up' : t.flags.missed && !t.flags.calledBack ? 'Voicemail' : 'Call ended';
   return `<div class="callbar ended">${I.phone}<b>${why}</b><span class="grow"></span><button class="btn sm" data-act="callback">Call back</button></div>`;
@@ -1218,7 +1257,7 @@ function renderReport() {
     <div class="report-head"><div class="grade g-${R.grade}">${R.grade}</div>
       <div><h1>Shift report</h1><p class="muted">Shift ${G.shift}: ${esc(SHIFTS[G.shift].name)} · ${R.closed}/${SC().length} tickets closed · ${fmt(R.time)} on shift · ${G.mode === 'practice' ? 'practice mode' : 'timed shift'}</p>
       <div class="big-score">${R.final}<small>/100</small></div>
-      ${R.calls ? `<p class="muted small">Calls: ${R.calls.answered} answered · ${R.calls.missed} missed · ${R.calls.dropped} hung up on hold</p>` : ''}</div>
+      ${R.calls ? `<p class="muted small">Calls: ${R.calls.answered} answered · ${R.calls.missed} missed · ${R.calls.dropped} hung up on hold${R.calls.promised ? ` · callbacks: ${R.calls.kept} of ${R.calls.promised} on time` : ''}</p>` : ''}</div>
       <div class="grow"></div><div class="col gap"><button class="btn primary lg" data-act="start" data-m="${G.mode}" data-s="${G.shift}">Play again</button>
         ${G.shift === 1 ? '<button class="btn" data-act="start" data-m="shift" data-s="2">Try Shift 2: Phones On</button>' : ''}<button class="btn" data-act="home">Main menu</button></div></div>
     <div class="card pad coach-cta"><div><b>Want someone to walk you through this report?</b><div class="muted">A tutor can replay your shift with you and turn every lost point into an interview answer.</div></div><button class="btn" data-act="pricing">See tutoring</button></div>
@@ -1241,7 +1280,10 @@ function endShift() {
   const phone = list.some(s => s.channel === 'phone');
   G.report = {
     final, grade, closed: G.tickets.filter(t => t.result).length, time: now(),
-    calls: phone ? { answered: logged('call-answer').length, missed: logged('call-missed').length, dropped: G.tickets.filter(t => t.flags.hungUp).length } : null,
+    calls: phone ? {
+      answered: logged('call-answer').length, missed: logged('call-missed').length, dropped: G.tickets.filter(t => t.flags.hungUp).length,
+      promised: G.tickets.filter(t => t.flags.deferred).length, kept: G.tickets.filter(t => t.flags.promiseKept).length,
+    } : null,
   };
   G.phase = 'report';
   G.ring = null;
@@ -1260,6 +1302,7 @@ const ACT = {
   resume: () => { resumeCall(ticket(G.active)); render(); },
   callback: () => { resumeCall(ticket(G.active)); render(); },
   endcall: () => { endCall(ticket(G.active)); render(); },
+  defer: () => { deferCall(ticket(G.active)); render(); },
   mute: () => { store.set('shiftone-mute', store.get('shiftone-mute') === '1' ? '0' : '1'); render(); },
   link: () => { const t = ticket(G.active), p = G.drafts['link-' + t.id]; if (!p) return toast('Choose the ticket this duplicates.', 'bad'); closeTicket(t, 'link', p); },
   isolate: () => isolate(),
@@ -1355,6 +1398,13 @@ setInterval(() => {
   if (ringNext()) changed = true;
   else if (G.ring && (now() - G.ring.since) % 4 === 0) ringTone();
   for (const t of G.tickets) {
+    if (t.call === 'promised' && !t.result && !t.flags.promiseBroken && now() > t.promiseDue) {
+      t.flags.promiseBroken = true;
+      record('callback-missed', { ticket: t.id });
+      say(t, 'system', `Callback overdue: you promised to call ${who(t.requester)} back within ${CALLBACK_SEC / 60} minutes.`);
+      toast(`Callback to ${who(t.requester)} is overdue (${t.id}).`, 'bad');
+      changed = true;
+    }
     if (G.mode === 'shift' && t.call === 'hold' && now() - t.holdSince >= HOLD_MAX) {
       t.call = 'dropped'; t.flags.hungUp = true;
       record('call-dropped', { ticket: t.id });
@@ -1369,6 +1419,7 @@ setInterval(() => {
   if (c) c.textContent = fmt(now());
   const rl = $('#ring-left');
   if (rl && G.ring) rl.textContent = `${G.ring.until - now()} s to voicemail`;
+  document.querySelectorAll('[data-due]').forEach(el => { el.textContent = dueText(ticket(el.dataset.due)); });
   document.querySelectorAll('[data-hold]').forEach(el => {
     const t = ticket(el.dataset.hold);
     if (t.call === 'hold') el.textContent = `${fmt(now() - t.holdSince)}${G.mode === 'shift' ? ` · hangs up at ${fmt(HOLD_MAX)}` : ''}`;

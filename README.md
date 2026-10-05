@@ -42,7 +42,7 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 | | |
 |---|---|
 | 🎫 **Ticket queue** | Priorities, live SLA countdowns, requester chat with scripted questions or your own typed words (ask them to "try again" and they only confirm if it's really fixed), categories, resolution notes, resolve, escalate to the right team, **or link duplicates** to a parent incident |
-| 📞 **Live phone calls** | Calls ring in real time and go to voicemail if missed. Answering a second call puts the first on hold, and callers hang up after 45 seconds. You can only ask questions or verify identity while the caller is on the line |
+| 📞 **Live phone calls** | Calls ring in real time and go to voicemail if missed. Answering a second call puts the first on hold, and callers hang up after 45 seconds. Busy with something urgent? Promise a callback within 5 minutes, then keep it. You can only ask questions or verify identity while the caller is on the line |
 | 👥 **Directory** | Active Directory-style user management: reset password (with *must change* / *unlock* options), unlock, reset MFA, sign out sessions, disable, group membership, profile edits, **identity verification by one-time code**, lockout source, recent sign-ins and an audit trail of recent changes |
 | 🖥️ **Remote desktop** | Consent-based sessions with a live screen preview, installed apps, Windows services, time zone + DNS settings, **network isolation** for compromised devices |
 | ⌨️ **Command prompt** | A working CLI: `ipconfig /all`, `nslookup`, `ping`, `tzutil`, `tasklist`, `taskkill`, `sc query`, `net start`, `netsh`, `gpupdate`, command history with ↑/↓ |
@@ -182,7 +182,7 @@ flowchart LR
 | Documentation | A note like "fixed" | −10 |
 | SLA | Closing a High ticket after 5 minutes (timed mode) | −15 |
 | Root cause | Unlocking an account without fixing the phone that keeps locking it | −10 per relock |
-| Phones | Letting a call go to voicemail, or leaving a caller on hold until they hang up | −10 each |
+| Phones | Letting a call go to voicemail, leaving a caller on hold until they hang up, or breaking a "call you back in 5 minutes" promise | −10 each |
 | Soft skills | Telling an upset caller to "calm down", or asking a user for their password | −10 |
 | Major incidents | Escalating a second report of the same outage instead of linking it | −10 |
 

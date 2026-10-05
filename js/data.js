@@ -305,9 +305,12 @@ const KB = [
 <li>Remote Desktop → Overview → <b>Isolate from network</b>. The security agent keeps working, but the malware can't reach anything else.</li>
 <li>Do <b>not</b> restart, "clean" or restore the device. That destroys the evidence Security needs.</li>
 <li>Escalate to <b>Security</b> immediately: what the user opened, and which shares were mapped.</li></ol>` },
-  { id: 'KB-501', title: 'Handling phone calls', tags: 'phone call hold voicemail callback answer', body: `
+  { id: 'KB-501', title: 'Handling phone calls', tags: 'phone call hold voicemail callback answer busy urgent defer', body: `
 <ul><li>Answer before the call goes to voicemail. A missed call becomes a callback, and the user has already waited.</li>
 <li>Answering another call puts the current caller <b>on hold</b>. Keep it under 45 seconds; after that people hang up.</li>
 <li>You can only ask questions or read back a verification code while the caller is <b>on the line</b>. Call voicemails back.</li>
-<li>Aim to resolve on the first call: fix it while they're still on the line.</li></ul>` },
+<li>Aim to resolve on the first call: fix it while they're still on the line.</li></ul>
+<h4>When you're busy with something urgent</h4>
+<p>Don't leave a caller on hold while you work a critical ticket. Take their name and the problem, then use <b>Call back later</b> (or say "Can I call you back within 5 minutes?"). That ends the call politely, so nobody hangs up on hold.</p>
+<p>A promise is a commitment: the ticket shows <b>Callback due</b> with a countdown. Call back in time. A broken promise costs more trust than the original wait, and closing the ticket without the callback you promised is just as bad.</p>` },
 ];
