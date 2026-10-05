@@ -70,6 +70,29 @@ PRINT01: { services: [{ name: 'Spooler', display: 'Print Spooler', status: 'Stop
 }
 ```
 
+### Free-text replies
+
+Players can type anything in the reply box. The engine answers in this order:
+
+1. **A scripted question's `keys`.** Typed text matching a question's regex counts as asking that question (same answer, same flag, same `bad` deduction).
+2. **Common intents** (`INTENTS` in `app.js`): "try again" / "can you save now?", restart, sign out and back in, computer name, error message, "OK to close?", thanks, apologies, hello. Answers depend on the real state: "try again" checks `evaluate().fixed`.
+3. **Asking for the user's password** always costs 10 points.
+4. **Rotating fallbacks** for anything else.
+
+Per-ticket wording lives in `CONVERSATION` at the bottom of `scenarios.js`:
+
+```js
+'INC-20207': {
+  keys: { others: /\b(other shares|finance|just you)\b/i },   // question id -> regex
+  confirm: 'Saved! The campaign files are uploading now.',      // "try again" when fixed
+  notYet: 'Still "not enough space".',                          // "try again" when not (default: stillBroken)
+  errorText: '"There is not enough space on \\\\FS01\\Marketing…"',
+  testReply: (w, t) => '…',                                     // full override for "try again"
+},
+```
+
+Keep `keys` specific. A broad word like "save" or "know" will hijack ordinary messages like "can you save now?".
+
 New shifts go in `SHIFTS` at the top of `scenarios.js`. A shift's `setup(w)` receives a fresh copy of the world before the shift starts, so it can break things (lock an account, stop a service, take a circuit down) without affecting other shifts.
 
 ## 3. Grading helpers

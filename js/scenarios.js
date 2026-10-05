@@ -526,3 +526,119 @@ function denverOutage(w, t) {
   if (t.flags.askedScope) r.good.push('Confirmed the whole office was affected.');
   return r;
 }
+
+// ---------------------------------------------------------------------------
+// Free-text understanding, per ticket. Kept here so the scenarios above stay readable.
+//   keys      typed text matching this regex counts as asking that scripted question
+//   confirm   what the requester says when asked to test and the problem really is fixed
+//   notYet    what they say when asked to test and it isn't (defaults to stillBroken)
+//   errorText what they read out when asked for the error message
+//   testReply(w, t)  full override for "try again" when "fixed" isn't the whole story
+// ---------------------------------------------------------------------------
+const CONVERSATION = {
+  'INC-20114': {
+    keys: { know: /\b(know|remember|forgot(ten)?) (your|the) (current )?password\b|caps ?lock/i, where: /\b(phone|mobile|outlook)\b/i },
+    confirm: 'Yes! I\'m logged in. Thank you so much!',
+    errorText: '"Your account has been locked. Contact your support person to unlock it, then try again."',
+  },
+  'INC-20115': {
+    keys: { scope: /\b(anywhere else|other (floors?|areas?)|your desk|just the cafeteria|elsewhere)\b/i, when: /\b(when did|since when|what time|how long)\b/i },
+    confirm: 'Yes, BL-Corp is showing up in the cafeteria again and I\'m connected.',
+    errorText: 'There\'s no error. BL-Corp just isn\'t in the list of networks in the cafeteria.',
+  },
+  'INC-20116': {
+    keys: { since: /\b(always|since when|how long|new (pc|computer|desktop)|when did)\b/i },
+    confirm: 'The clock\'s right now, and standup shows at the right time. Perfect.',
+  },
+  'INC-20117': {
+    keys: { approve: /\b(approv\w*|manager|tom|permission from)\b/i, need: /\b(edit or view|view or edit|just view|read.?only|write access|need to (edit|view|change|update))\b/i },
+    confirm: 'I signed out and back in, and I can open and save in the Finance folder now!',
+    errorText: '"\\\\FS01\\Finance is not accessible. You might not have permission to use this network resource. Access is denied."',
+  },
+  'INC-20118': {
+    keys: { install: /\b(install\w*|download\w*|new (program|software|app|tool))\b/i },
+    confirm: 'No pop-ups for a few minutes now, and that search bar is gone. Looks clean!',
+    errorText: 'The pop-ups say "DealFinder: 90% OFF today only!", and there\'s a QuickSearch bar in my browser I never added.',
+  },
+  'INC-20119': {
+    keys: { scope: /\b(just you|only you|anyone else|others|colleagues|whole floor|everyone)\b/i, which: /\b(which|what) printer\b/i },
+    confirm: 'The printer\'s going! Everyone\'s jobs are coming out, mine included.',
+    errorText: 'No error. The queue just says "Printing" next to my offer letters and never changes.',
+  },
+  'INC-20120': {
+    keys: { change: /\b(chang\w*|contractor|anything (new|different)|recently)\b/i, others: /\b(others|colleague|anyone else|next desk|everyone)\b/i },
+    confirm: 'The intranet loads and the S: drive is back. Shift rota printed!',
+    errorText: 'Chrome says "This site can\'t be reached. DNS_PROBE_FINISHED_NXDOMAIN".',
+  },
+  'INC-20121': {
+    keys: { spell: /\b(spell\w*|exact(ly)? (name|surname)|new (surname|last name))\b/i },
+    confirm: 'My name shows as Whitfield in Outlook now, and my new address works. Thank you!',
+  },
+  'INC-20122': {
+    keys: { when: /\b(when did|how long ago|what time)\b/i, fwd: /\b(forward\w*|phishing@|keep the email|don'?t delete)\b/i },
+    notYet: 'My email still works, if that\'s what you mean. Is my account safe now?',
+  },
+  'INC-20123': {
+    keys: { which: /\b(which kevin|two kevin\w*|employee id|emp-?\d+|confirm (the|which)|sales or warehouse)\b/i },
+    confirm: 'Our HR report shows Kevin (EMP-1187) as disabled with no groups. Thanks.',
+  },
+  'INC-20124': {
+    keys: { call: /\b(call (you )?back|number (we have )?on file|ring you|registered (number|phone))\b/i, empid: /\b(employee (id|number)|emp(loyee)? ?id)\b/i },
+    notYet: 'I can\'t "try" anything, I\'m locked out! Just reset it and email me the password!',
+    errorText: 'It just says my account is locked! I don\'t have time for this!',
+  },
+  'INC-20201': {
+    keys: { when: /\b(when did|since when|what time|how long)\b/i, typing: /\b(careful|typ(ing|ed) (it )?wrong|typo|mistyp\w*)\b/i, phone: /\b(phone|iphone|mobile|mail app|activesync|tablet)\b/i },
+    confirm: 'I\'m in, and it hasn\'t locked again. My phone\'s syncing too.',
+    errorText: '"The user name or password is incorrect", and then "This account has been locked".',
+  },
+  'INC-20202': {
+    keys: { source: /\b(attachment|open(ed)? (a|an|any|the)|link|zip|invoice|clicked)\b/i, share: /\b(shared drive|mapped|network drive|shares?|s: ?drive)\b/i },
+    notYet: 'I\'m not touching it, like you said. Everything still ends in .locked.',
+    errorText: 'A text file called HOW_TO_RECOVER_FILES.txt. It says my files are encrypted and I have 72 hours to pay in bitcoin.',
+  },
+  'INC-20203': {
+    keys: { error: /\b(error|what does it say|message)\b/i, changed: /\b(chang\w*|new (laptop|password)|anything (new|different)|yesterday)\b/i },
+    confirm: 'Connected! The VPN icon is green and I can see the HR drive.',
+  },
+  'INC-20204': {
+    keys: { caller: /\b(number|who (called|rang)|his name|caller|what name)\b/i, pwd: /\b(give (him|them)|codes?|tell (him|them)|did you share)\b/i },
+    notYet: 'Outlook still opens, if that\'s what you mean. But what about those emails to the bank?',
+  },
+  'INC-20205': {
+    keys: { scope: /\b(everyone|just you|whole office|anyone else|others|colleagues)\b/i, lights: /\b(lights?|leds?|router|box|modem|comms|cupboard)\b/i },
+    notYet: 'Still nothing, I\'m afraid. No email, no files, no internet.',
+  },
+  'INC-20206': {
+    keys: { scope: /\b(anyone else|everyone|whole office|others|colleagues)\b/i },
+    notYet: 'Still down. The visitor tablet\'s still spinning too.',
+  },
+  'INC-20207': {
+    keys: { others: /\b(other (shares|drives|folders)|finance|only (the )?marketing|anyone else|just you)\b/i },
+    confirm: 'Saved! The campaign files are uploading now.',
+    errorText: '"There is not enough space on \\\\FS01\\Marketing. You need an additional 48 MB to copy these files."',
+  },
+  'INC-20208': {
+    keys: {
+      calm: /\b(calm down|relax|rules are rules|no need to shout)\b/i,
+      empathy: /\b(understand|stressful|i hear you|sorry|let'?s get you)\b/i,
+      browser: /\b(browser|web (version|client|app)|join (from|via|in|on) (the |your )?(web|browser))\b/i,
+      request: /\b(software request|package|request (it|form)|raise a request|ticket for)\b/i,
+    },
+    errorText: '"Do you want to allow this app to make changes to your device? Enter an administrator username and password."',
+    testReply: (w, t) => t.flags.alternative ? 'Yes, I\'m in the meeting lobby through the browser. Thanks.' : 'Try WHAT? The installer still wants an administrator!',
+  },
+  'INC-20209': {
+    keys: { policy: /\b(can'?t (reset|give)|cannot|not allowed|delegat\w*|her manager|hr|policy)\b/i, other: /\b(another copy|accounts|supplier|resend|other copy|which invoice|cc)\b/i },
+    testReply: (w, t) => t.flags.workaround ? 'All sorted, I found it in the accounts mailbox.' : 'Try what? I still can\'t get into her email.',
+  },
+};
+for (const s of SCENARIOS) {
+  const c = CONVERSATION[s.id];
+  if (!c) continue;
+  for (const [qid, re] of Object.entries(c.keys || {})) {
+    const q = s.questions.find(x => x.id === qid);
+    if (q) q.keys = re;
+  }
+  for (const f of ['confirm', 'notYet', 'errorText', 'testReply']) if (c[f]) s[f] = c[f];
+}

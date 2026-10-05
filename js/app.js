@@ -202,13 +202,18 @@ function say(t, from, text, delay = 0, then) {
   setTimeout(push, delay);
 }
 
-function ask(t, qid) {
+// typed: the words the tech actually typed, when a free-text reply matched this question's `keys`
+function ask(t, qid, typed) {
   const q = t.questions.find(x => x.id === qid);
-  if (!q || t.asked.includes(qid)) return;
+  if (!q) return;
   if (!onLine(t)) return toast(`${who(t.requester)} isn't on the line. Call them back first.`, 'bad');
+  if (t.asked.includes(qid)) {
+    if (typed) { say(t, 'tech', typed); say(t, t.requester, `Like I said: ${q.a}`, 1200); }
+    return;
+  }
   t.asked.push(qid);
   if (q.bad) t.toneDed.push(q.bad);
-  say(t, 'tech', q.q);
+  say(t, 'tech', typed || q.q);
   say(t, t.requester, q.a, t.call === 'live' ? 900 : 1400, () => {
     if (q.flag) t.flags[q.flag] = true;
     if (q.follow) say(t, q.follow.from, q.follow.text, q.follow.delay, () => {
@@ -216,6 +221,71 @@ function ask(t, qid) {
       if (q.follow.event) record(q.follow.event, { ticket: t.id });
     });
   });
+}
+
+// ---------------------------------------------------------------------------
+// Free-text replies. A typed message that matches a scripted question's `keys` is that question.
+// Otherwise the requester reacts to the kind of thing you said, using the real state of the
+// systems: "try again" only works if the problem is actually fixed.
+// ---------------------------------------------------------------------------
+const INTENTS = [
+  ['password', /\b(what('?s| is) your (current |new )?password|(tell|give|read|send) me your password|need your password|share your password)\b/i],
+  ['test', /\b(try (it |that |this )?(again|now)|test (it|that|this|again|now)|check (if|whether|again|now|it|that)|is it (working|fixed|ok|okay|better)|does it (work|load)|(working|fixed|sorted) now|able to (save|print|connect|log ?in|sign ?in|open|join)|(try|retry) (saving|printing|connecting|logging|signing|opening|joining))\b/i],
+  ['restart', /\b(restart|reboot|turn (it |the \w+ )?off and (back )?on|power (it )?off)\b/i],
+  ['signout', /\b(sign|log) ?(out|off)\b|lock and unlock/i],
+  ['device', /\b(computer|pc|laptop|device|host) ?name\b|\b(hostname|asset tag|serial number)\b/i],
+  ['error', /\b(error|what does it say|what message|screenshot|exact (wording|message))\b/i],
+  ['close', /\b(close (the|this|your) ticket|ok(ay)? (to|if i) close|can i close|anything else)\b/i],
+  ['thanks', /\b(thanks|thank you|cheers|bye|goodbye|have a (good|great|nice))\b/i],
+  ['empathy', /\b(sorry|apologi[sz]e|i understand|frustrat|annoying)\b/i],
+  ['hello', /^\s*(hi|hello|hey|good (morning|afternoon|evening))\b/i],
+];
+const FALLBACK = [
+  'Sorry, I\'m not sure what you mean. What would you like me to do?',
+  'OK. Is there anything you need me to check on my side?',
+  'Right... should I try something, or wait for you?',
+  'OK, thanks. Let me know when I should try again.',
+];
+
+function respond(t, txt) {
+  const q = t.questions.find(x => x.keys && x.keys.test(txt));
+  if (q) return ask(t, q.id, txt);
+  say(t, 'tech', txt);
+  const reply = (text, then) => say(t, t.requester, text, t.call === 'live' ? 900 : 1400, then);
+  const intent = (INTENTS.find(([, re]) => re.test(txt)) || [])[0];
+  const fixed = t.expect.action === 'resolve' && t.evaluate(W(), t).fixed;
+  const d = t.device && W().devices[t.device];
+  switch (intent) {
+    case 'password':
+      if (!t.flags.askedPassword) {
+        t.flags.askedPassword = true;
+        t.toneDed.push([10, 'Asked the user for their password. The service desk never needs it, and users must never be taught to share it.']);
+      }
+      return reply('Erm... are you allowed to ask for that? We were told never to share our password with anyone.');
+    case 'test':
+      if (t.testReply) return reply(t.testReply(W(), t));
+      if (t.expect.action !== 'resolve') return reply(t.notYet || 'Just tried. Still nothing, I\'m afraid.');
+      if (fixed) return reply(t.confirm || 'Yes! That works now. Thank you!', () => { t.flags.confirmed = true; record('confirmed', { ticket: t.id }); });
+      return reply(t.notYet || t.stillBroken || 'Just tried. No, it\'s still the same.');
+    case 'restart':
+      if (d) record('restart', { device: d.id, byUser: true });
+      if (d && d.ransom) return reply('OK... restarting it now. It\'s coming back up.');
+      return reply(fixed ? 'It\'s back up, and it\'s working now.' : 'OK, it\'s restarted. Still the same problem though.');
+    case 'signout':
+      return reply(fixed ? 'Signed out and back in. That did it!' : 'Signed out and back in. No change, I\'m afraid.');
+    case 'device':
+      return reply(d ? `It's ${d.id}. It's on the sticker underneath.` : 'I\'m not at my work computer right now, sorry.');
+    case 'error':
+      return reply(t.errorText || 'Nothing more than what I already told you, sorry.');
+    case 'close':
+      if (t.expect.action !== 'resolve') return reply('Whatever you think is best, as long as someone is on it.');
+      return reply(fixed ? 'Yes, all good. You can close it.' : 'Please don\'t, it\'s still not working!');
+    case 'thanks': return reply('Thanks for your help!');
+    case 'empathy': return reply('Thanks, I appreciate that.');
+    case 'hello': return reply('Hi! Thanks for picking this up.');
+  }
+  t.fallbackN = (t.fallbackN || 0) + 1;
+  reply(FALLBACK[(t.fallbackN - 1) % FALLBACK.length]);
 }
 
 function sendVerification(uid) {
@@ -283,6 +353,7 @@ function closeTicket(t, action, target) {
     if (t.call === 'live' && !t.flags.missed && !t.flags.hungUp) good.push('Closed while the caller was still on the line (first-contact resolution).');
   }
   t.toneDed.forEach(d => ded.push(d));
+  if (t.flags.confirmed && action === 'resolve') good.push('Had the user test the fix before closing.');
   if (!t.categories.includes(cat)) ded.push([5, `Category "${cat}" doesn't fit. Expected ${t.categories.join(' or ')}.`]);
   if (note.length < 25) ded.push([10, 'Resolution note is too thin for the next tech to learn from.']);
   else if (t.keywords && !t.keywords.some(k => note.toLowerCase().includes(k))) ded.push([5, 'The note doesn\'t say what you actually did.']);
@@ -721,7 +792,15 @@ const I = {
   phone: '<svg viewBox="0 0 24 24"><path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2"/></svg>',
 };
 
+// While the DOM is being replaced, the outgoing focused input fires a final "change" with its old
+// text; ignore input events until the new DOM is in place so drafts can't be restored by accident.
+let rendering = false;
 function render() {
+  rendering = true;
+  try { renderDom(); } finally { rendering = false; }
+}
+
+function renderDom() {
   const app = $('#app');
   app.dataset.phase = G ? G.phase : PAGE;
   const a = document.activeElement, fid = a && a.id, s1 = a && a.selectionStart, s2 = a && a.selectionEnd;
@@ -1180,8 +1259,7 @@ const ACT = {
     if (!txt) return;
     if (!onLine(t)) return toast(`${who(t.requester)} isn't on the line. Call them back first.`, 'bad');
     G.drafts[k] = '';
-    say(t, 'tech', txt);
-    say(t, t.requester, 'OK, thanks. Let me know when I should try again.', 1500);
+    respond(t, txt);
   },
   verify: d => sendVerification(d.u),
   resolve: () => closeTicket(ticket(G.active), 'resolve'),
@@ -1224,7 +1302,7 @@ document.addEventListener('toggle', e => {
 }, true);
 const onDraft = e => {
   const k = e.target.dataset?.draft;
-  if (k == null || !G) return;
+    if (k == null || !G || rendering || !e.target.isConnected) return;
   G.drafts[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
   if (e.target.dataset.live) {
     if (k === 'm-group') { const gd = $('#group-desc'); if (gd) gd.textContent = GROUPS[e.target.value] || ''; return; }

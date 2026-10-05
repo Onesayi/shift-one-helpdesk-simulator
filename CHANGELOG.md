@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1 (2026-10-05)
+
+- **Typed replies are understood** in both shifts. Typed questions that match a scripted one get its answer and credit. "Try again", restart, sign out and back in, computer name, error message and "OK to close?" get answers based on whether the problem is really fixed. Every ticket has its own confirmation and error wording, and other messages get varied fallbacks.
+- Having the user test the fix before closing is credited on the report.
+- Asking a user for their password costs 10 points. Telling the ransomware victim to restart counts as a restart.
+- Fixed: the reply box (and the remote command prompt) could refill with the previous message after sending.
+
 ## 1.2.0 (2026-10-05)
 
 New: **Shift 2: Phones On**, a harder help desk shift. Shift 1 (*Day One*) is unchanged.
