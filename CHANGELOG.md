@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3 (2026-10-05)
+
+- Every ticket has a **topic** (time/clock, Wi-Fi/network, printer, VPN…). Asking about it, as in "is the time fine now?" or "check the printer", counts as asking the user to test. Information questions (what/which/who…) don't.
+- More generic status phrases: "check the…", "fine now", "right now", "looks OK?".
+- The first fallback now hints at what to do: "Do you want me to try it again?"
+
 ## 1.2.2 (2026-10-05)
 
 - Requesters recognise far more ways of being asked to test: "retry", "are you connected?", "see if you can…", "any luck?", "does it work?", "try reconnecting"…

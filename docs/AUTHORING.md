@@ -91,6 +91,8 @@ Per-ticket wording lives in `CONVERSATION` at the bottom of `scenarios.js`:
 },
 ```
 
+Each ticket also has a **topic** in `TOPICS` (bottom of `scenarios.js`): the words the ticket is about, such as `/\b(time|clock|calendar)\b/i` for the wrong-time-zone ticket. A question or a "check…" that mentions the topic ("is the time fine now?", "check the printer") counts as asking the user to test. Questions starting with what/which/who/where/when/why/how don't.
+
 Keep `keys` specific. A broad word like "save" or "know" will hijack ordinary messages like "can you save now?".
 
 New shifts go in `SHIFTS` at the top of `scenarios.js`. A shift's `setup(w)` receives a fresh copy of the world before the shift starts, so it can break things (lock an account, stop a service, take a circuit down) without affecting other shifts.

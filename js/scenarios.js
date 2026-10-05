@@ -642,3 +642,29 @@ for (const s of SCENARIOS) {
   }
   for (const f of ['confirm', 'notYet', 'errorText', 'testReply']) if (c[f]) s[f] = c[f];
 }
+
+// What each ticket is about. A question or "check…" that mentions it ("is the time fine now?",
+// "check the printer") counts as asking the user to test.
+const TOPICS = {
+  'INC-20114': /\b(log(ged|ging)? ?in|sign(ed|ing)? ?in|account|laptop|password|locked)\b/i,
+  'INC-20115': /\b(wi-?fi|wireless|network|internet|connect\w*|signal|bl-corp|cafeteria)\b/i,
+  'INC-20116': /\b(time|clock|calendar|meetings?|invites?|stand-?up|time ?zone)\b/i,
+  'INC-20117': /\b(finance|folder|drive|share|files?|access|open|sav\w*)\b/i,
+  'INC-20118': /\b(pop-?ups?|ads?|adverts?|toolbar|search bar|browser|deals?)\b/i,
+  'INC-20119': /\b(print\w*|jobs?|queue|letters?|copies)\b/i,
+  'INC-20120': /\b(intranet|s: ?drive|drive|site|page|rota|website|load\w*)\b/i,
+  'INC-20121': /\b(name|surname|email|address|outlook|whitfield)\b/i,
+  'INC-20122': /\b(email|mailbox|account|outlook|password)\b/i,
+  'INC-20123': /\b(kevin|account|report|disabled|audit)\b/i,
+  'INC-20124': /\b(email|account|password|locked|log ?in)\b/i,
+  'INC-20201': /\b(log(ged|ging)? ?in|sign(ed|ing)? ?in|account|locked|phone|laptop|sync\w*)\b/i,
+  'INC-20202': /\b(files?|laptop|screen|note|encrypt\w*)\b/i,
+  'INC-20203': /\b(vpn|connect\w*|gateway|globalprotect|interviews?)\b/i,
+  'INC-20204': /\b(email|outlook|account|mailbox|sign-?ins?|bank)\b/i,
+  'INC-20205': /\b(network|internet|email|files|connect\w*|office|online)\b/i,
+  'INC-20206': /\b(network|internet|email|files|connect\w*|office|tablet|online)\b/i,
+  'INC-20207': /\b(sav\w*|drive|marketing|space|files?|upload\w*|campaign)\b/i,
+  'INC-20208': /\b(webex|meeting|demo|join\w*|install\w*|lobby|call)\b/i,
+  'INC-20209': /\b(invoice|email|inbox|mailbox|priya)\b/i,
+};
+for (const s of SCENARIOS) if (TOPICS[s.id]) s.topic = TOPICS[s.id];
