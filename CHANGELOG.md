@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 (2026-10-05)
+
+New: **Shift 2: Phones On**, a harder help desk shift. Shift 1 (*Day One*) is unchanged.
+
+- 9 new tickets, 7 arriving as live phone calls: repeat lockouts from a phone, ransomware, a VPN group removed by a script, MFA fatigue, a Denver site outage reported twice, a full file server, an angry caller demanding admin rights, and a request to reset a colleague's password
+- Phone calls: ringing with a ringtone (mutable), voicemail after 20 s, hold & answer, hang-ups after 45 s on hold, call back; questions and verification need the caller on the line
+- Grading for root cause (accounts re-lock if the source isn't fixed), time pressure (ransomware spreads after 90 s), tone (badly worded questions cost points) and first-contact resolution
+- Link duplicate tickets to a parent incident
+- Directory: last lockout source, recent sign-ins, recent-changes audit trail; new `Workstation-Admins` group
+- Remote desktop: offline devices, network isolation, restart
+- Server room: carrier WAN circuit with line test, file-server disk contents with a cleanup runbook
+- 9 new knowledge-base articles (20 total), a "Server & Storage" category, per-shift best scores, call stats on the report
+- The incoming-call widget is now shared with Service Coordinator mode
+
 ## 1.1.0 (2026-09-28)
 
 New: **Service Coordinator mode** (`dispatch.html`), an MSP dispatch desk simulator.

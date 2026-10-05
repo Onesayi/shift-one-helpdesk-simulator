@@ -16,7 +16,7 @@
 ![Dark mode](https://img.shields.io/badge/theme-light_%2F_dark-111827)
 ![License](https://img.shields.io/badge/license-source--available-orange)
 
-[Features](#-features) · [Service Coordinator mode](#-new-service-coordinator-mode) · [Screenshots](#-screenshots) · [Scenarios](#-scenarios) · [How grading works](#-how-grading-works) · [Run it](#-run-it-locally) · [Tutoring](#-tutoring--pricing) · [Roadmap](#-roadmap)
+[Features](#-features) · [Shift 2: Phones On](#-new-shift-2-phones-on) · [Service Coordinator mode](#-new-service-coordinator-mode) · [Screenshots](#-screenshots) · [Scenarios](#-scenarios) · [How grading works](#-how-grading-works) · [Run it](#-run-it-locally) · [Tutoring](#-tutoring--pricing) · [Roadmap](#-roadmap)
 
 </div>
 
@@ -33,7 +33,7 @@ Most IT support training is multiple choice. Real help desks aren't. The hard pa
 - Is the smallest fix enough, or do I need to restart something?
 - Should I close this ticket, or does it belong to Security?
 
-**Shift One** puts you in the chair at *Brightline Logistics*, a fictional company with 14 employees, 13 workstations, 10 network devices and 4 servers. Tickets arrive on a timer, users reply in chat, and every tool changes a live simulated environment. When you close a ticket, the grader inspects the **state of the systems** and the **log of everything you did**. You can't bluff your way to a good score.
+**Shift One** puts you in the chair at *Brightline Logistics*, a fictional company with 18 employees, 17 workstations, 11 network devices (including a carrier WAN link to the Denver office) and 4 servers. Tickets arrive on a timer, users reply in chat, and every tool changes a live simulated environment. When you close a ticket, the grader inspects the **state of the systems** and the **log of everything you did**. You can't bluff your way to a good score.
 
 I built it to sharpen my own help desk skills, and I use it to tutor students preparing for their first IT support role.
 
@@ -41,15 +41,46 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 
 | | |
 |---|---|
-| 🎫 **Ticket queue** | Priorities, live SLA countdowns, requester chat with scripted questions, categories, resolution notes, resolve **or** escalate to the right team |
-| 👥 **Directory** | Active Directory-style user management: reset password (with *must change* / *unlock* options), unlock, reset MFA, sign out sessions, disable, group membership, profile edits, **identity verification by one-time code** |
-| 🖥️ **Remote desktop** | Consent-based sessions with a live screen preview, installed apps, Windows services, time zone + DNS settings |
+| 🎫 **Ticket queue** | Priorities, live SLA countdowns, requester chat with scripted questions, categories, resolution notes, resolve, escalate to the right team, **or link duplicates** to a parent incident |
+| 📞 **Live phone calls** | Calls ring in real time and go to voicemail if missed. Answering a second call puts the first on hold, and callers hang up after 45 seconds. You can only ask questions or verify identity while the caller is on the line |
+| 👥 **Directory** | Active Directory-style user management: reset password (with *must change* / *unlock* options), unlock, reset MFA, sign out sessions, disable, group membership, profile edits, **identity verification by one-time code**, lockout source, recent sign-ins and an audit trail of recent changes |
+| 🖥️ **Remote desktop** | Consent-based sessions with a live screen preview, installed apps, Windows services, time zone + DNS settings, **network isolation** for compromised devices |
 | ⌨️ **Command prompt** | A working CLI: `ipconfig /all`, `nslookup`, `ping`, `tzutil`, `tasklist`, `taskkill`, `sc query`, `net start`, `netsh`, `gpupdate`, command history with ↑/↓ |
-| 🗄️ **Server room** | Alerts, network topology, access points (reboot vs PoE power-cycle), switches, core router, servers and their services |
-| 📚 **Knowledge base** | 11 SOP articles written like a real internal wiki |
-| 📊 **Shift report** | Letter grade, per-ticket breakdown of what you did well and what cost points, "collateral damage" section |
-| ⏱️ **Two modes** | Timed shift (tickets arrive over ~6 minutes) or untimed practice |
+| 🗄️ **Server room** | Alerts, network topology, access points (reboot vs PoE power-cycle), switches, core router, a carrier WAN circuit with line test, servers, their services and disk contents |
+| 📚 **Knowledge base** | 20 SOP articles written like a real internal wiki |
+| 📊 **Shift report** | Letter grade, per-ticket breakdown of what you did well and what cost points, call stats, "collateral damage" section |
+| ⏱️ **Two shifts, two modes** | Shift 1 *Day One* (11 tickets) and Shift 2 *Phones On* (9 harder tickets, mostly calls), each timed or untimed practice |
 | 🌗 **Polish** | Light/dark theme, fully responsive, keyboard-friendly, zero dependencies |
+
+## 📞 New: Shift 2, Phones On
+
+**The harder help desk shift.** Nine new tickets, seven of them live phone calls, and most can't be fixed by the first thing you try. Calls ring while you're working other tickets, so you juggle holds, call back voicemails, and still have to find the real root cause.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/phones-call.png" alt="An incoming call while already on a call"><p align="center"><b>Phones</b>: a second caller rings while you're mid-call with the first</p></td>
+<td width="50%"><img src="docs/screenshots/phones-voicemail.png" alt="A missed call that became a voicemail"><p align="center"><b>Voicemail</b>: missed calls need a call back, and the lockout source points at the real cause</p></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/phones-ransomware.png" alt="Remote desktop on a laptop showing a ransom note"><p align="center"><b>Ransomware</b>: isolate the laptop before it spreads to the file server</p></td>
+<td><img src="docs/screenshots/phones-mfa-dark.png" alt="Recent sign-ins showing an MFA-approved sign-in from an unknown host"><p align="center"><b>MFA fatigue</b>: recent sign-ins show the attacker's approved session</p></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/phones-outage.png" alt="Line test on the Denver WAN circuit"><p align="center"><b>Site outage</b>: a line test proves it's the carrier, and the second caller is a duplicate</p></td>
+<td><img src="docs/screenshots/phones-storage.png" alt="File server disk contents"><p align="center"><b>Disk full</b>: the runbook allows two folders. The rest is user data or backups</p></td>
+</tr>
+</table>
+
+| # | Ticket | Channel | Skill it tests |
+|---|---|---|---|
+| 1 | Locked out for the third time today | 📞 Call | Root cause: the old password is still saved in his phone's Mail app. Unlock without fixing it and he locks again |
+| 2 | All my files end in .locked | Portal | Ransomware first response: isolate fast, don't restart, escalate to Security |
+| 3 | VPN won't connect from home | 📞 Call | Reading the error, the audit trail, and restoring access only after verifying the caller |
+| 4 | "IT" called and asked me to approve a sign-in | 📞 Call | MFA fatigue: reset the password, end sessions, **reset MFA**, escalate |
+| 5–6 | Nothing works at the Denver office (×2 callers) | 📞 Calls | Major incident: line test, one escalation, link the duplicate |
+| 7 | "Not enough space" on the Marketing drive | Portal | Following a runbook exactly: what you may delete, and what you must never delete |
+| 8 | Needs admin rights NOW for a client demo | 📞 Call | De-escalating an angry caller and solving the real need without admin rights |
+| 9 | Reset a colleague's password so I can read her email | 📞 Call | Saying no to account sharing, and offering the proper route |
 
 ## 🗓️ New: Service Coordinator mode
 
@@ -107,7 +138,7 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 
 ## 🎯 Scenarios
 
-Eleven tickets, each testing a real Tier 1 skill. Several contain a trap that catches technicians who skip process.
+**Shift 1: Day One.** Eleven tickets, each testing a real Tier 1 skill. Several contain a trap that catches technicians who skip process. (Shift 2's tickets are [listed above](#-new-shift-2-phones-on).)
 
 | # | Ticket | Priority | Skill it tests |
 |---|---|---|---|
@@ -150,6 +181,10 @@ flowchart LR
 | Collateral damage | Restarting the core switch to fix one access point | −30 |
 | Documentation | A note like "fixed" | −10 |
 | SLA | Closing a High ticket after 5 minutes (timed mode) | −15 |
+| Root cause | Unlocking an account without fixing the phone that keeps locking it | −10 per relock |
+| Phones | Letting a call go to voicemail, or leaving a caller on hold until they hang up | −10 each |
+| Soft skills | Telling an upset caller to "calm down" | −10 |
+| Major incidents | Escalating a second report of the same outage instead of linking it | −10 |
 
 ## 🚀 Run it locally
 
@@ -237,6 +272,7 @@ Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tuto
 ## 🗺️ Roadmap
 
 - [x] 11 scenarios, 5 tools, working command prompt
+- [x] Shift 2 *Phones On*: 9 harder tickets, live calls with hold and voicemail, root-cause traps
 - [x] Timed + practice modes, shift report
 - [x] Light/dark theme, mobile layout
 - [x] Tutoring & pricing page with payment links
@@ -246,7 +282,7 @@ Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tuto
 - [ ] Asset management + hardware shipping tickets
 - [ ] Save progress and per-skill stats
 - [ ] AI requesters: free-text chat backed by an LLM persona (grader stays deterministic)
-- [ ] Voice-call tickets
+- [ ] Spoken calls: text-to-speech callers and speech-to-text answers
 - [ ] Accounts, leaderboards and a classroom dashboard
 
 Have an idea? [Request a scenario](../../issues/new?template=scenario_request.md).

@@ -13,14 +13,19 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } },
 };
 
+const RING_SEC = 20;  // a call rings this long before it goes to voicemail (timed shifts only)
+const HOLD_MAX = 45;  // callers hang up after this long on hold (timed shifts only)
+
 let G = null;       // the whole game state
 let PAGE = 'start'; // which non-game page shows when no game is running
 
-function newGame(mode) {
+function newGame(mode, shift = 1) {
+  const w = structuredClone(WORLD);
+  if (SHIFTS[shift].setup) SHIFTS[shift].setup(w);
   G = {
-    phase: 'play', mode, t0: Date.now(),
-    w: structuredClone(WORLD),
+    phase: 'play', mode, shift, t0: Date.now(), w,
     tickets: [], log: [], seq: 0,
+    calls: [], queued: new Set(), ring: null,
     view: 'queue', active: null, queueFilter: 'open',
     dir: { user: null, tab: 'profile' },
     remote: { device: null, tab: 'overview', term: [], hist: [], hi: -1 },
@@ -29,16 +34,20 @@ function newGame(mode) {
     drafts: {}, modal: null, penalties: [], lastThreadLen: {},
   };
   spawnDue();
+  ringNext();
   G.active = G.tickets[0]?.id ?? null;
   render();
 }
 
 const now = () => Math.floor((Date.now() - G.t0) / 1000);
 const W = () => G.w;
+const SC = () => SCENARIOS.filter(s => (s.shift || 1) === G.shift);
 const who = id => id === 'tech' ? 'You' : id === 'system' ? 'System' : (G.w.users[id]?.display ?? id);
 const ticket = id => G.tickets.find(t => t.id === id);
 const openTickets = () => G.tickets.filter(t => !t.result);
 const slaLeft = t => t.arrived + SLA_SEC[t.priority] - (t.closedAt ?? now());
+const onLine = t => t.channel !== 'phone' || t.call === 'live';
+const liveCall = () => G.tickets.find(t => t.call === 'live');
 
 // ---------------------------------------------------------------------------
 // Action log: every change the player makes is recorded here and graded later.
@@ -73,20 +82,108 @@ function guardUserChange(uid, what) {
 // ---------------------------------------------------------------------------
 function spawnDue() {
   let spawned = false;
-  for (const s of SCENARIOS) {
-    if (G.tickets.some(t => t.id === s.id)) continue;
-    if (G.mode === 'practice' || now() >= s.at) {
-      const t = Object.assign({}, s, {
-        verifyUser: s.verifyUser || s.requester,
-        status: 'New', assigned: false, arrived: now(), flags: {}, asked: [], reopens: 0, result: null, unread: true,
-        thread: [{ from: s.requester, text: s.body, at: now() }],
-      });
-      G.tickets.push(t);
-      spawned = true;
-      if (G.tickets.length > 3 && G.mode === 'shift') toast(`New ticket ${t.id} · ${t.priority} · ${t.title}`, 'info');
-    }
+  for (const s of SC()) {
+    if (G.queued.has(s.id) || !(G.mode === 'practice' || now() >= s.at)) continue;
+    G.queued.add(s.id);
+    if (s.channel === 'phone') G.calls.push(s);
+    else { spawnTicket(s); spawned = true; }
   }
   return spawned;
+}
+
+// call: 'live' (answered) or 'voicemail' (missed). Portal tickets have no call state.
+function spawnTicket(s, opts = {}) {
+  const arrived = opts.arrived ?? now();
+  const t = Object.assign({}, s, {
+    verifyUser: s.verifyUser || s.requester, channel: s.channel || 'portal',
+    status: 'New', assigned: false, arrived, flags: {}, asked: [], reopens: 0, result: null, unread: true,
+    thread: [], toneDed: [], call: opts.call || null,
+  });
+  if (opts.call === 'live') t.thread.push({ from: 'system', text: `Call answered. ${who(s.requester)} is on the line.`, at: now() });
+  if (opts.call === 'voicemail') {
+    t.flags.missed = true;
+    t.thread.push({ from: 'system', text: `Missed call at ${fmt(arrived)}. Voicemail:`, at: now() });
+  }
+  t.thread.push({ from: s.requester, text: opts.call === 'voicemail' ? (s.voicemail || s.body) : s.body, at: now() });
+  G.tickets.push(t);
+  if (!opts.call && G.tickets.length > 3 && G.mode === 'shift') toast(`New ticket ${t.id} · ${t.priority} · ${t.title}`, 'info');
+  return t;
+}
+
+// ---------------------------------------------------------------------------
+// Phone calls
+// ---------------------------------------------------------------------------
+function ringNext() {
+  if (G.ring || !G.calls.length) return false;
+  const s = G.calls.shift();
+  G.ring = { s, since: now(), until: G.mode === 'shift' ? now() + RING_SEC : Infinity };
+  ringTone();
+  return true;
+}
+
+function answerCall() {
+  const r = G.ring;
+  if (!r) return;
+  const cur = liveCall();
+  if (cur) holdCall(cur, true);
+  G.ring = null;
+  const t = spawnTicket(r.s, { call: 'live', arrived: r.since });
+  record('call-answer', { ticket: t.id });
+  G.active = t.id;
+  toast(`On the phone with ${who(t.requester)}. Ticket ${t.id} created.`, 'good');
+  ringNext();
+  render();
+}
+
+function missCall() {
+  const r = G.ring;
+  G.ring = null;
+  const t = spawnTicket(r.s, { call: 'voicemail', arrived: r.since });
+  record('call-missed', { ticket: t.id });
+  toast(`Missed call from ${who(t.requester)}. It went to voicemail (${t.id}).`, 'bad');
+  ringNext();
+}
+
+function holdCall(t, forNewCall) {
+  t.call = 'hold';
+  t.holdSince = now();
+  record('call-hold', { ticket: t.id });
+  say(t, 'system', forNewCall ? 'Caller placed on hold while you answer another call.' : 'Caller placed on hold.');
+}
+
+function resumeCall(t) {
+  const cur = liveCall();
+  if (cur && cur !== t) holdCall(cur);
+  const back = t.call !== 'hold';
+  t.call = 'live';
+  t.holdSince = null;
+  if (back) { t.flags.calledBack = true; record('callback', { ticket: t.id }); }
+  say(t, 'system', back ? `You called ${who(t.requester)} back. They're on the line.` : 'Back on the line.');
+}
+
+function endCall(t, text = 'Call ended.') {
+  t.call = 'ended';
+  record('call-end', { ticket: t.id });
+  say(t, 'system', text);
+}
+
+// A short two-tone ring, generated so there's no audio file to ship. Silent if muted or blocked.
+let audioCtx = null;
+function ringTone() {
+  if (store.get('shiftone-mute') === '1') return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = audioCtx.currentTime;
+    [0, 0.45].forEach(off => [440, 480].forEach(f => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + off);
+      g.gain.exponentialRampToValueAtTime(0.05, t0 + off + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.35);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0 + off); o.stop(t0 + off + 0.4);
+    }));
+  } catch { /* audio unavailable */ }
 }
 
 function say(t, from, text, delay = 0, then) {
@@ -108,9 +205,11 @@ function say(t, from, text, delay = 0, then) {
 function ask(t, qid) {
   const q = t.questions.find(x => x.id === qid);
   if (!q || t.asked.includes(qid)) return;
+  if (!onLine(t)) return toast(`${who(t.requester)} isn't on the line. Call them back first.`, 'bad');
   t.asked.push(qid);
+  if (q.bad) t.toneDed.push(q.bad);
   say(t, 'tech', q.q);
-  say(t, t.requester, q.a, 1400, () => {
+  say(t, t.requester, q.a, t.call === 'live' ? 900 : 1400, () => {
     if (q.flag) t.flags[q.flag] = true;
     if (q.follow) say(t, q.follow.from, q.follow.text, q.follow.delay, () => {
       if (q.follow.flag) t.flags[q.follow.flag] = true;
@@ -126,6 +225,7 @@ function sendVerification(uid) {
   const tail = u.empId.slice(-4);
   if (!waiting.length) { toast(`Code sent to ${u.display}'s registered mobile (••• ${tail}). No open ticket is waiting on it.`); render(); return; }
   for (const t of waiting) {
+    if (!onLine(t)) { say(t, 'system', `Code sent to ${u.display}'s mobile, but they aren't on the line to read it back. Call them back first.`); continue; }
     say(t, 'system', `Verification code sent to ${u.display}'s registered mobile (••• ${tail}). Ask the requester to read it back.`);
     if (t.verifyReply) {
       say(t, t.requester, t.verifyReply, 2200, () => { t.flags.verifyFailed = true; });
@@ -141,12 +241,15 @@ function sendVerification(uid) {
   toast(`Verification code sent to ${u.display}.`);
 }
 
-function closeTicket(t, action, team) {
+// action: 'resolve' | 'escalate' (target = team) | 'link' (target = parent ticket id)
+function closeTicket(t, action, target) {
   const note = (G.drafts['note-' + t.id] || '').trim();
   const cat = G.drafts['cat-' + t.id] || '';
   if (!t.assigned) return toast('Assign the ticket to yourself first.', 'bad');
   if (!cat) return toast('Pick a category before closing.', 'bad');
   if (!note) return toast('Write a resolution note. The next tech will thank you.', 'bad');
+  const team = action === 'escalate' ? target : null;
+  const parent = action === 'link' ? ticket(target) : null;
 
   const r = t.evaluate(W(), t);
   if (action === 'resolve' && t.expect.action === 'resolve' && !r.fixed) {
@@ -159,13 +262,27 @@ function closeTicket(t, action, team) {
   }
 
   const ded = r.ded.slice(), good = r.good.slice();
-  if (action === 'resolve' && t.expect.action === 'escalate')
-    ded.push([30, `This needed to go to ${t.expect.team}. Tier 1 shouldn't close it alone.`]);
-  if (action === 'escalate') {
-    if (t.expect.action === 'resolve') ded.push(r.fixed ? [10, 'You fixed it, then escalated anyway. Just resolve it.'] : [25, 'This was within Tier 1 scope. Escalating costs the user hours.']);
-    else if (team !== t.expect.team) ded.push([15, `Escalated to ${team}. This belongs with ${t.expect.team}.`]);
-    else good.push(`Escalated to the right team (${team}).`);
+  const dupOf = t.group && G.tickets.find(x => x !== t && x.group === t.group && x.result?.action === 'escalate');
+  if (action === 'link') {
+    if (t.group && parent.group === t.group && parent.result?.action === 'link') ded.push([20, `${parent.id} is itself linked as a duplicate. Link to the ticket that was escalated.`]);
+    else if (t.group && parent.group === t.group) good.push(`Linked to the parent incident ${parent.id} instead of escalating twice.`);
+    else ded.push([25, `Linked to ${parent.id}, which is a different problem. This one needed its own fix.`]);
+  } else {
+    if (action === 'resolve' && t.expect.action === 'escalate')
+      ded.push([30, `This needed to go to ${t.expect.team}. Tier 1 shouldn't close it alone.`]);
+    if (action === 'escalate') {
+      if (t.expect.action === 'resolve') ded.push(r.fixed ? [10, 'You fixed it, then escalated anyway. Just resolve it.'] : [25, 'This was within Tier 1 scope. Escalating costs the user hours.']);
+      else if (team !== t.expect.team) ded.push([15, `Escalated to ${team}. This belongs with ${t.expect.team}.`]);
+      else if (dupOf) ded.push([10, `${dupOf.id} already escalated this outage. Link duplicates to it instead of opening a second escalation.`]);
+      else good.push(`Escalated to the right team (${team}).`);
+    }
   }
+  if (t.channel === 'phone') {
+    if (t.flags.missed) ded.push([10, 'Missed the call. It went to voicemail and the user waited for a callback.']);
+    if (t.flags.hungUp) ded.push([10, `Left ${who(t.requester)} on hold until they hung up.`]);
+    if (t.call === 'live' && !t.flags.missed && !t.flags.hungUp) good.push('Closed while the caller was still on the line (first-contact resolution).');
+  }
+  t.toneDed.forEach(d => ded.push(d));
   if (!t.categories.includes(cat)) ded.push([5, `Category "${cat}" doesn't fit. Expected ${t.categories.join(' or ')}.`]);
   if (note.length < 25) ded.push([10, 'Resolution note is too thin for the next tech to learn from.']);
   else if (t.keywords && !t.keywords.some(k => note.toLowerCase().includes(k))) ded.push([5, 'The note doesn\'t say what you actually did.']);
@@ -177,14 +294,15 @@ function closeTicket(t, action, team) {
   }
 
   const score = Math.max(0, 100 - ded.reduce((a, d) => a + d[0], 0));
-  t.result = { score, ded, good, action, team };
+  t.result = { score, ded, good, action, team, parent: parent?.id };
   t.closedAt = now();
-  t.status = action === 'escalate' ? 'Escalated' : 'Resolved';
-  say(t, 'tech', action === 'escalate' ? `Escalated to ${team}: ${note}` : `Resolved: ${note}`);
-  const matched = action === t.expect.action;
-  say(t, t.id === 'INC-20124' && matched ? 'Security team' : t.requester, matched ? t.thanks : 'OK, thanks.', 1500);
+  t.status = { escalate: 'Escalated', link: 'Linked', resolve: 'Resolved' }[action];
+  say(t, 'tech', action === 'escalate' ? `Escalated to ${team}: ${note}` : action === 'link' ? `Linked to ${parent.id} as a duplicate: ${note}` : `Resolved: ${note}`);
+  const matched = action === t.expect.action || (action === 'link' && t.group && parent.group === t.group);
+  say(t, matched && t.thanksFrom && action !== 'link' ? t.thanksFrom : t.requester, matched ? t.thanks : 'OK, thanks.', 1500);
+  if (t.call === 'live' || t.call === 'hold') endCall(t);
   toast(`${t.id} closed · ${score}/100`, score >= 80 ? 'good' : score >= 50 ? 'info' : 'bad');
-  if (G.tickets.length === SCENARIOS.length && !openTickets().length) setTimeout(() => toast('Queue clear! Press "End shift" to see your report.', 'good'), 2000);
+  if (G.tickets.length === SC().length && !openTickets().length) setTimeout(() => toast('Queue clear! Press "End shift" to see your report.', 'good'), 2000);
 }
 
 // ---------------------------------------------------------------------------
@@ -263,7 +381,7 @@ function dirAction(kind, uid) {
         const g = G.drafts['m-group'];
         u.groups.push(g);
         record('group-add', { user: uid, group: g });
-        if (g === 'Domain Admins' && uid !== 'jmorales') penalize(`da-${uid}`, 25, `Added ${u.display} to Domain Admins. Tier 1 never does this.`);
+        if (ADMIN_GROUPS.includes(g) && !G.tickets.some(t => t.adminCheck === uid)) penalize(`da-${uid}`, 25, `Added ${u.display} to ${g}. Tier 1 never does this.`);
         else guardUserChange(uid, `Added to ${g}`);
         toast(`Added ${u.display} to ${g}.`, 'good');
       },
@@ -290,6 +408,10 @@ const outage = () => W().outageUntil > Date.now();
 function connect(id) {
   const d = W().devices[id];
   if (outage()) return toast('Connection failed: network unreachable.', 'bad');
+  if (!d.online) {
+    record('remote-fail', { device: id });
+    return toast(`${id} is not reachable. It's offline or not on the corporate network.`, 'bad');
+  }
   modal({ title: `Remote session · ${id}`, body: `<p>Asking ${esc(who(d.owner))} to accept the remote session…</p><div class="spinner"></div>`, noButtons: true });
   const g = G;
   setTimeout(() => {
@@ -320,6 +442,33 @@ function uninstall(name) {
   });
 }
 
+function isolate() {
+  const d = dev();
+  modal({
+    title: `Isolate ${d.id} from the network?`,
+    body: `<p>The device will lose all network access except to the security agent, so ${esc(who(d.owner))} can't work on it until Security releases it.</p>`,
+    ok: 'Isolate', danger: true,
+    onOk() {
+      d.isolated = true;
+      record('isolate', { device: d.id });
+      if (!d.ransom) penalize(`iso-${d.id}`, 10, `Isolated ${d.id} with no security reason. ${who(d.owner)} can't work.`);
+      toast(`${d.id} isolated. Only the security agent can talk to it now.`, 'good');
+    },
+  });
+}
+
+function restartDevice() {
+  const d = dev();
+  modal({
+    title: `Restart ${d.id}?`, body: `<p>${esc(who(d.owner))} will lose anything unsaved, and this remote session will end.</p>`, ok: 'Restart', danger: true,
+    onOk() {
+      record('restart', { device: d.id });
+      G.remote.device = null;
+      toast(`${d.id} is restarting. The remote session has ended.`);
+    },
+  });
+}
+
 function svcAction(name, action) {
   const d = dev(), s = d.services.find(x => x.name === name);
   if (action === 'stop') s.status = 'Stopped';
@@ -344,7 +493,7 @@ function setDns(mode, a, b) {
 }
 
 function resolveHost(name, d) {
-  if (outage()) return { err: 'timeout' };
+  if (outage() || d.isolated) return { err: 'timeout' };
   let n = name.toLowerCase().replace(/\.brightline\.local$/, '');
   if (/^\d+\.\d+\.\d+\.\d+$/.test(n)) return { ip: n };
   if (HOSTS.internal[n]) return d.dnsMode === 'dhcp' ? { ip: HOSTS.internal[n], fqdn: n + '.brightline.local' } : { err: 'nx', fqdn: n };
@@ -463,6 +612,17 @@ function netAction(id, kind) {
     render();
     setTimeout(() => { if (G !== g) return; nodes.forEach(x => { x.status = 'online'; }); toast(`${nodes.map(x => x.id).join(', ')} back online.`, 'good'); render(); }, ms);
   };
+  if (kind === 'linetest') {
+    record('line-test', { target: id });
+    const down = n.status === 'offline';
+    return modal({
+      title: `Line test · ${id}`,
+      body: `<pre class="mono-box">${esc(down
+        ? `Testing ${id}…\nLayer 1: NO SIGNAL\nAlarm: LOS (loss of signal) from carrier side\nResult: FAIL\n\nThe fault is on the carrier's circuit, not our equipment.\nCarrier cases are opened by Network Engineering.\n${n.note}`
+        : `Testing ${id}…\nLayer 1: OK\nLatency to far end: 18 ms\nResult: PASS`)}</pre>`,
+      ok: 'Close', info: true, onOk() {},
+    });
+  }
   if (kind === 'poe') {
     record('poe-cycle', { target: id });
     toast(`Power-cycling ${n.uplink}…`);
@@ -505,11 +665,31 @@ function serverSvc(host, name, action) {
   render();
 }
 
+function storageDelete(host, id) {
+  const srv = W().servers[host], item = srv.storage.find(x => x.id === id);
+  modal({
+    title: `Delete the contents of ${item.path}?`,
+    body: `<p>${esc(item.what)} · ${esc(item.size)}</p><p class="muted">This can't be undone.</p>`, ok: 'Delete', danger: true,
+    onOk() {
+      srv.storage = srv.storage.filter(x => x !== item);
+      srv.disk = Math.max(5, srv.disk - item.pct);
+      record('storage-delete', { host, id, path: item.path, kind: item.kind });
+      toast(`Deleted ${item.path}. ${host} D: is now ${srv.disk}% full.`, item.kind === 'user' || item.kind === 'shadow' ? 'bad' : 'good');
+    },
+  });
+}
+
 function alerts() {
   const w = W(), a = [];
   if (outage()) a.push({ sev: 'crit', text: 'Core network restarting: all floors unreachable.' });
-  w.network.filter(n => n.status === 'offline').forEach(n => a.push({ sev: 'warn', text: `${n.id} (${n.location}) is not responding.` }));
-  Object.entries(w.servers).forEach(([h, s]) => s.services.filter(x => x.status !== 'Running').forEach(x => a.push({ sev: 'crit', text: `${h}: ${x.display} is stopped.` })));
+  w.network.filter(n => n.status === 'offline').forEach(n => a.push(n.role === 'wan'
+    ? { sev: 'crit', text: `${n.id} (${n.location}) is down. The Denver office is offline.` }
+    : { sev: 'warn', text: `${n.id} (${n.location}) is not responding.` }));
+  Object.entries(w.servers).forEach(([h, s]) => {
+    s.services.filter(x => x.status !== 'Running').forEach(x => a.push({ sev: 'crit', text: `${h}: ${x.display} is stopped.` }));
+    if (s.disk >= 95) a.push({ sev: 'crit', text: `${h}: D: drive is ${s.disk}% full.` });
+  });
+  Object.values(w.devices).filter(d => d.ransom && !d.isolated).forEach(d => a.push({ sev: 'crit', text: `EDR: ransomware behaviour on ${d.id} (mass file renames).` }));
   return a;
 }
 
@@ -538,6 +718,7 @@ const I = {
   remote: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>',
   server: '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="7" rx="1.5"/><rect x="4" y="14" width="16" height="7" rx="1.5"/><path d="M8 6.5h.01M8 17.5h.01"/></svg>',
   kb: '<svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg>',
+  phone: '<svg viewBox="0 0 24 24"><path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2"/></svg>',
 };
 
 function render() {
@@ -546,6 +727,7 @@ function render() {
   const a = document.activeElement, fid = a && a.id, s1 = a && a.selectionStart, s2 = a && a.selectionEnd;
   const mainScroll = $('#main').scrollTop;
 
+  $('#call-root').innerHTML = G && G.phase === 'play' ? renderCall() : '';
   if (!G && PAGE === 'pricing') { $('#main').innerHTML = renderPricing(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; return; }
 
   if (!G || G.phase === 'start') { $('#main').innerHTML = renderStart(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; return; }
@@ -607,17 +789,38 @@ function renderTopbar() {
   const closed = G.tickets.filter(t => t.result);
   const avg = closed.length ? Math.round(closed.reduce((a, t) => a + t.result.score, 0) / closed.length) : null;
   const pen = G.penalties.reduce((a, p) => a + p.pts, 0);
-  return `<div class="brand">${logo()}<span>Shift One</span><small>${G.mode === 'practice' ? 'Practice mode' : 'Timed shift'}</small></div>
+  const live = liveCall();
+  const muted = store.get('shiftone-mute') === '1';
+  return `<div class="brand">${logo()}<span>Shift One</span><small>${esc(SHIFTS[G.shift].name)} · ${G.mode === 'practice' ? 'Practice' : 'Timed'}</small></div>
     <div class="stats">
       <div><small>Shift time</small><b id="clock">${fmt(now())}</b></div>
       <div><small>Open</small><b>${openTickets().length}</b></div>
-      <div><small>Closed</small><b>${closed.length}/${SCENARIOS.length}</b></div>
+      <div><small>Closed</small><b>${closed.length}/${SC().length}</b></div>
       <div><small>Avg score</small><b>${avg ?? '–'}</b></div>
       ${pen ? `<div class="pen"><small>Penalties</small><b>−${pen}</b></div>` : ''}
     </div>
+    ${live ? `<button class="oncall" data-act="open" data-id="${live.id}">${I.phone}<span>On call · ${esc(who(live.requester))}</span></button>` : ''}
     <div class="grow"></div>
+    ${SC().some(s => s.channel === 'phone') ? `<button class="icon-btn" data-act="mute" title="${muted ? 'Unmute' : 'Mute'} the ringtone">${muted ? '🔕' : '🔔'}</button>` : ''}
     ${themeBtn()}
-    <button class="btn ${G.tickets.length === SCENARIOS.length && !openTickets().length ? 'primary pulse' : ''}" data-act="endShift">End shift</button>`;
+    <button class="btn ${G.tickets.length === SC().length && !openTickets().length ? 'primary pulse' : ''}" data-act="endShift">End shift</button>`;
+}
+
+function renderCall() {
+  const r = G.ring;
+  if (!r) return '';
+  const u = W().users[r.s.requester], busy = liveCall();
+  return `<div class="callbox" role="alertdialog" aria-label="Incoming call"><div class="ringer">${I.phone}</div>
+    <div class="grow"><small>Incoming call${G.calls.length ? ` · ${G.calls.length} waiting` : ''}</small><b>${esc(u.display)}</b><div class="muted small">${esc(u.title)} · ${esc(u.dept)} · ext. ${esc(u.phone.replace('ext. ', ''))}</div>
+      ${r.until !== Infinity ? `<div class="small" id="ring-left">${r.until - now()} s to voicemail</div>` : ''}</div>
+    <button class="btn primary" data-act="answer">${busy ? 'Hold &amp; answer' : 'Answer'}</button></div>`;
+}
+
+function chanChip(t) {
+  if (t.channel !== 'phone') return '';
+  if (t.flags.missed && !t.flags.calledBack) return '<span class="chan c-vm">Voicemail</span>';
+  const label = { live: 'On call', hold: 'On hold' }[t.call] || 'Call';
+  return `<span class="chan c-phone ${t.call === 'live' ? 'c-live' : t.call === 'hold' ? 'c-hold' : ''}">${label}</span>`;
 }
 
 function renderSidebar() {
@@ -638,7 +841,7 @@ function slaCell(t) {
 function renderQueue() {
   const list = G.tickets.filter(t => G.queueFilter === 'all' ? true : G.queueFilter === 'open' ? !t.result : !!t.result)
     .sort((a, b) => (!!a.result - !!b.result) || PRIO_ORDER[a.priority] - PRIO_ORDER[b.priority] || a.arrived - b.arrived);
-  const pending = SCENARIOS.length - G.tickets.length;
+  const pending = SC().length - G.tickets.length;
   return `<div class="view-head"><h2>Ticket Queue</h2>
       <div class="seg">${['open', 'closed', 'all'].map(f => `<button class="${G.queueFilter === f ? 'on' : ''}" data-act="qf" data-f="${f}">${f[0].toUpperCase() + f.slice(1)}</button>`).join('')}</div></div>
     <p class="hint">Pick a ticket, assign it to yourself, then use the tools on the left to fix it. Tickets are graded on the state of the systems, not on what you say you did.</p>
@@ -646,12 +849,12 @@ function renderQueue() {
       <thead><tr><th>Priority</th><th>Ticket</th><th>Requester</th><th>Status</th><th>${G.mode === 'practice' ? 'Score' : 'SLA left'}</th></tr></thead>
       <tbody>${list.map(t => `<tr class="${G.active === t.id ? 'sel' : ''} ${t.unread && !t.result ? 'unread' : ''}" data-act="open" data-id="${t.id}">
         <td>${prioBadge(t.priority)}</td>
-        <td><div class="tid">${t.id}</div><div class="ttl">${esc(t.title)}</div></td>
+        <td><div class="tid">${t.id}${chanChip(t)}</div><div class="ttl">${esc(t.title)}</div></td>
         <td>${esc(t.external ? t.external : who(t.requester))}</td>
         <td class="nowrap">${statusBadge(t.status)}${t.assigned && !t.result ? ' <span class="mine" title="Assigned to you">you</span>' : ''}</td>
         <td>${slaCell(t)}</td></tr>`).join('') || `<tr><td colspan="5" class="empty">Nothing here.</td></tr>`}
       </tbody></table></div>
-    ${pending && G.mode === 'shift' ? `<p class="muted small center">${pending} more ticket${pending > 1 ? 's' : ''} will arrive during the shift.</p>` : ''}`;
+    ${pending && G.mode === 'shift' ? `<p class="muted small center">${pending} more ticket${pending > 1 ? 's' : ''} will arrive during the shift${SC().some(s => s.channel === 'phone') ? ', some by phone' : ''}.</p>` : ''}`;
 }
 
 function renderTicketPanel() {
@@ -674,6 +877,7 @@ function renderTicketPanel() {
         ${!closed ? `<button class="btn sm" data-act="verify" data-u="${t.verifyUser}">Verify requester</button>` : ''}
         ${t.device ? `<button class="btn sm ghost" data-act="gotoDevice" data-d="${t.device}">${I.remote}${t.device}</button>` : ''}
       </div>
+      ${t.channel === 'phone' && !closed ? renderCallBar(t) : ''}
     </div>
     <div class="thread" id="thread">
       ${t.thread.map(m => `<div class="msg ${m.from === 'tech' ? 'me' : m.from === 'system' ? 'sys' : ''}">
@@ -683,8 +887,8 @@ function renderTicketPanel() {
     </div>
     ${closed ? renderResult(t) : `
     <div class="tp-actions">
-      ${qs.length ? `<div class="asks"><div class="label">Ask the requester</div>${qs.map(q => `<button class="ask" data-act="ask" data-q="${q.id}">${esc(q.q)}</button>`).join('')}</div>` : ''}
-      <div class="reply"><input id="reply-input" data-draft="reply-${t.id}" placeholder="Reply to requester…" value="${esc(G.drafts['reply-' + t.id] || '')}"><button class="btn sm" data-act="reply">Send</button></div>
+      ${qs.length ? `<div class="asks"><div class="label">${t.channel === 'phone' ? 'Say to the caller' : 'Ask the requester'}${onLine(t) ? '' : ' · <span class="warn-t">call them back first</span>'}</div>${qs.map(q => `<button class="ask" data-act="ask" data-q="${q.id}" ${onLine(t) ? '' : 'disabled'}>${esc(q.q)}</button>`).join('')}</div>` : ''}
+      <div class="reply"><input id="reply-input" data-draft="reply-${t.id}" placeholder="${t.channel === 'phone' ? 'Say something to the caller…' : 'Reply to requester…'}" value="${esc(G.drafts['reply-' + t.id] || '')}"><button class="btn sm" data-act="reply">Send</button></div>
       <details class="close-box" ${G.drafts['open-close-' + t.id] ? 'open' : ''}>
         <summary>Close ticket</summary>
         <label class="field"><span>Category</span><select id="d-cat-${t.id}" data-draft="cat-${t.id}"><option value="">Choose…</option>${CATEGORIES.map(c => `<option ${G.drafts['cat-' + t.id] === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
@@ -692,15 +896,25 @@ function renderTicketPanel() {
         <div class="row gap"><button class="btn primary" data-act="resolve">Resolve</button>
           <select id="d-team-${t.id}" data-draft="team-${t.id}" class="sm"><option value="">Escalate to…</option>${ESCALATION_TEAMS.map(x => `<option ${G.drafts['team-' + t.id] === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
           <button class="btn" data-act="escalate">Escalate</button></div>
+        ${G.tickets.length > 1 ? `<div class="row gap link-row"><select id="d-link-${t.id}" data-draft="link-${t.id}" class="sm"><option value="">Duplicate of…</option>${G.tickets.filter(x => x !== t).map(x => `<option value="${x.id}" ${G.drafts['link-' + t.id] === x.id ? 'selected' : ''}>${x.id} · ${esc(x.title.slice(0, 38))}</option>`).join('')}</select>
+          <button class="btn sm" data-act="link">Link as duplicate</button></div>` : ''}
       </details>
       ${kb ? `<button class="kb-link" data-act="gotoKb" data-k="${kb.id}">${I.kb} Related: ${kb.id} ${esc(kb.title)}</button>` : ''}
     </div>`}`;
 }
 
+function renderCallBar(t) {
+  const since = t.call === 'hold' ? t.holdSince : null;
+  if (t.call === 'live') return `<div class="callbar live">${I.phone}<b>On the line</b><span class="grow"></span><button class="btn sm" data-act="hold">Hold</button><button class="btn sm danger-ghost" data-act="endcall">End call</button></div>`;
+  if (t.call === 'hold') return `<div class="callbar hold">${I.phone}<b>On hold</b><span class="muted small" data-hold="${t.id}">${fmt(now() - since)}${G.mode === 'shift' ? ` · hangs up at ${fmt(HOLD_MAX)}` : ''}</span><span class="grow"></span><button class="btn sm primary" data-act="resume">Resume</button></div>`;
+  const why = t.flags.hungUp ? 'Caller hung up' : t.flags.missed && !t.flags.calledBack ? 'Voicemail' : 'Call ended';
+  return `<div class="callbar ended">${I.phone}<b>${why}</b><span class="grow"></span><button class="btn sm" data-act="callback">Call back</button></div>`;
+}
+
 function renderResult(t) {
   const r = t.result;
   return `<div class="result"><div class="score-ring ${r.score >= 80 ? 'good' : r.score >= 50 ? 'ok' : 'bad'}">${r.score}</div>
-    <div><b>${r.action === 'escalate' ? 'Escalated to ' + esc(r.team) : 'Resolved'}</b>
+    <div><b>${r.action === 'escalate' ? 'Escalated to ' + esc(r.team) : r.action === 'link' ? 'Linked to ' + esc(r.parent) : 'Resolved'}</b>
     <ul class="fb">${r.good.map(g => `<li class="g">${esc(g)}</li>`).join('')}${r.ded.map(d => `<li class="b"><b>−${d[0]}</b> ${esc(d[1])}</li>`).join('')}</ul></div></div>`;
 }
 
@@ -719,12 +933,14 @@ function renderDirectory() {
     const body = {
       profile: () => `<div class="sec-head"><h4>Identity</h4><button class="btn sm" data-act="dir" data-k="edit">Edit name &amp; email</button></div>
         <div class="grid3">${f('Display name', u.display)}${f('First name', u.first)}${f('Last name', u.last)}${f('Username', u.id)}${f('Email', u.email)}${f('Employee ID', u.empId)}</div>
-        <h4>Organization</h4><div class="grid3">${f('Title', u.title)}${f('Department', u.dept)}${f('Manager', u.manager ? who(u.manager) : '')}${f('Location', u.location)}${f('Phone', u.phone)}${f('Last sign-in', u.lastLogin)}</div>`,
+        <h4>Organization</h4><div class="grid3">${f('Title', u.title)}${f('Department', u.dept)}${f('Manager', u.manager ? who(u.manager) : '')}${f('Location', u.location)}${f('Phone', u.phone)}${f('Last sign-in', u.lastLogin)}</div>
+        <h4>Recent changes</h4>${u.history.length ? `<ul class="audit">${u.history.slice().reverse().map(h => `<li>${esc(h)}</li>`).join('')}</ul>` : '<p class="muted small">No changes in the last 7 days.</p>'}`,
       groups: () => `<div class="sec-head"><h4>Member of (${u.groups.length})</h4><button class="btn sm" data-act="dir" data-k="addgroup">Add to group</button></div>
         <table class="tbl"><tbody>${u.groups.map(g => `<tr><td><b>${esc(g)}</b><div class="muted small">${esc(GROUPS[g])}</div></td><td class="right"><button class="btn sm ghost" data-act="rmgroup" data-g="${esc(g)}">Remove</button></td></tr>`).join('') || '<tr><td class="empty">No group memberships.</td></tr>'}</tbody></table>`,
       devices: () => `<h4>Assigned devices</h4><table class="tbl"><tbody>${u.devices.map(id => { const d = W().devices[id]; return `<tr><td><b>${id}</b><div class="muted small">${d.model} · ${d.os}</div></td><td class="right"><button class="btn sm" data-act="gotoDevice" data-d="${id}">Remote in</button></td></tr>`; }).join('') || '<tr><td class="empty">No devices assigned.</td></tr>'}</tbody></table>`,
       authentication: () => `<h4>Status</h4><div class="grid3">
-          ${f('Account', u.disabled ? 'Disabled' : u.locked ? `Locked (${u.failedLogins} failed attempts)` : 'Active')}${f('Password', u.pwdExpired ? 'Must change at next sign-in' : 'OK')}${f('MFA', u.mfa)}</div>
+          ${f('Account', u.disabled ? 'Disabled' : u.locked ? `Locked (${u.failedLogins} failed attempts)` : 'Active')}${f('Password', u.pwdExpired ? 'Must change at next sign-in' : 'OK')}${f('MFA', u.mfa)}${f('Last lockout source', u.lockoutSource)}</div>
+        ${u.signins.length ? `<h4>Recent sign-ins</h4><table class="tbl compact"><tbody>${u.signins.map(s => `<tr><td class="nowrap">${esc(s.when)}</td><td>${esc(s.where)}<div class="muted small">${esc(s.app)}</div></td><td class="${/success/i.test(s.result) && /unknown/i.test(s.where) ? 'risk' : ''}">${esc(s.result)}</td></tr>`).join('')}</tbody></table>` : ''}
         <h4>Actions</h4><div class="btn-grid">
           <button class="btn" data-act="dir" data-k="reset">Reset password</button>
           <button class="btn" data-act="dir" data-k="unlock">Unlock account</button>
@@ -753,8 +969,8 @@ function renderRemote() {
     return `<div class="view-head"><h2>Remote Desktop</h2></div>
       <p class="hint">Remote sessions need the user's consent and should always be tied to a ticket.</p>
       <div class="card"><input class="search" id="devq" data-draft="devq" data-live="1" placeholder="Search by hostname, owner or IP…" value="${esc(G.drafts.devq || '')}">
-      <table class="tbl"><thead><tr><th>Hostname</th><th>Owner</th><th>Type</th><th>IP</th><th></th></tr></thead><tbody>
-      ${list.map(x => `<tr><td><b>${x.id}</b></td><td>${esc(who(x.owner))}</td><td>${x.type}</td><td class="mono">${x.ip}</td><td class="right"><button class="btn sm" data-act="connect" data-d="${x.id}">Connect</button></td></tr>`).join('')}
+      <table class="tbl"><thead><tr><th>Hostname</th><th>Owner</th><th>Type</th><th>IP</th><th>Status</th><th></th></tr></thead><tbody>
+      ${list.map(x => `<tr><td><b>${x.id}</b></td><td>${esc(who(x.owner))}</td><td>${x.type}</td><td class="mono">${x.ip}</td><td class="nowrap">${x.isolated ? '<span class="dot warn"></span>Isolated' : x.online ? '<span class="dot ok"></span>Online' : '<span class="dot bad"></span>Offline'}</td><td class="right"><button class="btn sm" data-act="connect" data-d="${x.id}">Connect</button></td></tr>`).join('')}
       </tbody></table></div>`;
   }
   const tabs = [['overview', 'Overview'], ['apps', 'Apps & features'], ['services', 'Services'], ['settings', 'Settings'], ['terminal', 'Command Prompt']];
@@ -766,7 +982,10 @@ function renderRemote() {
         ${[['Hostname', d.id], ['Signed-in user', `brightline\\${d.owner}`], ['Model', d.model], ['OS', d.os], ['IPv4', d.ip], ['DNS', d.dnsMode === 'dhcp' ? 'Automatic (DHCP)' : 'Manual: ' + d.dnsManual.filter(Boolean).join(', ')], ['Time zone', d.tz], ['Uptime', d.uptime]].map(([k, v]) => `<div class="kv"><small>${k}</small><div>${esc(v)}</div></div>`).join('')}</div>
       <div class="desktop"><div class="taskbar"><span>⊞</span><span class="grow"></span><span>${deskClock(d.tz)}</span></div>
         ${adware ? '<div class="popup p1"><b>DealFinder</b> 🔥 90% OFF laptops, today only! <u>Claim now</u></div><div class="popup p2"><b>QuickSearch</b> Make QuickSearch your homepage?</div>' : ''}
-        <div class="desk-label">Live screen preview</div></div></div>`;
+        ${d.ransom ? '<div class="ransom"><b>YOUR FILES ARE ENCRYPTED</b>All documents, photos and databases on this computer have been encrypted.<br>Read HOW_TO_RECOVER_FILES.txt to get them back.</div>' : ''}
+        <div class="desk-label">Live screen preview</div></div></div>
+      <div class="row gap device-actions"><button class="btn ${d.isolated ? '' : 'danger-ghost'}" data-act="isolate" ${d.isolated ? 'disabled' : ''}>${d.isolated ? 'Isolated from network' : 'Isolate from network'}</button><button class="btn" data-act="restart">Restart computer</button>
+        <span class="muted small">Isolation cuts all network access except the security agent.</span></div>`;
   } else if (tab === 'apps') {
     body = `<table class="tbl"><thead><tr><th>Name</th><th>Publisher</th><th>Installed</th><th></th></tr></thead><tbody>
       ${d.apps.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${esc(a.publisher)}</td><td>${esc(a.installed)}</td><td class="right"><button class="btn sm ghost" data-act="uninstall" data-a="${esc(a.name)}">Uninstall</button></td></tr>`).join('')}</tbody></table>`;
@@ -791,7 +1010,7 @@ function renderRemote() {
     body = `<div class="terminal"><pre id="term-out">${G.remote.term.map(l => l.prompt ? `<span class="pr">${esc(l.prompt)}</span>${esc(l.text)}` : esc(l.text)).join('\n')}</pre>
       <div class="term-line"><span class="pr">C:\\Users\\${esc(d.owner)}&gt;</span><input id="term-input" autocomplete="off" spellcheck="false" value="${esc(G.drafts.term || '')}" data-draft="term"></div></div>`;
   }
-  return `<div class="view-head"><h2>Remote Desktop</h2><div class="grow"></div><span class="session-pill"><span class="dot ok"></span>Connected to ${d.id} · ${esc(who(d.owner))}</span><button class="btn sm" data-act="disconnect">Disconnect</button></div>
+  return `<div class="view-head"><h2>Remote Desktop</h2><div class="grow"></div>${d.isolated ? '<span class="chip warn">ISOLATED</span>' : ''}<span class="session-pill"><span class="dot ok"></span>Connected to ${d.id} · ${esc(who(d.owner))}</span><button class="btn sm" data-act="disconnect">Disconnect</button></div>
     <div class="card rd"><div class="tabs">${tabs.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="rdTab" data-t="${k}">${l}</button>`).join('')}</div><div class="tab-body">${body}</div></div>`;
 }
 
@@ -816,6 +1035,7 @@ function renderServer() {
         <div class="stat ${al.length ? 'warn' : ''}"><small>Active alerts</small><b>${al.length}</b><span>open</span></div></div>
       <h4>Alerts</h4><div class="alerts">${al.map(a => `<div class="alert ${a.sev}">${esc(a.text)}</div>`).join('') || '<div class="muted">All clear.</div>'}</div>
       <h4>Topology</h4><div class="topo">
+        <div class="tier">${w.network.filter(n => n.role === 'wan').map(n => `<span class="node ${stColor(n.status)}">${n.id} <small>(Denver)</small></span>`).join('')}</div>
         <div class="tier">${w.network.filter(n => n.role === 'core').map(n => `<span class="node ${stColor(n.status)}">${n.id}</span>`).join('')}</div>
         <div class="tier">${w.network.filter(n => n.role === 'floor').map(n => `<span class="node ${stColor(n.status)}">${n.id}</span>`).join('')}</div>
         <div class="tier">${w.network.filter(n => n.role === 'ap').map(n => `<span class="node ${stColor(n.status)}">${n.id}</span>`).join('')}</div></div>`;
@@ -823,14 +1043,19 @@ function renderServer() {
     body = `<table class="tbl"><thead><tr><th>Device</th><th>Type</th><th>Location</th><th>Status</th><th></th></tr></thead><tbody>
       ${w.network.map(n => `<tr><td><b>${n.id}</b>${n.uplink ? `<div class="muted small">Uplink: ${n.uplink}</div>` : ''}</td><td>${n.type}</td><td>${esc(n.location)}</td>
         <td><span class="dot ${stColor(n.status)}"></span>${n.status}${n.role === 'ap' && n.status === 'online' ? ` <span class="muted small">· ${n.clients} clients</span>` : ''}</td>
-        <td class="right">${n.status === 'booting' ? '' : n.role === 'ap' ? `<button class="btn sm ghost" data-act="net" data-n="${n.id}" data-k="reboot">Reboot</button><button class="btn sm ghost" data-act="net" data-n="${n.id}" data-k="poe">Power-cycle PoE port</button>` : `<button class="btn sm ghost" data-act="net" data-n="${n.id}" data-k="restart">Restart</button>`}</td></tr>`).join('')}</tbody></table>`;
+        <td class="right">${n.status === 'booting' ? ''
+          : n.role === 'ap' ? `<button class="btn sm ghost" data-act="net" data-n="${n.id}" data-k="reboot">Reboot</button><button class="btn sm ghost" data-act="net" data-n="${n.id}" data-k="poe">Power-cycle PoE port</button>`
+          : n.role === 'wan' ? `<span class="muted small">Carrier-managed</span> <button class="btn sm ghost" data-act="net" data-n="${n.id}" data-k="linetest">Run line test</button>`
+          : `<button class="btn sm ghost" data-act="net" data-n="${n.id}" data-k="restart">Restart</button>`}</td></tr>`).join('')}</tbody></table>`;
   } else {
     body = `<div class="servers">${Object.entries(w.servers).map(([h, s]) => `<div class="srv">
       <div class="sec-head"><div><b>${h}</b> <span class="muted small">${s.ip}</span><div class="muted small">${s.role}</div></div>${s.queued ? `<span class="chip warn">${s.queued} jobs queued</span>` : ''}</div>
       ${['cpu', 'mem', 'disk'].map(k => `<div class="meter"><small>${k.toUpperCase()}</small><div><i style="width:${s[k]}%" class="${s[k] > 75 ? 'hi' : ''}"></i></div><span>${s[k]}%</span></div>`).join('')}
       <table class="tbl compact"><tbody>${s.services.map(x => `<tr><td>${x.status === 'Running' ? '<span class="dot ok"></span>' : '<span class="dot bad"></span>'}${x.display}</td>
         <td class="right">${x.status === 'Running' ? `<button class="btn xs ghost" data-act="ssvc" data-h="${h}" data-s="${x.name}" data-x="restart">Restart</button><button class="btn xs ghost" data-act="ssvc" data-h="${h}" data-s="${x.name}" data-x="stop">Stop</button>` : `<button class="btn xs" data-act="ssvc" data-h="${h}" data-s="${x.name}" data-x="start">Start</button>`}</td></tr>`).join('')}</tbody></table>
-      ${s.events && s.services.some(x => x.status !== 'Running') ? `<div class="events">${s.events.map(e => `<div>⚠ ${esc(e)}</div>`).join('')}</div>` : ''}
+      ${s.events && (s.services.some(x => x.status !== 'Running') || s.disk >= 95) ? `<div class="events">${s.events.map(e => `<div>⚠ ${esc(e)}</div>`).join('')}</div>` : ''}
+      ${s.storage ? `<details class="storage" ${s.disk >= 95 ? 'open' : ''}><summary>D: drive contents</summary><table class="tbl compact"><tbody>${s.storage.map(x => `<tr><td><span class="mono">${esc(x.path)}</span><div class="muted small">${esc(x.what)}</div></td><td class="nowrap">${esc(x.size)}</td>
+        <td class="right"><button class="btn xs ghost" data-act="storageDel" data-h="${h}" data-i="${x.id}">Delete</button></td></tr>`).join('')}</tbody></table></details>` : ''}
       </div>`).join('')}</div>`;
   }
   return `<div class="view-head"><h2>Server Room</h2>${outage() ? '<span class="chip bad">NETWORK OUTAGE</span>' : ''}</div>
@@ -851,18 +1076,27 @@ function renderModal() {
   const m = G.modal;
   if (!m) return '';
   return `<div class="overlay"><div class="modal"><h3>${esc(m.title)}</h3><div class="modal-body">${m.body}</div>
-    ${m.noButtons ? '' : `<div class="row gap end"><button class="btn" data-act="modalCancel">Cancel</button><button class="btn ${m.danger ? 'danger' : 'primary'}" data-act="modalOk">${esc(m.ok || 'OK')}</button></div>`}</div></div>`;
+    ${m.noButtons ? '' : `<div class="row gap end">${m.info ? '' : '<button class="btn" data-act="modalCancel">Cancel</button>'}<button class="btn ${m.danger ? 'danger' : 'primary'}" data-act="modalOk">${esc(m.ok || 'OK')}</button></div>`}</div></div>`;
 }
 
+const bestKey = shift => shift === 1 ? 'shiftone-best' : `shiftone-best-${shift}`;
+
 function renderStart() {
-  const best = store.get('shiftone-best');
+  const card = (n, tags) => {
+    const sh = SHIFTS[n], best = store.get(bestKey(n)), count = SCENARIOS.filter(s => (s.shift || 1) === n).length;
+    return `<div class="shiftcard ${n > 1 ? 'hard' : ''}"><div class="kicker">Shift ${n}${n > 1 ? ' · Harder' : ''}</div>
+      <h3>${esc(sh.name)}</h3><p>${esc(sh.blurb)}</p>
+      <div class="tags">${[`${count} tickets`, ...tags].map(x => `<span>${x}</span>`).join('')}</div>
+      <div class="row gap wrap"><button class="btn primary lg" data-act="start" data-m="shift" data-s="${n}">Start timed shift</button><button class="btn lg" data-act="start" data-m="practice" data-s="${n}">Practice</button></div>
+      ${best ? `<p class="muted small">Best score: <b>${esc(best)}</b></p>` : ''}</div>`;
+  };
   return `<div class="start">
     <div class="hero"><div class="kicker">Tier 1 service desk training</div>
       <h1>Learn the service desk<br>by working one.</h1>
-      <p>You're the new service desk technician at <b>Brightline Logistics</b>. Tickets arrive. Users are waiting. Work them with real tools: a directory, remote desktop, a command prompt, and a server room. You're graded on what actually changed, how safely you did it, and how fast.</p>
-      <div class="row gap wrap"><button class="btn primary lg" data-act="start" data-m="shift">Start timed shift</button><button class="btn lg" data-act="start" data-m="practice">Practice mode (no timer)</button></div>
-      ${best ? `<p class="muted small">Best shift score: <b>${esc(best)}</b></p>` : ''}
-      <a class="kb-link" href="dispatch.html">New: run an MSP dispatch desk in Service Coordinator mode →</a>
+      <p>You're the new service desk technician at <b>Brightline Logistics</b>. Tickets arrive. Users are waiting. Work them with real tools: a directory, remote desktop, a command prompt, and a server room. You're graded on what actually changed, how safely you did it, and how fast.</p></div>
+    <div class="shifts">${card(1, ['Portal tickets', 'Start here'])}${card(2, ['Live phone calls', 'Holds &amp; voicemail', 'Root-cause traps'])}</div>
+    <div class="hero">
+      <a class="kb-link" href="dispatch.html">Also try: run an MSP dispatch desk in Service Coordinator mode →</a>
       <button class="kb-link" data-act="pricing">Want a coach while you play? See tutoring options →</button></div>
     <div class="features">
       ${[['Ticket Queue', 'Prioritise by impact, ask the right questions, write notes the next tech can use.'],
@@ -880,14 +1114,16 @@ function renderReport() {
   const R = G.report;
   return `<div class="report">
     <div class="report-head"><div class="grade g-${R.grade}">${R.grade}</div>
-      <div><h1>Shift report</h1><p class="muted">${R.closed}/${SCENARIOS.length} tickets closed · ${fmt(R.time)} on shift · ${G.mode === 'practice' ? 'practice mode' : 'timed shift'}</p>
-      <div class="big-score">${R.final}<small>/100</small></div></div>
-      <div class="grow"></div><div class="col gap"><button class="btn primary lg" data-act="start" data-m="${G.mode}">Play again</button><button class="btn" data-act="home">Main menu</button></div></div>
+      <div><h1>Shift report</h1><p class="muted">Shift ${G.shift}: ${esc(SHIFTS[G.shift].name)} · ${R.closed}/${SC().length} tickets closed · ${fmt(R.time)} on shift · ${G.mode === 'practice' ? 'practice mode' : 'timed shift'}</p>
+      <div class="big-score">${R.final}<small>/100</small></div>
+      ${R.calls ? `<p class="muted small">Calls: ${R.calls.answered} answered · ${R.calls.missed} missed · ${R.calls.dropped} hung up on hold</p>` : ''}</div>
+      <div class="grow"></div><div class="col gap"><button class="btn primary lg" data-act="start" data-m="${G.mode}" data-s="${G.shift}">Play again</button>
+        ${G.shift === 1 ? '<button class="btn" data-act="start" data-m="shift" data-s="2">Try Shift 2: Phones On</button>' : ''}<button class="btn" data-act="home">Main menu</button></div></div>
     <div class="card pad coach-cta"><div><b>Want someone to walk you through this report?</b><div class="muted">A tutor can replay your shift with you and turn every lost point into an interview answer.</div></div><button class="btn" data-act="pricing">See tutoring</button></div>
     ${G.penalties.length ? `<div class="card pad"><h3>Collateral damage</h3><ul class="fb">${G.penalties.map(p => `<li class="b"><b>−${p.pts}</b> ${esc(p.msg)}</li>`).join('')}</ul></div>` : ''}
-    <div class="report-grid">${SCENARIOS.map(s => {
+    <div class="report-grid">${SC().map(s => {
       const t = ticket(s.id);
-      if (!t || !t.result) return `<div class="card pad"><div class="row">${prioBadge(s.priority)}<span class="tid">${s.id}</span><div class="grow"></div><b class="bad-t">0</b></div><h4>${esc(s.title)}</h4><p class="muted">${t ? 'Not closed by end of shift.' : 'Never arrived. The shift ended first.'}</p></div>`;
+      if (!t || !t.result) return `<div class="card pad"><div class="row">${prioBadge(s.priority)}<span class="tid">${s.id}</span><div class="grow"></div><b class="bad-t">0</b></div><h4>${esc(s.title)}</h4><p class="muted">${t ? 'Not closed by end of shift.' : G.queued.has(s.id) ? 'The call was still waiting to be answered.' : 'Never arrived. The shift ended first.'}</p></div>`;
       return `<div class="card pad"><div class="row">${prioBadge(t.priority)}<span class="tid">${t.id}</span>${statusBadge(t.status)}<div class="grow"></div><b class="${t.result.score >= 80 ? 'good-t' : t.result.score >= 50 ? '' : 'bad-t'}">${t.result.score}</b></div>
         <h4>${esc(t.title)}</h4><ul class="fb">${t.result.good.map(g => `<li class="g">${esc(g)}</li>`).join('')}${t.result.ded.map(d => `<li class="b"><b>−${d[0]}</b> ${esc(d[1])}</li>`).join('')}</ul>
         <button class="kb-link" data-act="reportKb" data-k="${t.kb}">${I.kb} Read ${t.kb}</button></div>`;
@@ -895,14 +1131,20 @@ function renderReport() {
 }
 
 function endShift() {
-  const scores = SCENARIOS.map(s => ticket(s.id)?.result?.score ?? 0);
+  const list = SC();
+  const scores = list.map(s => ticket(s.id)?.result?.score ?? 0);
   const pen = G.penalties.reduce((a, p) => a + p.pts, 0);
-  const final = Math.max(0, Math.round(scores.reduce((a, b) => a + b, 0) / SCENARIOS.length - pen / 2));
+  const final = Math.max(0, Math.round(scores.reduce((a, b) => a + b, 0) / list.length - pen / 2));
   const grade = final >= 90 ? 'A' : final >= 80 ? 'B' : final >= 70 ? 'C' : final >= 60 ? 'D' : 'F';
-  G.report = { final, grade, closed: G.tickets.filter(t => t.result).length, time: now() };
+  const phone = list.some(s => s.channel === 'phone');
+  G.report = {
+    final, grade, closed: G.tickets.filter(t => t.result).length, time: now(),
+    calls: phone ? { answered: logged('call-answer').length, missed: logged('call-missed').length, dropped: G.tickets.filter(t => t.flags.hungUp).length } : null,
+  };
   G.phase = 'report';
-  const best = Number(store.get('shiftone-best') || 0);
-  if (final > best) store.set('shiftone-best', String(final));
+  G.ring = null;
+  const best = Number(store.get(bestKey(G.shift)) || 0);
+  if (final > best) store.set(bestKey(G.shift), String(final));
   render();
 }
 
@@ -910,12 +1152,22 @@ function endShift() {
 // Event wiring
 // ---------------------------------------------------------------------------
 const ACT = {
-  start: d => newGame(d.m),
+  start: d => newGame(d.m, Number(d.s) || 1),
+  answer: () => answerCall(),
+  hold: () => { holdCall(ticket(G.active)); render(); },
+  resume: () => { resumeCall(ticket(G.active)); render(); },
+  callback: () => { resumeCall(ticket(G.active)); render(); },
+  endcall: () => { endCall(ticket(G.active)); render(); },
+  mute: () => { store.set('shiftone-mute', store.get('shiftone-mute') === '1' ? '0' : '1'); render(); },
+  link: () => { const t = ticket(G.active), p = G.drafts['link-' + t.id]; if (!p) return toast('Choose the ticket this duplicates.', 'bad'); closeTicket(t, 'link', p); },
+  isolate: () => isolate(),
+  restart: () => restartDevice(),
+  storageDel: d => storageDelete(d.h, d.i),
   home: () => { G = null; PAGE = 'start'; render(); },
   pricing: () => { G = null; PAGE = 'pricing'; render(); $('#main').scrollTop = 0; },
   theme: () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('shiftone-theme', r.dataset.theme); render(); },
   endShift: () => {
-    if (openTickets().length || G.tickets.length < SCENARIOS.length) modal({ title: 'End the shift now?', body: '<p>Open and not-yet-arrived tickets score 0.</p>', ok: 'End shift', danger: true, onOk: () => setTimeout(endShift) });
+    if (openTickets().length || G.tickets.length < SC().length) modal({ title: 'End the shift now?', body: '<p>Open and not-yet-arrived tickets score 0.</p>', ok: 'End shift', danger: true, onOk: () => setTimeout(endShift) });
     else endShift();
   },
   view: d => { G.view = d.v; render(); },
@@ -926,6 +1178,7 @@ const ACT = {
   reply: () => {
     const t = ticket(G.active), k = 'reply-' + t.id, txt = (G.drafts[k] || '').trim();
     if (!txt) return;
+    if (!onLine(t)) return toast(`${who(t.requester)} isn't on the line. Call them back first.`, 'bad');
     G.drafts[k] = '';
     say(t, 'tech', txt);
     say(t, t.requester, 'OK, thanks. Let me know when I should try again.', 1500);
@@ -936,7 +1189,7 @@ const ACT = {
   gotoUser: d => { G.view = 'dir'; G.dir.user = d.u; G.dir.tab = 'profile'; render(); },
   gotoDevice: d => { G.view = 'remote'; if (G.remote.device !== d.d) connect(d.d); else render(); },
   gotoKb: d => { G.view = 'kb'; G.kb.article = d.k; render(); },
-  reportKb: d => { const a = KB.find(k => k.id === d.k); modal({ title: `${a.id} · ${a.title}`, body: `<div class="article">${a.body}</div>`, ok: 'Close', onOk() {} }); },
+  reportKb: d => { const a = KB.find(k => k.id === d.k); modal({ title: `${a.id} · ${a.title}`, body: `<div class="article">${a.body}</div>`, ok: 'Close', info: true, onOk() {} }); },
   pickUser: d => { G.dir.user = d.u; render(); },
   dirTab: d => { G.dir.tab = d.t; render(); },
   dir: d => dirAction(d.k, G.dir.user),
@@ -996,9 +1249,29 @@ document.addEventListener('keydown', e => {
 
 setInterval(() => {
   if (!G || G.phase !== 'play') return;
-  if (spawnDue()) { render(); return; }
+  let changed = spawnDue();
+  if (G.ring && now() >= G.ring.until) { missCall(); changed = true; }
+  if (ringNext()) changed = true;
+  else if (G.ring && (now() - G.ring.since) % 4 === 0) ringTone();
+  for (const t of G.tickets) {
+    if (G.mode === 'shift' && t.call === 'hold' && now() - t.holdSince >= HOLD_MAX) {
+      t.call = 'dropped'; t.flags.hungUp = true;
+      record('call-dropped', { ticket: t.id });
+      say(t, 'system', `${who(t.requester)} hung up after ${HOLD_MAX} seconds on hold.`);
+      toast(`${who(t.requester)} hung up while on hold (${t.id}).`, 'bad');
+      changed = true;
+    }
+    if (!t.result && t.tick) t.tick(W(), t);
+  }
+  if (changed) { render(); return; }
   const c = $('#clock');
   if (c) c.textContent = fmt(now());
+  const rl = $('#ring-left');
+  if (rl && G.ring) rl.textContent = `${G.ring.until - now()} s to voicemail`;
+  document.querySelectorAll('[data-hold]').forEach(el => {
+    const t = ticket(el.dataset.hold);
+    if (t.call === 'hold') el.textContent = `${fmt(now() - t.holdSince)}${G.mode === 'shift' ? ` · hangs up at ${fmt(HOLD_MAX)}` : ''}`;
+  });
   document.querySelectorAll('[data-sla]').forEach(el => {
     const t = ticket(el.dataset.sla);
     const l = slaLeft(t);

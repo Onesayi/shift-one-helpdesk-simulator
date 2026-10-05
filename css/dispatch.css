@@ -6,7 +6,6 @@
 
 a.brand, a.btn { text-decoration: none; color: inherit; }
 a.btn.primary { color: #fff; }
-.warn-t { color: var(--warn); }
 .ok-t { color: var(--good); font-weight: 600; font-size: 12.5px; white-space: nowrap; }
 .bad-t { font-weight: 600; }
 .chip.ok { background: var(--good-soft); color: var(--good); }
@@ -16,9 +15,7 @@ a.btn.primary { color: #fff; }
 .seg.speed button { min-width: 36px; }
 .empty.pad { padding: 18px; text-align: center; }
 
-/* Channels and statuses */
-.chan { display: inline-block; font-family: inherit; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; border-radius: 4px; margin-left: 4px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); vertical-align: 1px; }
-.c-phone { color: var(--accent); border-color: transparent; background: var(--accent-soft); }
+/* Channels and statuses (.chan and .c-phone live in styles.css) */
 .c-alert { color: var(--warn); border-color: transparent; background: var(--warn-soft); }
 .c-carry { color: var(--muted); }
 .s-triaged, .s-scheduled { color: var(--accent); border-color: transparent; background: var(--accent-soft); }
@@ -45,15 +42,7 @@ a.btn.primary { color: #fff; }
 .preview { background: var(--surface-2); border: 1px dashed var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-bottom: 8px; white-space: pre-wrap; }
 .field em { font-style: normal; font-weight: 500; }
 
-/* Incoming call */
-#call-root { position: fixed; top: 68px; left: calc(208px + (100vw - 208px - 400px) / 2); transform: translateX(-50%); z-index: 40; }
-.callbox { display: flex; align-items: center; gap: 12px; width: min(380px, calc(100vw - 32px)); background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 12px 14px; box-shadow: 0 16px 40px rgba(0, 0, 0, .25); }
-.callbox small { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
-.callbox b { font-size: 15px; }
-.ringer { width: 42px; height: 42px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; animation: ring 1s infinite; }
-.ringer svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
-@keyframes ring { 0%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(-12deg); } 20%, 40% { transform: rotate(12deg); } 50% { transform: rotate(0); } }
-@media (prefers-reduced-motion: reduce) { .ringer { animation: none; } }
+/* Incoming call widget: see styles.css (shared with help desk mode) */
 
 /* Dispatch board */
 .picking { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 12px; border-radius: var(--radius); background: var(--accent-soft); border: 1px solid var(--accent); }
@@ -110,12 +99,8 @@ a.btn.primary { color: #fff; }
 .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .meter.wide { grid-template-columns: 130px 1fr 40px; margin: 6px 0; }
 
-@media (max-width: 1180px) {
-  #call-root { left: calc(64px + (100vw - 64px - 360px) / 2); }
-}
 @media (max-width: 860px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #call-root { top: auto; bottom: 16px; left: 50%; }
   .board-tbl th:nth-child(5), .board-tbl td:nth-child(5) { display: none; }
 }
 @media (max-width: 520px) {
