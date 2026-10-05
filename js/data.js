@@ -226,14 +226,21 @@ const KB = [
 <li>Never restart a core device or a whole floor switch to fix one AP. That takes down everyone.</li></ol>` },
   { id: 'KB-203', title: 'Internal sites don\'t load but the internet works', tags: 'dns intranet nslookup resolve', body: `
 <p>This is almost always <b>DNS</b>. Internal names (<code>intranet</code>, <code>fs01</code>) only resolve through our DNS servers on DC01.</p>
-<ol><li>Remote in and run <code>nslookup intranet</code>. Also check <code>ipconfig /all</code>.</li>
+<ol><li>Remote in, open the <b>Command Prompt</b> tab and run <code>nslookup intranet</code>. Also check <code>ipconfig /all</code>.</li>
 <li>If DNS servers are public (e.g. 8.8.8.8), someone hard-coded them. Set the adapter back to <b>obtain DNS automatically</b>.</li>
 <li><code>ipconfig /flushdns</code> clears any cached bad answers.</li></ol>` },
-  { id: 'KB-301', title: 'Pop-ups and adware', tags: 'popup ads adware malware toolbar uninstall', body: `
-<ol><li>Remote in (with the user's consent) and check installed programs sorted by install date.</li>
-<li>Remove unrecognised programs installed around the time the pop-ups started. Look at the publisher.</li>
+  { id: 'KB-301', title: 'Pop-ups and adware', tags: 'popup ads adware malware toolbar uninstall tasklist taskkill process', body: `
+<p>Pop-ups that appear even outside the browser almost always come from a program installed on the machine, usually bundled with a "free" download.</p>
+<ol><li><b>Remote in</b> with the user's consent: Remote Desktop → <b>Connect</b> (or the device button on the ticket).</li>
+<li><b>Find the cause:</b> open the <b>Apps &amp; features</b> tab. Check the install dates and publishers: anything installed around when the pop-ups started, from a publisher you don't recognise, is a suspect. Ask the user what they downloaded.</li>
+<li><b>Uninstall</b> the unwanted programs, including the "free" tool that brought them in.</li>
 <li><b>Never remove</b> security software, the VPN client, or Microsoft 365.</li>
-<li>Check running processes (<code>tasklist</code>) afterwards.</li></ol>` },
+<li><b>Check the running processes:</b> open the <b>Command Prompt</b> tab and run <code>tasklist</code>. The suspect processes should no longer be listed.</li>
+<li>Ask the user to watch for pop-ups for a few minutes before you close the ticket.</li></ol>
+<h4>Ending a process is not a fix</h4>
+<p><code>taskkill /im &lt;name&gt; /f</code> stops a process, but while its program is still installed it starts again within seconds. Uninstall the program, then use <code>tasklist</code> to confirm.</p>
+<h4>On a real Windows PC</h4>
+<p>Task Manager (<b>Ctrl + Shift + Esc</b> → <b>Details</b> tab), <code>tasklist</code> in Command Prompt, or <code>Get-Process</code> in PowerShell all list the running processes.</p>` },
   { id: 'KB-302', title: 'Clock or meeting times are wrong', tags: 'time zone clock tzutil', body: `
 <p>If the clock is off by whole hours, the <b>time zone</b> is wrong, not the time.</p>
 <ol><li>Check where the user actually works (Directory → Profile → Location).</li>

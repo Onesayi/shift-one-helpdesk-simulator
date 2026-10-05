@@ -239,7 +239,7 @@ const INTENTS = [
   ['close', /\b(close (the|this|your) ticket|ok(ay)? (to|if i) close|can i close|anything else)\b/i],
   ['wait', /\b(working on it|looking (into|at) it|give me (a|one) (minute|moment|sec\w*)|bear with me|one moment|hold on|i'?ll (check|look|get back|call you back))\b/i],
   // any way of asking the user to test: retry, try, see if, connected, working, able to, any luck…
-  ['test', /\b(re-?try\w*|try\w*|test\w*|see (if|whether)|check (if|whether|again|now|it|that)|re-?connect\w*|connected|able to|working|works|does (it|that|this|everything) work|work now|fixed|sorted|resolved|back (up|on|online)|any (luck|better|change|joy)|(can|could) you (now )?(save|print|connect|log ?in|sign ?in|open|join|access|get (in|on)|see|load|use|browse))\b/i],
+  ['test', /\b(re-?try\w*|try\w*|test\w*|see (if|whether)|check (if|whether|again|now|it|that)|re-?connect\w*|connected|able to|working|works|does (it|that|this|everything) work|work now|fixed|sorted|resolved|back (up|on|online)|any (luck|better|change|joy|more)|gone|stopped|still (seeing|getting|happening|there|showing|appearing|locked|down)|(can|could) you (now )?(save|print|connect|log ?in|sign ?in|open|join|access|get (in|on)|see|load|use|browse))\b/i],
   ['thanks', /\b(thanks|thank you|cheers|bye|goodbye|have a (good|great|nice))\b/i],
   ['empathy', /\b(sorry|apologi[sz]e|i understand|frustrat|annoying)\b/i],
   ['hello', /^\s*(hi|hello|hey|good (morning|afternoon|evening))\b/i],
