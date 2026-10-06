@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0 (2026-10-06)
+
+New: **Every coordinator shift is different.**
+
+- Service Coordinator shifts draw 16–18 tickets from a pool of 25, with arrival times shuffled inside windows that keep each ticket's right answer valid. Ben's sick call moves too, and tickets are numbered in arrival order.
+- Each shift has a code, shown in the top bar and on the report. Type it into *Replay a shift*, open `dispatch.html?seed=<code>`, or press *Replay shift* on the report to play the same tickets at the same times. The same code and the same actions always grade the same.
+- `classic` replays the original 18-ticket shift, matching the tutor answer key.
+- Seven new tickets: a library Wi-Fi visit, a known-offline Mac, an ISP maintenance notice, a Denver VPN outage that needs the firewall engineer, a leased copier that goes to Ricoh, a VIP's phone email and a block-hours licence fix.
+- PB-08 covers leased equipment and provider notices.
+
 ## 1.3.0 (2026-10-05)
 
 New: **Call back later.** For when a call interrupts a critical ticket.
