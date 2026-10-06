@@ -107,7 +107,7 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 </tr>
 </table>
 
-18 tickets, including a clinic-wide outage that needs an ISP case, three duplicate reports of one M365 outage, a paralegal asking for partner-only files, a client out of prepaid hours, an RMA install that has to fit a dental clinic's lunch hour, and a lookalike-domain request to forward the managing partner's mail to Gmail. Design notes, the research behind it and a tutor answer key are in **[docs/COORDINATOR.md](docs/COORDINATOR.md)**.
+Every shift draws 16–18 tickets from a pool of 25 and shuffles when they arrive, so no two shifts play the same. Each shift has a short code you can type in to replay it (or share it with a tutor), and the code `classic` gives the original fixed shift. The pool includes a clinic-wide outage that needs an ISP case, three duplicate reports of one M365 outage, a paralegal asking for partner-only files, a client out of prepaid hours, an RMA install that has to fit a dental clinic's lunch hour, and a lookalike-domain request to forward the managing partner's mail to Gmail, and a leased copier that only the vendor may touch. Design notes, the research behind it and a tutor answer key are in **[docs/COORDINATOR.md](docs/COORDINATOR.md)**.
 
 ## 📸 Screenshots
 

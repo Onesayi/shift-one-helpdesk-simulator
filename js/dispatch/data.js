@@ -70,7 +70,7 @@ function baseBlocks() {
 
 // Events that happen to the team during the shift
 const TEAM_EVENTS = [
-  { at: 585, tech: 'ben', text: 'Ben Carter: "Sorry, I\'ve been sick all morning. I\'m heading home, and the doctor has signed me off until Monday."' },
+  { at: 585, window: [555, 630], tech: 'ben', text: 'Ben Carter: "Sorry, I\'ve been sick all morning. I\'m heading home, and the doctor has signed me off until Monday."' },
 ];
 
 const INTERNAL = {
@@ -107,9 +107,10 @@ const CLIENTS = {
       'Access to shares, new users and mailbox changes need approval from Maria Santos or a partner. Ask them directly, never through the requester.',
       'Their email domain is kellerfinch.com. Watch for lookalike domains.',
       'Client matters are confidential. Don\'t discuss one person\'s request with another staff member.',
+      'The office copier is leased from Ricoh, and Ricoh services it under the lease. Copier faults go to Ricoh, not to our technicians.',
     ],
     onsite: [[480, 1020]], onsiteText: 'office hours',
-    vendors: ['Spectrum Business (ISP)', 'Lenovo (hardware warranty)', 'Microsoft'],
+    vendors: ['Spectrum Business (ISP)', 'Lenovo (hardware warranty)', 'Ricoh (copier lease)', 'Microsoft'],
   },
   bl: {
     name: 'Brightline Logistics', agreement: 'Standard, co-managed', sla: 'standard',
@@ -154,6 +155,7 @@ const CLIENTS = {
       'No managed agreement: they buy prepaid blocks of hours.',
       'If the estimate is more than the hours left, get Account Manager approval (a top-up) before any non-emergency work.',
       'All Macs.',
+      'Theo Grant (designer) is on leave until the 20th. His MacBook, PP-MBP-03, is switched off at home.',
     ],
     onsite: [[540, 1020]], onsiteText: '09:00–17:00',
     vendors: ['Apple (AppleCare)', 'Comcast Business (ISP)'],
@@ -214,7 +216,9 @@ const PLAYBOOK = [
   { id: 'PB-08', title: 'Vendors, ISPs and RMAs', tags: 'vendor isp rma warranty case eta dell comcast', body: `
 <ul><li>When a tech says the fault is with a vendor (ISP, hardware warranty), <b>you</b> open the vendor case with "Log vendor case". The tech keeps working the problem.</li>
 <li>Pass the vendor's reference and ETA to the client straight away with a status update.</li>
-<li>When an RMA part arrives, schedule the install inside the client's onsite window and send them an appointment confirmation.</li></ul>` },
+<li>When an RMA part arrives, schedule the install inside the client's onsite window and send them an appointment confirmation.</li>
+<li>Equipment that's leased or under a service contract (a client's copier, say) goes straight to that vendor. Our techs don't touch it, and the client hears the vendor's ETA from you.</li>
+<li>Provider notices (planned maintenance, outages elsewhere) need no tech. Pass them on to the client and close as <b>No action needed</b>.</li></ul>` },
   { id: 'PB-09', title: 'Duplicates and major incidents', tags: 'duplicate merge parent child major incident service manager p1', body: `
 <ul><li>Several people reporting the same fault is <b>one incident</b>. Pick one ticket as the parent and <b>merge</b> the rest into it. One tech, one fix, one set of updates.</li>
 <li>Raise the parent's priority to match the real impact.</li>

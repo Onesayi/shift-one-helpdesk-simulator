@@ -4,9 +4,25 @@
 
 New: **Progress across shifts** in Service Coordinator mode.
 
-- Every finished shift is saved in this browser (last 50): score, grade, mode, and the KPIs (triage time, response SLA, missed calls, chasers, wrong-tech dispatches).
+- Every finished shift is saved in this browser (last 50): score, grade, mode, shift code, and the KPIs (triage time, response SLA, missed calls, chasers, wrong-tech dispatches).
 - The shift report has a **Your progress** card: each coordinator skill with this shift, change since last shift, your best, and a trend line over the last 10 shifts.
 - The start screen's best score now comes from that history. Best scores saved by older versions still count.
+- Tests cover saving, the 50-shift cap, the best score and corrupt storage.
+
+## 1.4.0 (2026-10-06)
+
+New: **Every coordinator shift is different.**
+
+- Service Coordinator shifts draw 16–18 tickets from a pool of 25, with arrival times shuffled inside windows that keep each ticket's right answer valid. Ben's sick call moves too, and tickets are numbered in arrival order.
+- Each shift has a code, shown in the top bar and on the report. Type it into *Replay a shift*, open `dispatch.html?seed=<code>`, or press *Replay shift* on the report to play the same tickets at the same times. The same code and the same actions always grade the same.
+- `classic` replays the original 18-ticket shift, matching the tutor answer key.
+- Seven new tickets: a library Wi-Fi visit, a known-offline Mac, an ISP maintenance notice, a Denver VPN outage that needs the firewall engineer, a leased copier that goes to Ricoh, a VIP's phone email and a block-hours licence fix.
+- PB-08 covers leased equipment and provider notices.
+
+Also in this release:
+
+- **Grader tests.** `node --test 'tests/**/*.test.js'` runs the Service Coordinator engine headlessly: one test per grading rule, the scenario traps, and a full shift played from the answer key (100) and left alone (about 20). No dependencies; CI runs them on every pull request.
+- Booking a field tech remotely for onsite work now says "this needs a site visit" instead of wrongly saying they lack the skill.
 
 ## 1.3.0 (2026-10-05)
 

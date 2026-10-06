@@ -14,7 +14,7 @@
   if (scene === 'start') { render(); return; }
 
   // Deterministic staging: the clock is paused and advanced minute by minute.
-  newGame('practice');
+  newGame('practice', 'classic');
   G.speed = 0;
   const advTo = hhmm => { const [h, m] = hhmm.split(':').map(Number); while (G.phase === 'play' && now() < h * 60 + m) { G.clock += 1; onMinute(now()); } };
   const tri = (id, pri, board, skill, where, est) => { Object.assign(G.drafts, { [`tri-${id}-board`]: board, [`tri-${id}-pri`]: pri, [`tri-${id}-skill`]: skill, [`tri-${id}-where`]: where, [`tri-${id}-est`]: String(est) }); saveTriage(ticket(id)); };

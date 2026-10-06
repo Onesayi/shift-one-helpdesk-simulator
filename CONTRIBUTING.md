@@ -23,9 +23,17 @@ python -m http.server 8765
 - Styles: `css/styles.css` (use the CSS variables and check both themes)
 - Service Coordinator mode: `dispatch.html`, `js/dispatch/`, `css/dispatch.css` (see [docs/COORDINATOR.md](docs/COORDINATOR.md))
 
+Tests need only Node 22 or later, with no installs:
+
+```bash
+node --test 'tests/**/*.test.js'
+```
+
+They load the Service Coordinator engine headlessly and check the grading rules in [docs/COORDINATOR.md](docs/COORDINATOR.md), including a full shift played from the answer key (every ticket should score 100). CI runs them on every pull request.
+
 Before opening a PR:
 
-1. Play the affected tickets once correctly and once badly, and check the scores make sense.
+1. Run the tests, and play the affected tickets once correctly and once badly, and check the scores make sense.
 2. Check light and dark mode, and a narrow (phone) window.
 3. If the UI changed, regenerate images: `python tools/screenshots.py`.
 
