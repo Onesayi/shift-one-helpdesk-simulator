@@ -311,7 +311,7 @@ const SCENARIOS = [
     },
   },
   {
-    id: 'bl-vpn', extra: true, at: 100, window: [60, 270], slide: true, avoid: ['4506'], channel: 'phone', client: 'bl', contact: 'dokafor', sm: true, kb: 'PB-03',
+    id: 'bl-vpn', extra: true, at: 100, window: [60, 240], slide: true, avoid: ['4506'], channel: 'phone', client: 'bl', contact: 'dokafor', sm: true, kb: 'PB-03',
     title: 'Denver office can\'t reach the warehouse system',
     body: 'Daniel Okafor, Brightline. Our Denver office lost its connection to HQ about twenty minutes ago. Internet, email and Teams work, but nobody there can open the warehouse system, so they\'re picking orders off paper. Our desk says the site-to-site VPN is down. Can your network people get on it?',
     truth: { priority: 'P2', okPri: ['P1'], board: 'Infrastructure', skill: 'Firewall', onsite: false, est: 60, dispatch: true, startBy: 640, closeAs: 'resolved',

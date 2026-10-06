@@ -67,7 +67,7 @@ These never appear in the classic shift.
 | Oakridge library Wi-Fi drops | P3 Field Services, Network, **Luis onsite** before Friday 15:00, outside 11:30–12:30 | Sending Sipho remotely, or visiting during the school's lunch ban |
 | Alert: PP-MBP-03 offline for 3 days | Close as **No action needed**. Pixel & Pine's notes say Theo is on leave with it switched off | Dispatching a tech and burning prepaid hours |
 | AT&T planned maintenance on Brightline HQ | No tech. Send Brightline a **status update**, then close as **No action needed** | Closing it without telling the client, or dispatching |
-| 📞 Brightline Denver can't reach the warehouse system | **P2** (P1 accepted) Infrastructure, **Firewall**: Sipho within the hour | "Network" sounds right, but the site-to-site VPN is on the firewall; Luis bounces |
+| 📞 Brightline Denver can't reach the warehouse system | **P2** (P1 accepted) Infrastructure, **Firewall**: Sipho within the hour, while he is still on shift | "Network" sounds right, but the site-to-site VPN is on the firewall; Luis bounces |
 | 📞 KFL copier error SC542 | Log a case with **Ricoh (copier lease)**, pass Ricoh's visit time to Maria, leave it open for Ricoh | Sending a tech to a leased copier |
 | Dr. Reyes: work email stopped on iPhone | **P3** Help Desk, M365, remote today | Inflating it to P1/P2 because she's a VIP |
 | Rhea: Adobe licence removed | P3 Help Desk, Mac. 15 minutes fits in the 0.5 h block, so just book it | Escalating to the Account Manager for nothing |
@@ -106,6 +106,8 @@ Each ticket starts at 100. The engine applies standard checks, then the scenario
 
 The shift score is the average over every ticket in the shift (18 in classic). A ticket that never arrived because the shift ended early scores 0.
 
+The tests in [`tests/dispatch/`](../tests/dispatch/) check each row of this table, the scenario traps above, and both ends of the scale: the answer key scores 100 and doing nothing scores about 20. If you change a rule, change its test.
+
 ## Authoring a coordinator scenario
 
 Scenarios live in [`js/dispatch/scenarios.js`](../js/dispatch/scenarios.js); clients, technicians and the playbook in [`js/dispatch/data.js`](../js/dispatch/data.js). The header comment in `scenarios.js` documents every field. The short version:
@@ -127,4 +129,4 @@ Useful events for graders: `triage`, `client-msg` (`kind`), `approval-req`, `app
 
 For shift variation, give it a `window: [earliest, latest]` in which the `truth` still holds, `slide: true` if its `startBy` is relative to arrival, and `pick` if it fills a must-have category. Use `avoid` for scenarios that can't share a shift. New tickets that shouldn't change the classic shift get `extra: true`.
 
-Checklist: solvable with only the in-game information; at least one trap a new coordinator would fall into; the `why` explains the right call in one sentence; played once well and once badly.
+Checklist: solvable with only the in-game information; at least one trap a new coordinator would fall into; the `why` explains the right call in one sentence; played once well and once badly; added to the answer-key run in [`tests/dispatch/answer-key.js`](../tests/dispatch/answer-key.js) with a test for its trap.
