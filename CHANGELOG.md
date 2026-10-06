@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+New: **Progress across shifts** in Service Coordinator mode.
+
+- Every finished shift is saved in this browser (last 50): score, grade, mode, and the KPIs (triage time, response SLA, missed calls, chasers, wrong-tech dispatches).
+- The shift report has a **Your progress** card: each coordinator skill with this shift, change since last shift, your best, and a trend line over the last 10 shifts.
+- The start screen's best score now comes from that history. Best scores saved by older versions still count.
+
 ## 1.3.0 (2026-10-05)
 
 New: **Call back later.** For when a call interrupts a critical ticket.
