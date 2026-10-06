@@ -576,9 +576,13 @@ function grade(t) {
   const worked = logged('work-start', e => e.ticket === t.id).length > 0;
   const completed = logged('work-done', e => e.ticket === t.id && e.kind === 'done').length > 0;
   if (T.dispatch && !t.parent) {
-    const wrong = new Set();
-    scheds.forEach(e => { const x = TECHS[e.tech]; if ((T.skill && !x.skills.includes(T.skill)) || (T.onsite && !e.onsite)) wrong.add(e.tech); });
-    wrong.forEach(id => ded.push([15, `Sent to ${TECHS[id].name}, who can't do this: it needs ${T.onsite && !TECHS[id].onsite ? 'a site visit' : T.skill + ' skills'}.`]));
+    const wrong = new Map();
+    scheds.forEach(e => {
+      const x = TECHS[e.tech];
+      if (T.skill && !x.skills.includes(T.skill)) wrong.set(e.tech, `Sent to ${x.name}, who can't do this: it needs ${T.skill} skills.`);
+      else if (T.onsite && !e.onsite && !wrong.has(e.tech)) wrong.set(e.tech, `Sent ${x.name} remotely: this needs a site visit.`);
+    });
+    wrong.forEach(text => ded.push([15, text]));
     if (!a) ded.push([30, logged('interrupt', e => e.ticket === t.id).length ? 'Pulled off for a P1 and never rebooked.' : 'Never scheduled a technician.']);
     else {
       const x = TECHS[a.tech], sick = G.techs[a.tech].sickAt;

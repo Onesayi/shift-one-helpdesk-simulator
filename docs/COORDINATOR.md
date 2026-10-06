@@ -80,6 +80,8 @@ Each ticket starts at 100. The engine applies standard checks, then the scenario
 
 The shift score is the average of all 18 tickets.
 
+The tests in [`tests/dispatch/`](../tests/dispatch/) check each row of this table, the scenario traps above, and both ends of the scale: the answer key scores 100 and doing nothing scores about 20. If you change a rule, change its test.
+
 ## Authoring a coordinator scenario
 
 Scenarios live in [`js/dispatch/scenarios.js`](../js/dispatch/scenarios.js); clients, technicians and the playbook in [`js/dispatch/data.js`](../js/dispatch/data.js). The header comment in `scenarios.js` documents every field. The short version:
@@ -99,4 +101,4 @@ Scenarios live in [`js/dispatch/scenarios.js`](../js/dispatch/scenarios.js); cli
 
 Useful events for graders: `triage`, `client-msg` (`kind`), `approval-req`, `approval` (`ok`, `auth`), `notify-sm`, `notify-am`, `am-approved`, `vendor-case`, `vendor-msg`, `schedule` (`tech`, `start`, `onsite`, `bumps`), `unschedule`, `interrupt`, `merge`, `close`, `call-answer`, `call-missed`, `chaser`, `work-start`, `work-done` (`kind`: done / bounce / vendor), `appt-missed`, `premature`.
 
-Checklist: solvable with only the in-game information; at least one trap a new coordinator would fall into; the `why` explains the right call in one sentence; played once well and once badly.
+Checklist: solvable with only the in-game information; at least one trap a new coordinator would fall into; the `why` explains the right call in one sentence; played once well and once badly; added to the answer-key run in [`tests/dispatch/answer-key.js`](../tests/dispatch/answer-key.js) with a test for its trap.
