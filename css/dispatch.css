@@ -109,3 +109,4 @@ a.btn.primary { color: #fff; }
   .stats { gap: 12px; }
 }
 .hero p.small { font-size: 13.5px; margin: 14px 0 10px; }
+.seed-field { max-width: 300px; margin: 14px 0 0; }

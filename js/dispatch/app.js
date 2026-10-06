@@ -27,9 +27,11 @@ const overlaps = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
 let G = null;
 let PAGE = 'start';
 
-function newGame(mode) {
+function newGame(mode, seed) {
+  const shift = buildShift(seed);
   G = {
     phase: 'play', mode, clock: SHIFT_START, speed: 1,
+    seed: shift.seed, shift: shift.tickets, events: shift.events,
     tickets: [], log: [], seq: 0, appts: [], apptSeq: 0, blocks: baseBlocks(),
     techs: Object.fromEntries(Object.keys(TECHS).map(k => [k, { sickAt: null }])),
     block: { pp: CLIENTS.pp.block },
@@ -38,7 +40,8 @@ function newGame(mode) {
     timers: [], calls: [], ring: null, news: [], spawned: new Set(), eventsDone: new Set(),
     drafts: {}, modal: null, dirty: false,
   };
-  for (const s of SCENARIOS.filter(x => x.at < 0)) spawnTicket(s);
+  for (const s of G.shift.filter(x => x.at < 0)) spawnTicket(s);
+  try { history.replaceState(null, '', '?seed=' + G.seed); } catch { /* file:// or sandboxed */ }
   onMinute(SHIFT_START);
   G.active = G.tickets[0]?.id ?? null;
   render();
@@ -159,7 +162,7 @@ function tick() {
 function onMinute(m) {
   let changed = m % SLOT === 0;
 
-  for (const ev of TEAM_EVENTS) {
+  for (const ev of G.events) {
     if (G.eventsDone.has(ev) || m < ev.at) continue;
     G.eventsDone.add(ev);
     G.techs[ev.tech].sickAt = ev.at;
@@ -168,7 +171,7 @@ function onMinute(m) {
     changed = true;
   }
 
-  for (const s of SCENARIOS) {
+  for (const s of G.shift) {
     if (s.at < 0 || G.spawned.has(s.id) || m < SHIFT_START + s.at) continue;
     G.spawned.add(s.id);
     if (s.channel === 'phone') G.calls.push(s);
@@ -291,8 +294,10 @@ function statusLine(t) {
   const a = finalAppt(t);
   if (t.status === 'Waiting on vendor') return `the fault is with the provider, not your equipment. ${t.lastVendorMsg ? t.lastVendorMsg.replace(/^[^:]+:\s*/, 'Their latest: ') : 'We\'ve raised it with them.'} We're standing by and will update you again within 30 minutes.`;
   if (t.status === 'Waiting on approval') return 'we\'re waiting for approval from an authorized contact before we can make this change.';
+  if (t.s.notice) return t.s.notice;
   if (a && a.state === 'working') return `${TECHS[a.tech].name} is working on it right now.`;
   if (a && a.state === 'booked') return `it's booked with ${TECHS[a.tech].name} ${a.start >= DAY ? 'on Friday' : 'today'} at ${hm(a.start % DAY)}.`;
+  if (t.lastVendorMsg && t.status !== 'Completed') return `we've raised it with ${t.s.vendor || 'the vendor'}. ${t.lastVendorMsg.replace(/^[^:]+:\s*/, 'Their latest: ')}`;
   return 'we\'re on it and will confirm a time with you shortly.';
 }
 
@@ -638,7 +643,7 @@ function kpis() {
 }
 
 function endShift() {
-  const results = SCENARIOS.map(s => { const t = ticket(s.id); return t ? grade(t) : { score: 0, ded: [[100, 'Never arrived: the shift ended first.']], good: [] }; });
+  const results = G.shift.map(s => { const t = ticket(s.id); return t ? grade(t) : { score: 0, ded: [[100, 'Never arrived: the shift ended first.']], good: [] }; });
   const final = Math.round(results.reduce((x, r) => x + r.score, 0) / results.length);
   const grade_ = final >= 90 ? 'A' : final >= 80 ? 'B' : final >= 70 ? 'C' : final >= 60 ? 'D' : 'F';
   G.report = { final, grade: grade_, results, kpi: kpis(), time: now() };
@@ -723,13 +728,14 @@ function topbarStart() {
   return `<a class="brand as-link" href="index.html">${logo()}<span>Shift One</span><small>Service Coordinator</small></a><div class="grow"></div>
     <nav class="top-links"><a href="index.html">Help desk mode</a><a href="index.html#pricing">Tutoring &amp; Pricing</a>${CONFIG.repoUrl ? `<a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">GitHub</a>` : ''}</nav>${themeBtn()}`;
 }
+function urlSeed() { try { return normSeed(new URLSearchParams(location.search).get('seed')); } catch { return ''; } }
 function logo() { return '<svg class="logo" viewBox="0 0 32 32"><rect x="3" y="6" width="26" height="22" rx="3"/><path d="M3 12h26M10 3v6M22 3v6M9 18h5M17 22h6"/></svg>'; }
 function themeBtn() { return `<button class="icon-btn" data-act="theme" title="Toggle light/dark">${document.documentElement.dataset.theme === 'dark' ? '☀' : '☾'}</button>`; }
 
 function renderTopbar() {
   const k = kpis(), open = G.tickets.filter(isOpen);
   const speeds = SPEED_LABEL.map((l, i) => (i === 0 && G.mode !== 'practice') ? '' : `<button class="${G.speed === i ? 'on' : ''}" data-act="speed" data-s="${i}" title="${i ? `${SPEEDS[i]} sim min per second` : 'Pause'}">${l}</button>`).join('');
-  return `<div class="brand">${logo()}<span>Shift One</span><small>${G.mode === 'practice' ? 'Practice' : 'Timed shift'}</small></div>
+  return `<div class="brand">${logo()}<span>Shift One</span><small>${G.mode === 'practice' ? 'Practice' : 'Timed shift'} · shift ${esc(G.seed)}</small></div>
     <div class="stats">
       <div><small>Thursday</small><b id="clock">${hm(now())}</b></div>
       <div><small>Open</small><b>${open.length}</b></div>
@@ -998,7 +1004,8 @@ function renderStart() {
       <h1>Run the dispatch desk<br>at a managed service provider.</h1>
       <p>You're the remote service coordinator for <b>Northbound IT</b>, an MSP with five technicians and five client companies. Calls ring, alerts fire, and clients email. You triage every ticket, keep clients updated, chase approvals and vendors, and put the right technician on the right job at the right time. The technicians do the work. How it goes depends on who you sent.</p>
       <div class="row gap wrap"><button class="btn primary lg" data-act="start" data-m="shift">Start timed shift</button><button class="btn lg" data-act="start" data-m="practice">Practice mode (pausable)</button></div>
-      <p class="muted small">The shift runs from 08:00 to 17:00 on a sim clock. At 1× that takes about 18 minutes; speed up when it's quiet.${best ? ` Best shift score: <b>${esc(best)}</b>.` : ''}</p>
+      <p class="muted small">The shift runs from 08:00 to 17:00 on a sim clock. At 1× that takes about 18 minutes; speed up when it's quiet. Every shift draws different tickets at different times.${best ? ` Best shift score: <b>${esc(best)}</b>.` : ''}</p>
+      <label class="field seed-field"><span>Replay a shift (optional)</span><input id="seed-in" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Shift code, e.g. classic" value="${esc(urlSeed())}"></label>
       <a class="kb-link" href="index.html">Prefer to fix tickets yourself? Play the Tier 1 help desk simulator →</a></div>
     <div class="features">
       ${[['Service Board', 'Triage by impact and urgency, pick the board and skill, and respond inside each client\'s SLA.'],
@@ -1017,9 +1024,9 @@ function renderReport() {
   const tile = (label, v, sub, bad) => `<div class="stat ${bad ? 'bad' : ''}"><small>${label}</small><b>${v}</b><span>${sub}</span></div>`;
   return `<div class="report">
     <div class="report-head"><div class="grade g-${R.grade}">${R.grade}</div>
-      <div><h1>Shift report</h1><p class="muted">Northbound IT · Thursday 08:00–${hm(R.time)} · ${G.mode === 'practice' ? 'practice mode' : 'timed shift'}</p>
+      <div><h1>Shift report</h1><p class="muted">Northbound IT · Thursday 08:00–${hm(R.time)} · ${G.mode === 'practice' ? 'practice mode' : 'timed shift'} · shift <b>${esc(G.seed)}</b></p>
       <div class="big-score">${R.final}<small>/100</small></div></div>
-      <div class="grow"></div><div class="col gap"><button class="btn primary lg" data-act="start" data-m="${G.mode}">Play again</button><button class="btn" data-act="home">Main menu</button></div></div>
+      <div class="grow"></div><div class="col gap"><button class="btn primary lg" data-act="start" data-m="${G.mode}" data-seed="">New shift</button><button class="btn" data-act="start" data-m="${G.mode}" data-seed="${esc(G.seed)}" title="Same tickets, same times: compare your score">Replay shift ${esc(G.seed)}</button><button class="btn" data-act="home">Main menu</button></div></div>
     <div class="cards4 kpis">
       ${tile('Avg time to triage', k.triage ?? '–', 'minutes', k.triage > 15)}
       ${tile('First response in SLA', (k.resp ?? '–') + (k.resp != null ? '%' : ''), 'of tickets', k.resp != null && k.resp < 80)}
@@ -1031,7 +1038,7 @@ function renderReport() {
     <div class="card pad"><h3>Technician utilization (today)</h3><p class="muted small">Booked ticket time as a share of each person's working day. 70–85% is healthy; nobody should be at 0% while tickets wait.</p>
       ${Object.entries(TECHS).map(([id, x]) => { const u = utilization(id); return `<div class="meter wide"><small>${esc(x.name)}</small><div><i style="width:${u}%" class="${u > 85 ? 'hi' : ''}"></i></div><span>${u}%</span></div>`; }).join('')}</div>
     <div class="card pad coach-cta"><div><b>Want someone to walk you through this report?</b><div class="muted">A tutor can replay the shift with you and turn every lost point into an interview answer.</div></div><a class="btn" href="index.html#pricing">See tutoring</a></div>
-    <div class="report-grid">${SCENARIOS.map((s, i) => {
+    <div class="report-grid">${G.shift.map((s, i) => {
       const r = R.results[i], t = ticket(s.id);
       return `<div class="card pad"><div class="row">${prioBadge(t?.triage?.priority)}<span class="tid">#${s.id}</span>${t ? statusBadge(t.status) : ''}<div class="grow"></div><b class="${r.score >= 80 ? 'good-t' : r.score >= 50 ? '' : 'bad-t'}">${r.score}</b></div>
         <h4>${esc(s.title)}</h4><div class="muted small">${esc(CLIENTS[s.client].name)}${s.truth.why ? ` · <i>${esc(s.truth.why)}</i>` : ''}</div>
@@ -1044,8 +1051,8 @@ function renderReport() {
 // Event wiring
 // ---------------------------------------------------------------------------
 const ACT = {
-  start: d => newGame(d.m),
-  home: () => { G = null; render(); },
+  start: d => newGame(d.m, d.seed ?? $('#seed-in')?.value),
+  home: () => { G = null; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } render(); },
   theme: () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('shiftone-theme', r.dataset.theme); render(); },
   endShift: () => modal({ title: 'End the shift now?', body: '<p>Tickets are graded as they stand. Anything that hasn\'t arrived yet scores 0.</p>', ok: 'End shift', danger: true, onOk: () => setTimeout(endShift) }),
   speed: d => { G.speed = Number(d.s); render(); },

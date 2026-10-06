@@ -16,7 +16,8 @@ const answering = g => () => { if (g.G.ring) g.answer(); };
 
 test('scenario data is consistent with the world data', () => {
   const { SCENARIOS, CLIENTS, TECHS, SKILLS, BOARDS, PRIORITIES, REASONS } = load();
-  assert.equal(SCENARIOS.length, 18);
+  assert.equal(SCENARIOS.length, 25);
+  assert.equal(SCENARIOS.filter(s => !s.extra).length, 18, 'the classic shift has 18 tickets');
   assert.equal(new Set(SCENARIOS.map(s => s.id)).size, SCENARIOS.length, 'ticket ids are unique');
   for (const s of SCENARIOS) {
     const T = s.truth, c = CLIENTS[s.client], at = `#${s.id}`;

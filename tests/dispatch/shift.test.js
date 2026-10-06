@@ -22,7 +22,7 @@ test('doing nothing scores about 20 and gets an F', () => {
 test('playing the answer key scores 100 on every ticket', () => {
   const g = cleanRun();
   const r = g.G.report;
-  const lines = r.results.map((x, i) => x.ded.length ? `#${g.E.SCENARIOS[i].id} ${x.score}: ${x.ded.map(d => `-${d[0]} ${d[1]}`).join(' | ')}` : null).filter(Boolean);
+  const lines = r.results.map((x, i) => x.ded.length ? `#${g.G.shift[i].id} ${x.score}: ${x.ded.map(d => `-${d[0]} ${d[1]}`).join(' | ')}` : null).filter(Boolean);
   assert.equal(lines.join('\n'), '', 'every ticket should score 100 when played by the answer key');
   assert.equal(r.final, 100);
   assert.equal(r.grade, 'A');

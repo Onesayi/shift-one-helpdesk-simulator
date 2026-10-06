@@ -35,15 +35,16 @@ function load() {
   return vm.runInContext(`({
     get G() { return G; },
     SCENARIOS, CLIENTS, TECHS, SKILLS, BOARDS, PRIORITIES, SLA, DAY, SHIFT_START, SHIFT_END, REASONS,
-    newGame, onMinute, now, ticket, grade, endShift, logged, finalAppt, checkSlot,
+    buildShift, newGame, onMinute, now, ticket, grade, endShift, logged, finalAppt, checkSlot,
     answerCall, saveTriage, sendMessage, requestApproval, notify, vendorCase, merge, closeTicket, openSchedule, unschedule,
   })`, ctx);
 }
 
 // A fresh game with a small driver API. Every action goes through the same functions the UI calls.
-function game(mode = 'timed') {
+// The default seed is the fixed 'classic' shift that the answer key in docs/COORDINATOR.md describes.
+function game(mode = 'timed', seed = 'classic') {
   const E = load();
-  E.newGame(mode);
+  E.newGame(mode, seed);
   const t = id => {
     const x = E.ticket(id);
     if (!x) throw new Error(`Ticket #${id} hasn't arrived (it's ${E.now()})`);
