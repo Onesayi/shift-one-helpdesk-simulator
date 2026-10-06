@@ -647,10 +647,40 @@ function endShift() {
   const final = Math.round(results.reduce((x, r) => x + r.score, 0) / results.length);
   const grade_ = final >= 90 ? 'A' : final >= 80 ? 'B' : final >= 70 ? 'C' : final >= 60 ? 'D' : 'F';
   G.report = { final, grade: grade_, results, kpi: kpis(), time: now() };
+  G.report.history = saveShift({ at: Date.now(), mode: G.mode, seed: G.seed, final, grade: grade_, kpi: G.report.kpi });
   G.phase = 'report'; G.modal = null; G.ring = null;
-  const best = Number(store.get('shiftone-dispatch-best') || 0);
-  if (final > best) store.set('shiftone-dispatch-best', String(final));
   render();
+}
+
+// ---------------------------------------------------------------------------
+// Progress across shifts (kept in localStorage)
+// ---------------------------------------------------------------------------
+const HISTORY_KEY = 'shiftone-dispatch-history';
+const HISTORY_MAX = 50;
+// Coordinator skills tracked from shift to shift. `up` is true when a higher number is better.
+const PROGRESS = [
+  { label: 'Shift score', sub: 'out of 100', up: true, get: e => e.final },
+  { label: 'Triage', sub: 'avg minutes to triage', unit: ' min', up: false, get: e => e.kpi.triage },
+  { label: 'Response SLA', sub: 'first response in SLA', unit: '%', up: true, get: e => e.kpi.resp },
+  { label: 'Phones', sub: 'missed calls', up: false, get: e => e.kpi.missed },
+  { label: 'Follow-up', sub: 'client chasers', up: false, get: e => e.kpi.chasers },
+  { label: 'Dispatch', sub: 'wrong-tech dispatches', up: false, get: e => e.kpi.bounces },
+];
+
+function loadHistory() {
+  try { const h = JSON.parse(store.get(HISTORY_KEY) || '[]'); return Array.isArray(h) ? h.filter(e => e && e.kpi) : []; } catch { return []; }
+}
+function saveShift(entry) {
+  const h = [...loadHistory(), entry].slice(-HISTORY_MAX);
+  store.set(HISTORY_KEY, JSON.stringify(h));
+  return h;
+}
+// Older versions only saved the best score, so it still counts.
+function bestScore() {
+  const scores = loadHistory().map(e => e.final);
+  const legacy = store.get('shiftone-dispatch-best');
+  if (legacy != null) scores.push(Number(legacy) || 0);
+  return scores.length ? Math.max(...scores) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -998,13 +1028,13 @@ function renderModal() {
 }
 
 function renderStart() {
-  const best = store.get('shiftone-dispatch-best');
+  const best = bestScore(), runs = loadHistory().length;
   return `<div class="start">
     <div class="hero"><div class="kicker">MSP service coordinator training</div>
       <h1>Run the dispatch desk<br>at a managed service provider.</h1>
       <p>You're the remote service coordinator for <b>Northbound IT</b>, an MSP with five technicians and five client companies. Calls ring, alerts fire, and clients email. You triage every ticket, keep clients updated, chase approvals and vendors, and put the right technician on the right job at the right time. The technicians do the work. How it goes depends on who you sent.</p>
       <div class="row gap wrap"><button class="btn primary lg" data-act="start" data-m="shift">Start timed shift</button><button class="btn lg" data-act="start" data-m="practice">Practice mode (pausable)</button></div>
-      <p class="muted small">The shift runs from 08:00 to 17:00 on a sim clock. At 1× that takes about 18 minutes; speed up when it's quiet. Every shift draws different tickets at different times.${best ? ` Best shift score: <b>${esc(best)}</b>.` : ''}</p>
+      <p class="muted small">The shift runs from 08:00 to 17:00 on a sim clock. At 1× that takes about 18 minutes; speed up when it's quiet. Every shift draws different tickets at different times.${best != null ? ` Best shift score: <b>${best}</b>${runs > 1 ? ` across ${runs} shifts` : ''}.` : ''}</p>
       <label class="field seed-field"><span>Replay a shift (optional)</span><input id="seed-in" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Shift code, e.g. classic" value="${esc(urlSeed())}"></label>
       <a class="kb-link" href="index.html">Prefer to fix tickets yourself? Play the Tier 1 help desk simulator →</a></div>
     <div class="features">
@@ -1035,6 +1065,7 @@ function renderReport() {
       ${tile('Wrong-tech dispatches', k.bounces, 'handed back', k.bounces > 0)}
       ${tile('Closed or merged', k.closed, `of ${G.tickets.length} tickets`)}
     </div>
+    ${renderProgress(R.history || [])}
     <div class="card pad"><h3>Technician utilization (today)</h3><p class="muted small">Booked ticket time as a share of each person's working day. 70–85% is healthy; nobody should be at 0% while tickets wait.</p>
       ${Object.entries(TECHS).map(([id, x]) => { const u = utilization(id); return `<div class="meter wide"><small>${esc(x.name)}</small><div><i style="width:${u}%" class="${u > 85 ? 'hi' : ''}"></i></div><span>${u}%</span></div>`; }).join('')}</div>
     <div class="card pad coach-cta"><div><b>Want someone to walk you through this report?</b><div class="muted">A tutor can replay the shift with you and turn every lost point into an interview answer.</div></div><a class="btn" href="index.html#pricing">See tutoring</a></div>
@@ -1045,6 +1076,35 @@ function renderReport() {
         <ul class="fb">${r.good.map(g => `<li class="g">${esc(g)}</li>`).join('')}${r.ded.map(d => `<li class="b"><b>−${d[0]}</b> ${esc(d[1])}</li>`).join('')}</ul>
         <button class="kb-link" data-act="reportPb" data-k="${s.kb}">${I.pb} Read ${s.kb}</button></div>`;
     }).join('')}</div></div>`;
+}
+
+// A tiny trend line where up always means better, whichever way the skill is measured.
+function sparkline(vals, up) {
+  const pts = vals.map((v, i) => [i, v]).filter(p => p[1] != null);
+  if (pts.length < 2) return '';
+  const ys = pts.map(p => p[1]), lo = Math.min(...ys), hi = Math.max(...ys), W = 96, H = 24, n = vals.length - 1;
+  const xy = ([i, v]) => { const f = hi === lo ? .5 : (v - lo) / (hi - lo); return [(i / n * (W - 4) + 2).toFixed(1), (H - 2 - (up ? f : 1 - f) * (H - 4)).toFixed(1)]; };
+  const last = xy(pts[pts.length - 1]);
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline points="${pts.map(p => xy(p).join(',')).join(' ')}"/><circle cx="${last[0]}" cy="${last[1]}" r="2.5"/></svg>`;
+}
+
+function renderProgress(h) {
+  const head = `<h3>Your progress</h3>`;
+  if (h.length < 2) return `<div class="card pad">${head}<p class="muted small">This is your first recorded shift. Play again to see how each skill moves from shift to shift.</p></div>`;
+  const cur = h[h.length - 1], prev = h[h.length - 2], recent = h.slice(-10);
+  const fmt = (v, s) => v == null ? '–' : v + (s.unit || '');
+  const rows = PROGRESS.map(s => {
+    const v = s.get(cur), p = s.get(prev), all = h.map(s.get).filter(x => x != null);
+    const best = all.length ? (s.up ? Math.max(...all) : Math.min(...all)) : null;
+    let change = '<span class="muted">–</span>';
+    if (v != null && p != null) {
+      const d = v - p, better = s.up ? d > 0 : d < 0;
+      change = d === 0 ? '<span class="muted">same</span>' : `<span class="${better ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d)}${s.unit || ''}</span>`;
+    }
+    return `<tr><td><b>${s.label}</b><div class="muted small">${s.sub}</div></td><td><b>${fmt(v, s)}</b></td><td class="delta">${change}</td><td class="hide-sm">${fmt(best, s)}</td><td>${sparkline(recent.map(s.get), s.up)}</td></tr>`;
+  }).join('');
+  return `<div class="card pad progress">${head}<p class="muted small">${h.length} shifts recorded in this browser. Trend lines show your last ${recent.length} shifts and rise when you improve.</p>
+    <table class="tbl compact"><thead><tr><th>Skill</th><th>This shift</th><th>vs last</th><th class="hide-sm">Best</th><th>Trend</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 // ---------------------------------------------------------------------------

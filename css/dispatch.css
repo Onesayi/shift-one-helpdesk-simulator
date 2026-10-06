@@ -98,6 +98,11 @@ a.btn.primary { color: #fff; }
 .tech p { margin: 0; }
 .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .meter.wide { grid-template-columns: 130px 1fr 40px; margin: 6px 0; }
+.progress .delta .up { color: var(--good); font-weight: 600; }
+.progress .delta .down { color: var(--bad); font-weight: 600; }
+.progress .delta span { white-space: nowrap; }
+.spark { width: 96px; height: 24px; display: block; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.spark circle { fill: var(--accent); stroke: none; }
 
 @media (max-width: 860px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -105,6 +110,8 @@ a.btn.primary { color: #fff; }
 }
 @media (max-width: 520px) {
   .kpis { grid-template-columns: 1fr; }
+  .progress .hide-sm { display: none; }
+  .spark { width: 72px; }
   .board-tbl th:nth-child(3), .board-tbl td:nth-child(3) { display: none; }
   .stats { gap: 12px; }
 }

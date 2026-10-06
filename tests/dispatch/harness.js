@@ -21,11 +21,12 @@ function inert() {
   return p;
 }
 
-function load() {
+// `storage` stands in for localStorage; by default nothing is saved.
+function load(storage = { getItem: () => null, setItem() {} }) {
   const ctx = vm.createContext({
     console,
     document: inert(),
-    localStorage: { getItem: () => null, setItem() {} },
+    localStorage: storage,
     matchMedia: () => ({ matches: false }),
     setInterval() {}, setTimeout() {},
   });
@@ -36,6 +37,7 @@ function load() {
     get G() { return G; },
     SCENARIOS, CLIENTS, TECHS, SKILLS, BOARDS, PRIORITIES, SLA, DAY, SHIFT_START, SHIFT_END, REASONS,
     buildShift, newGame, onMinute, now, ticket, grade, endShift, logged, finalAppt, checkSlot,
+    loadHistory, saveShift, bestScore,
     answerCall, saveTriage, sendMessage, requestApproval, notify, vendorCase, merge, closeTicket, openSchedule, unschedule,
   })`, ctx);
 }
