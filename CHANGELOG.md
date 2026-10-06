@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Grader tests.** `node --test 'tests/**/*.test.js'` runs the Service Coordinator engine headlessly: one test per grading rule, the scenario traps, and a full shift played from the answer key (100) and left alone (about 20). No dependencies; CI runs them on every pull request.
+- Booking a field tech remotely for onsite work now says "this needs a site visit" instead of wrongly saying they lack the skill.
+
 ## 1.3.0 (2026-10-05)
 
 New: **Call back later.** For when a call interrupts a critical ticket.
