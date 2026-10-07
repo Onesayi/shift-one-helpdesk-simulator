@@ -724,7 +724,7 @@ function render() {
   const a = document.activeElement, fid = a && a.id, s1 = a && a.selectionStart, s2 = a && a.selectionEnd;
   const mainScroll = $('#main').scrollTop, dScroll = $('.dscroll')?.scrollLeft;
 
-  if (!G || G.phase === 'start') { $('#main').innerHTML = renderStart(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; $('#call-root').innerHTML = ''; return; }
+  if (!G || G.phase === 'start') { $('#main').innerHTML = renderStart(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; $('#call-root').innerHTML = ''; Landing.mount(); return; }
   if (G.phase === 'report') { $('#main').innerHTML = renderReport(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = renderModal(); $('#call-root').innerHTML = ''; return; }
 
   $('#topbar').innerHTML = renderTopbar();
@@ -1029,23 +1029,80 @@ function renderModal() {
 
 function renderStart() {
   const best = bestScore(), runs = loadHistory().length;
-  return `<div class="start">
-    <div class="hero"><div class="kicker">MSP service coordinator training</div>
-      <h1>Run the dispatch desk<br>at a managed service provider.</h1>
-      <p>You're the remote service coordinator for <b>Northbound IT</b>, an MSP with five technicians and five client companies. Calls ring, alerts fire, and clients email. You triage every ticket, keep clients updated, chase approvals and vendors, and put the right technician on the right job at the right time. The technicians do the work. How it goes depends on who you sent.</p>
-      <div class="row gap wrap"><button class="btn primary lg" data-act="start" data-m="shift">Start timed shift</button><button class="btn lg" data-act="start" data-m="practice">Practice mode (pausable)</button></div>
-      <p class="muted small">The shift runs from 08:00 to 17:00 on a sim clock. At 1× that takes about 18 minutes; speed up when it's quiet. Every shift draws different tickets at different times.${best != null ? ` Best shift score: <b>${best}</b>${runs > 1 ? ` across ${runs} shifts` : ''}.` : ''}</p>
-      <label class="field seed-field"><span>Replay a shift (optional)</span><input id="seed-in" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Shift code, e.g. classic" value="${esc(urlSeed())}"></label>
-      <a class="kb-link" href="index.html">Prefer to fix tickets yourself? Play the Tier 1 help desk simulator →</a></div>
-    <div class="features">
-      ${[['Service Board', 'Triage by impact and urgency, pick the board and skill, and respond inside each client\'s SLA.'],
-        ['Phone calls', 'Calls ring in real time. Miss one and it becomes a voicemail and an unhappy client.'],
-        ['Dispatch Board', 'A live calendar of five technicians with skills, lunch, projects, travel time and a sick day.'],
-        ['Clients & contracts', 'Premium, standard and block-hours clients, onsite windows, authorized approvers and VIPs.'],
-        ['Approvals & vendors', 'Get sign-off from the right person, page the Service Manager, and chase the ISP for an ETA.'],
-        ['Honest grading', 'Graded on what you did: time to triage, first response, right tech, client updates and closure.']]
-        .map(([h, p]) => `<div class="feature"><h4>${h}</h4><p>${p}</p></div>`).join('')}
+  const sc = id => SCENARIOS.find(s => s.id === id);
+  const who = s => { const c = CLIENTS[s.client]; return `${s.from || c.contacts[s.contact]?.name || ''} · ${c.name}`; };
+  const CH = { email: 'Email', phone: 'Call', alert: 'Alert', vendor: 'Vendor' };
+  // Tickets arrive untriaged, so the preview shows the channel, not the answer.
+  const items = SCENARIOS.filter(s => !s.extra && s.at >= 0).sort((a, b) => a.at - b.at)
+    .map(s => ({ id: '#' + s.id, pri: 'p0', label: CH[s.channel] || s.channel, title: s.title, who: who(s) }));
+  const call = SCENARIOS.find(s => s.channel === 'phone' && s.truth.priority === 'P1');
+  const at = id => hm(SHIFT_START + sc(id).at);
+  const span = SHIFT_END - SHIFT_START, pct = m => ((m - SHIFT_START) / span * 100).toFixed(1);
+  const blocks = baseBlocks().filter(b => b.start < DAY);
+  const board = Object.entries(TECHS).map(([id, x]) => {
+    const bars = blocks.filter(b => b.tech === id).map(b => `<i class="${b.kind === 'lunch' ? 'lunch' : ''}" style="left:${pct(b.start)}%;width:${(b.dur / span * 100).toFixed(1)}%" title="${esc(b.label)}"></i>`);
+    if (x.end < SHIFT_END) bars.push(`<i class="sick" style="left:${pct(x.end)}%;right:0" title="Off shift"></i>`);
+    return `<div class="board-row"><small>${esc(x.name.split(' ')[0])}</small><div class="board-track">${bars.join('')}</div></div>`;
+  }).join('');
+  const hdg = CLIENTS.hdg, approvers = Object.values(hdg.contacts).filter(c => c.auth).map(c => c.name);
+  return `<div class="start landing">
+    <div class="l-hero">
+      <div class="l-pitch"><div class="l-badge"><span>Dispatch desk</span>Northbound IT · Managed services</div>
+        <h1>Five techs. Five clients. <em>One</em> of you.</h1>
+        <p class="l-lede">You're the service coordinator at <b>Northbound IT</b>. Calls ring, alerts fire and clients email. You triage every ticket, keep clients updated, chase approvals and vendors, and put the <b>right technician on the right job</b> at the right time. The technicians do the work. How it goes depends on who you sent.</p></div>
+      ${Landing.queue({ key: 'dispatch', heading: 'Service board · New', items, foot: 'Every ticket here is in the game. Triage is up to you.',
+        call: call && { who: `Incoming call: ${who(call)}`, sub: call.title } })}
     </div>
+    <div class="desks">
+      <div class="desk primary"><span class="desk-role">Service coordinator · timed</span><h3>Thursday, ${hm(SHIFT_START)}–${hm(SHIFT_END)}</h3>
+        <p>About 18 minutes at 1×; speed up when it's quiet. Every shift draws different tickets at different times.</p>
+        <div class="desk-go"><button class="btn primary" data-act="start" data-m="shift">Clock in</button></div>
+        ${best != null ? `<div class="desk-best">Your best: <b>${best}</b>${runs > 1 ? ` across ${runs} shifts` : ''}</div>` : ''}</div>
+      <div class="desk"><span class="desk-role">Service coordinator · practice</span><h3>Practice mode</h3>
+        <p>Pause any time and read the playbooks. Enter a shift code to replay the same tickets and compare scores.</p>
+        <label class="field seed-field"><span>Replay a shift (optional)</span><input id="seed-in" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Shift code, e.g. classic" value="${esc(urlSeed())}"></label>
+        <div class="desk-go"><button class="btn" data-act="start" data-m="practice">Start practice</button></div></div>
+      <a class="desk alt" href="index.html"><span class="desk-role">Tier 1 · Brightline Logistics</span><h3>Help desk technician</h3>
+        <p>Rather fix tickets yourself? Work them with a directory, remote desktop, command prompt and server room.</p>
+        <span class="desk-link">Go to the help desk →</span></a>
+    </div>
+
+    <section class="l-sec"><div class="l-eyebrow">The classic shift, in the order tickets arrive</div>
+      <h2>Nine hours of dispatch in about eighteen minutes.</h2>
+      ${Landing.timeline([
+        { at: at('4502'), text: 'An RMM alert: a client file server is past its disk threshold. Who gets it, and how soon?' },
+        { at: at('4506'), text: 'A dental clinic has no internet, no phones and no schedule. Their VIP owner is on the line.', alert: true },
+        { at: at('4507'), text: 'Three emails from one school in six minutes, all about email. One incident or three?' },
+        { at: at('4513'), text: 'A managing partner typed his password into a fake DocuSign page.', alert: true },
+        { at: at('4516'), text: '"Forward all my email to my personal address." Does that need an approval?' },
+      ])}</section>
+
+    <section class="l-sec"><div class="l-eyebrow">What's on your screen</div>
+      <h2>The schedule, the contracts and the clock are all real constraints.</h2>
+      <div class="l-tools">
+        <div class="l-tool"><div class="snip board">${board}</div>
+          <h3>Dispatch board at ${hm(SHIFT_START)}</h3><p>Lunches, a project, a training session, and an engineer whose day ends at ${hm(TECHS.sipho.end)}.</p></div>
+        <div class="l-tool"><div class="snip dir">
+            <span>${esc(hdg.name)}</span><span class="chip ok">${esc(hdg.agreement)}</span>
+            ${PRIORITIES.map(p => `<span>First response, ${p}</span><span>${SLA[hdg.sla][p]} min</span>`).join('')}
+            <span class="dir-note">Onsite ${esc(hdg.onsiteText)} · approvers: ${esc(approvers.join(', '))}</span></div>
+          <h3>Clients &amp; contracts</h3><p>Every client has its own SLA, visit window and people who can approve work.</p></div>
+        <div class="l-tool"><div class="snip rack">
+            <div class="unit"><span class="led off"></span>Line 1 ringing · voicemail if missed</div>
+            <div class="unit"><span class="led warn"></span>Approval sent · waiting on client</div>
+            <div class="unit"><span class="led warn"></span>Vendor case open · chase for an ETA</div>
+            <div class="unit"><span class="led"></span>Tech on site · update the client</div></div>
+          <h3>Calls, approvals &amp; vendors</h3><p>Miss a call and it becomes a voicemail. Go quiet on a client and they chase you.</p></div>
+      </div></section>
+
+    <section class="l-sec"><div class="l-eyebrow">Graded like a service manager would</div>
+      <h2>Your shift report says exactly where the points went.</h2>
+      ${Landing.report({ grade: 'C', title: 'Service coordinator shift', meta: 'Timed shift · these lines come straight from the grader', lines: [
+        [null, 'Merged the duplicates: one incident, one technician, one set of updates.'],
+        [null, 'Answered the call live.'],
+        [15, 'Told the client it was fixed before the technician had finished.'],
+        [30, 'Still booked with Ben Carter, who went home sick. Nobody turned up.'],
+      ] })}</section>
     <footer class="site-foot">Built by ${esc(CONFIG.author)}${CONFIG.repoUrl ? ` · <a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">Source on GitHub</a>` : ''} · Northbound IT and its clients are fictional.</footer></div>`;
 }
 
