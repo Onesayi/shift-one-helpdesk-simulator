@@ -863,7 +863,7 @@ function renderDom() {
   $('#call-root').innerHTML = G && G.phase === 'play' ? renderCall() : '';
   if (!G && PAGE === 'pricing') { $('#main').innerHTML = renderPricing(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; return; }
 
-  if (!G || G.phase === 'start') { $('#main').innerHTML = renderStart(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; return; }
+  if (!G || G.phase === 'start') { $('#main').innerHTML = renderStart(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; Landing.mount(); return; }
   if (G.phase === 'report') { $('#main').innerHTML = renderReport(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = renderModal(); return; }
 
   $('#topbar').innerHTML = renderTopbar();
@@ -1222,33 +1222,83 @@ function renderModal() {
 
 const bestKey = shift => shift === 1 ? 'shiftone-best' : `shiftone-best-${shift}`;
 
+const PRI = { Critical: 'p1', High: 'p2', Medium: 'p3', Low: 'p4' };
+const mmss = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+
 function renderStart() {
-  const card = (n, tags) => {
-    const sh = SHIFTS[n], best = store.get(bestKey(n)), count = SCENARIOS.filter(s => (s.shift || 1) === n).length;
-    return `<div class="shiftcard ${n > 1 ? 'hard' : ''}"><div class="kicker">Shift ${n}${n > 1 ? ' · Harder' : ''}</div>
+  const U = WORLD.users, who = id => U[id] ? `${U[id].first} ${U[id].last} · ${U[id].dept}` : id;
+  const sc = id => SCENARIOS.find(s => s.id === id);
+  const byShift = n => SCENARIOS.filter(s => (s.shift || 1) === n);
+  const items = [1, 2].flatMap(n => byShift(n).sort((a, b) => a.at - b.at)).map(s => ({
+    id: s.id, pri: PRI[s.priority], label: s.priority, title: s.title,
+    who: s.external ? `${s.external} · email` : `${who(s.requester)} · ${s.channel === 'phone' ? 'phone' : 'portal'}`,
+  }));
+  const call = SCENARIOS.find(s => s.channel === 'phone');
+  const desk = (n, tags) => {
+    const sh = SHIFTS[n], best = store.get(bestKey(n)), count = byShift(n).length;
+    return `<div class="desk ${n === 1 ? 'primary' : ''}"><span class="desk-role">Tier 1 · Shift ${n}${n > 1 ? ' · harder' : ''}</span>
       <h3>${esc(sh.name)}</h3><p>${esc(sh.blurb)}</p>
-      <div class="tags">${[`${count} tickets`, ...tags].map(x => `<span>${x}</span>`).join('')}</div>
-      <div class="row gap wrap"><button class="btn primary lg" data-act="start" data-m="shift" data-s="${n}">Start timed shift</button><button class="btn lg" data-act="start" data-m="practice" data-s="${n}">Practice</button></div>
-      ${best ? `<p class="muted small">Best score: <b>${esc(best)}</b></p>` : ''}</div>`;
+      <div class="desk-tags">${[`${count} tickets`, ...tags].map(x => `<span>${x}</span>`).join('')}</div>
+      <div class="desk-go"><button class="btn primary" data-act="start" data-m="shift" data-s="${n}">Clock in</button><button class="btn" data-act="start" data-m="practice" data-s="${n}">Practice</button></div>
+      ${best ? `<div class="desk-best">Your best: <b>${esc(best)}</b></div>` : ''}</div>`;
   };
-  return `<div class="start">
-    <div class="hero"><div class="kicker">Tier 1 service desk training</div>
-      <h1>Learn the service desk<br>by working one.</h1>
-      <p>You're the new service desk technician at <b>Brightline Logistics</b>. Tickets arrive. Users are waiting. Work them with real tools: a directory, remote desktop, a command prompt, and a server room. You're graded on what actually changed, how safely you did it, and how fast.</p></div>
-    <div class="shifts">${card(1, ['Portal tickets', 'Start here'])}${card(2, ['Live phone calls', 'Holds &amp; voicemail', 'Root-cause traps'])}</div>
-    <div class="hero">
-      <a class="kb-link" href="dispatch.html">Also try: run an MSP dispatch desk in Service Coordinator mode →</a>
-      <button class="kb-link" data-act="pricing">Want a coach while you play? See tutoring options →</button></div>
-    <div class="features">
-      ${[['Ticket Queue', 'Prioritise by impact, ask the right questions, write notes the next tech can use.'],
-        ['Directory', 'Unlock, reset, verify identity, manage groups, and don\'t hand an attacker the CFO\'s account.'],
-        ['Remote Desktop', 'Uninstall adware, fix time zones and DNS, and use a working command prompt.'],
-        ['Server Room', 'Tell one broken laptop from one broken floor. Restart the right thing, not everything.'],
-        ['Knowledge Base', 'SOPs for every scenario. Reading them first is the cheapest skill there is.'],
-        ['Honest grading', 'Every action is logged. Shortcuts that would get you in trouble at a real desk cost points here.']]
-        .map(([h, p]) => `<div class="feature"><h4>${h}</h4><p>${p}</p></div>`).join('')}
+  const S = WORLD.servers, spool = S.PRINT01.services.find(x => x.name === 'Spooler'), ap = WORLD.network.find(n => n.id === 'AP-CAFE-01');
+  const dir = ['pnair', 'kdoyle', 'kdoyle2', 'dokafor'].map(id => {
+    const u = U[id], st = u.locked ? ['lock', 'Locked'] : u.disabled ? ['dis', 'Disabled'] : ['ok', 'Active'];
+    return `<span>${esc(u.first)} ${esc(u.last)} · ${esc(u.empId)} · ${esc(u.dept)}</span><span class="chip ${st[0]}">${st[1]}</span>`;
+  }).join('');
+  return `<div class="start landing">
+    <div class="l-hero">
+      <div class="l-pitch"><div class="l-badge"><span>New starter</span>${esc(WORLD.company)} · Service desk</div>
+        <h1>Your queue is <em>already</em> filling up.</h1>
+        <p class="l-lede">You're the new service desk technician at <b>${esc(WORLD.company)}</b>. Work real tickets with a directory, remote desktop, a command prompt and a server room. Some callers aren't who they say they are. You're graded on <b>what actually changed</b>, how safely you did it, and how fast.</p></div>
+      ${Landing.queue({ key: 'tier1', heading: 'My queue · Service Desk', items, foot: 'Every ticket here is in the game.',
+        call: call && { who: `Incoming call: ${who(call.requester)}`, sub: call.title } })}
     </div>
-    <footer class="site-foot">Built by ${esc(CONFIG.author)}${CONFIG.repoUrl ? ` · <a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">Source on GitHub</a>` : ''} · Brightline Logistics is a fictional company.</footer></div>`;
+    <div class="desks">${desk(1, ['Portal tickets', 'Start here'])}${desk(2, ['Live phone calls', 'Holds &amp; voicemail', 'Root-cause traps'])}
+      <a class="desk alt" href="dispatch.html"><span class="desk-role">MSP · Northbound IT</span><h3>Service Coordinator</h3>
+        <p>Don't fix it, dispatch it. Triage, SLAs, approvals and a live schedule of five technicians. A different shift every time.</p>
+        <span class="desk-link">Take the dispatch board →</span></a></div>
+    <p class="l-coach"><button class="kb-link" data-act="pricing">Want a coach while you play? See tutoring options →</button></p>
+
+    <section class="l-sec"><div class="l-eyebrow">Shift 1, in the order tickets arrive</div>
+      <h2>${byShift(1).length} tickets, and some of them are traps.</h2>
+      ${Landing.timeline([
+        { at: mmss(sc('INC-20114').at), text: 'Priya in Finance is locked out on month-end close. Unlock her, but verify her first.' },
+        { at: mmss(sc('INC-20119').at), text: 'Printing is down. One laptop, or all of floor 2?' },
+        { at: mmss(sc('INC-20122').at), text: 'Nora typed her password into a fake Microsoft page ten minutes ago.', alert: true },
+        { at: mmss(sc('INC-20123').at), text: 'Leaver: disable Kevin Doyle. There are two Kevin Doyles in the directory.' },
+        { at: mmss(sc('INC-20124').at), text: 'The "CFO" emails from Gmail, is boarding a plane, and won\'t take a callback.', alert: true },
+      ])}</section>
+
+    <section class="l-sec"><div class="l-eyebrow">The tools are real enough to get wrong</div>
+      <h2>No multiple choice. You click the actual button.</h2>
+      <div class="l-tools">
+        <div class="l-tool"><pre class="snip term"><span class="pr">C:\\Users\\akim&gt;</span>nslookup intranet
+Server:  dns.google
+Address:  8.8.8.8
+
+<span class="err">*** dns.google can't find intranet: Non-existent domain</span></pre>
+          <h3>Remote desktop</h3><p>A contractor hard-coded public DNS. Find it, fix it, and leave the endpoint agent alone.</p></div>
+        <div class="l-tool"><div class="snip dir">${dir}<span class="dir-note">Verify identity before any reset.</span></div>
+          <h3>Directory</h3><p>Unlock, reset and disable. Pick the right Kevin, and don't hand an attacker the CFO's account.</p></div>
+        <div class="l-tool"><div class="snip rack">
+            <div class="unit"><span class="led"></span>DC01 · ${esc(S.DC01.role)}</div>
+            <div class="unit"><span class="led"></span>FS01 · ${esc(S.FS01.role)} · disk ${S.FS01.disk}%</div>
+            <div class="unit"><span class="led ${spool.status === 'Running' ? '' : 'off'}"></span>PRINT01 · Spooler ${esc(spool.status.toLowerCase())} · ${S.PRINT01.queued} queued</div>
+            <div class="unit"><span class="led ${ap.status === 'online' ? '' : 'off'}"></span>${esc(ap.id)} · ${esc(ap.status)} · usually ${ap.usualClients} clients</div></div>
+          <h3>Server room</h3><p>Tell one broken laptop from one broken floor. Restart the right thing, not everything.</p></div>
+      </div></section>
+
+    <section class="l-sec"><div class="l-eyebrow">Graded like a team lead would</div>
+      <h2>Your shift report says exactly where the points went.</h2>
+      ${Landing.report({ grade: 'B', title: `Shift 2: ${SHIFTS[2].name}`, meta: 'Timed shift · these lines come straight from the grader', lines: [
+        [null, 'Verified the caller before touching the account.'],
+        [null, 'Got him into the demo with the browser join. That was the real need.'],
+        [10, 'Told an upset caller to calm down. Acknowledge the problem first; it gets you to the fix faster.'],
+        [5, 'Blamed the caller. The failed sign-ins weren\'t coming from his typing at all.'],
+      ] })}</section>
+    <footer class="site-foot">Built by ${esc(CONFIG.author)}${CONFIG.repoUrl ? ` · <a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">Source on GitHub</a>` : ''} · ${esc(WORLD.company)} is a fictional company.</footer></div>`;
 }
 
 function renderReport() {

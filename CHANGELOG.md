@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+New: **Redesigned start screens** for both desks.
+
+- The hero shows the game: a live queue preview of real tickets from that mode, with an incoming call ringing.
+- Shifts and modes are laid out as desks to clock in at, and each page links to the other desk as a third card.
+- New sections: the order tickets arrive in, snippets of the real tools (command prompt, directory, server room, dispatch board, client contracts), and an example report built from real grader lines.
+- The priority colours become a stripe across the top bar, with Archivo for headings and the monospace face for ticket data. Works in light and dark mode and at phone width; the queue stays still when reduced motion is on.
+
 New: **Progress across shifts** in Service Coordinator mode.
 
 - Every finished shift is saved in this browser (last 50): score, grade, mode, shift code, and the KPIs (triage time, response SLA, missed calls, chasers, wrong-tech dispatches).
