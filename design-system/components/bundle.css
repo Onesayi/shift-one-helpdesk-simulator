@@ -71,6 +71,11 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 select, input:not([type]), input[type="password"], textarea { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; width: 100%; outline: none; }
 select.sm { width: auto; padding: 5px 8px; font-size: 12.5px; }
 select:focus, input:focus, textarea:focus { border-color: var(--accent); box-shadow: var(--focus-ring); }
+/* Keyboard focus: one solid ring on every control. Inset where the container clips (sidebar, tabs,
+   segmented buttons, lists, table rows). Text fields keep their accent border and halo instead. */
+:focus-visible { outline: 2px solid var(--ring, var(--focus)); outline-offset: 2px; }
+.nav:focus-visible, .tabs button:focus-visible, .seg button:focus-visible, .li:focus-visible, .ask:focus-visible, .tbl tr:focus-visible, .cell:focus-visible { outline-offset: -2px; }
+select:focus-visible, input:not([type]):focus-visible, input[type="password"]:focus-visible, textarea:focus-visible { outline: none; }
 textarea { resize: vertical; }
 .field { display: block; margin-bottom: 10px; }
 .field span { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
@@ -441,12 +446,12 @@ a.kb-link:hover { text-decoration: underline; }
 .desk-go { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
 .desk-best { font: 500 12px var(--mono); color: var(--muted); }
 .desk-best b { color: var(--text); }
-.desk.primary { background: var(--text); color: var(--surface); border-color: var(--text); }
+.desk.primary { background: var(--text); color: var(--surface); border-color: var(--text); --ring: var(--surface); }
 .desk.primary p, .desk.primary .desk-role, .desk.primary .desk-best, .desk.primary .desk-best b { color: color-mix(in srgb, var(--surface) 72%, var(--text)); }
 .desk.primary .desk-tags span { background: transparent; border-color: color-mix(in srgb, var(--surface) 30%, var(--text)); color: color-mix(in srgb, var(--surface) 80%, var(--text)); }
 .desk.primary .btn:not(.primary) { background: transparent; color: var(--surface); border-color: color-mix(in srgb, var(--surface) 40%, var(--text)); }
 .desk.alt { border-style: dashed; transition: border-color .15s, transform .15s; }
-.desk.alt:hover, .desk.alt:focus-visible { border-color: var(--accent); border-style: solid; transform: translateY(-2px); outline: none; }
+.desk.alt:hover, .desk.alt:focus-visible { border-color: var(--accent); border-style: solid; transform: translateY(-2px); }
 .desk-link { margin-top: auto; padding-top: 6px; font-weight: 700; color: var(--accent); }
 .l-coach { margin: 14px 0 0; }
 .l-note { font: 500 12.5px var(--mono); color: var(--muted); margin: 0; }

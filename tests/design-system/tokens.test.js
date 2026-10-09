@@ -67,12 +67,28 @@ const PAIRS = [
   ['console-fg', 'console-bg'], ['term-fg', 'term-bg'], ['popup-fg', 'popup-bg'], ['ransom-fg', 'ransom-bg'],
 ];
 
+// The keyboard focus ring must stand out (3:1, WCAG 1.4.11) from every ground a control sits on.
+const RING_GROUNDS = ['bg', 'surface', 'surface-2', 'accent-soft', 'bubble', 'int', 'good-soft', 'warn-soft', 'bad-soft'];
+
 for (const theme of THEMES) {
   test(`text colours reach 4.5:1 in the ${theme} theme`, () => {
     const failing = PAIRS
       .map(([fg, bg]) => [fg, bg, contrast(resolve(fg, theme), resolve(bg, theme))])
       .filter(([, , r]) => r < 4.5)
       .map(([fg, bg, r]) => `${fg} on ${bg}: ${r.toFixed(2)}`);
+    assert.deepEqual(failing, []);
+  });
+}
+
+for (const theme of THEMES) {
+  test(`the focus ring reaches 3:1 on every ground in the ${theme} theme`, () => {
+    const failing = RING_GROUNDS
+      .map(bg => [bg, contrast(resolve('focus', theme), resolve(bg, theme))])
+      .filter(([, r]) => r < 3)
+      .map(([bg, r]) => `focus on ${bg}: ${r.toFixed(2)}`);
+    // the inverted primary desk card swaps the ring to surface
+    const desk = contrast(resolve('surface', theme), resolve('text', theme));
+    if (desk < 3) failing.push(`surface ring on the text-filled desk card: ${desk.toFixed(2)}`);
     assert.deepEqual(failing, []);
   });
 }

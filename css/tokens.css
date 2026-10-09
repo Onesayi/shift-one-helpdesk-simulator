@@ -9,6 +9,7 @@
   --accent: #2459d6;
   --accent-soft: #e8efff;
   --on-accent: #ffffff;
+  --focus: var(--accent);
   --good: #147d3b;
   --good-soft: #e6f5ec;
   --warn: #b45309;

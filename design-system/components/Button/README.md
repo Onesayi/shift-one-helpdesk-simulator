@@ -7,4 +7,5 @@ The one button: a bordered `surface` chip that takes an `accent` border and text
 - Sizes: `xs`, `sm` (ticket-panel actions), default, `lg` (start and pricing CTAs), `block` for full width.
 - Labels are sentence-case verbs that say what happens: "Assign to me", "Hold & answer", "Escalate".
 - Disabled uses the `disabled` attribute: 55% opacity, no hover.
+- Keyboard focus draws the 2px `focus` ring 2px outside the button; inside the inverted primary desk card it is `surface`.
 - Labels on filled buttons are white in light and dark ink in dark (`on-accent`, `on-bad`); never hard-code white.
