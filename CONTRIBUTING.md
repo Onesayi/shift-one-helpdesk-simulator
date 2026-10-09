@@ -20,7 +20,7 @@ python -m http.server 8765
 - Scenarios: `js/scenarios.js` (see [docs/AUTHORING.md](docs/AUTHORING.md))
 - World data and KB: `js/data.js`
 - Engine and UI: `js/app.js`
-- Styles: `css/styles.css` (use the CSS variables and check both themes)
+- Styles: `css/styles.css` (use the CSS variables and check both themes). Colours and other tokens live in `design-system/tokens.json`: edit them there, then run `node tools/build-design-system.js` to rebuild `css/tokens.css`. See [design-system/README.md](design-system/README.md).
 - Service Coordinator mode: `dispatch.html`, `js/dispatch/`, `css/dispatch.css` (see [docs/COORDINATOR.md](docs/COORDINATOR.md))
 
 Tests need only Node 22 or later, with no installs:

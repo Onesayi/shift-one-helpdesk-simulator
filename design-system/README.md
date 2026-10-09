@@ -22,7 +22,8 @@ Shift One is a browser simulator of an IT service desk. A player sits a Tier 1 s
 - Coordinator mode adds `int` and `int-border` for internal notes and `hatch` for off-shift cells.
 - Simulated machines use fixed colours that don't follow the theme: `console-*` (in-game command prompt), `term-*` (landing snippets), `desktop-1..3`, `taskbar`, `popup-*`, `ransom-*`. The toast is always dark (`toast-bg`) with a 4px tone edge (`toast-info`, `toast-good`, `toast-bad`, `toast-warn`). Grade tiles use `grade-a`…`grade-f` with a white letter.
 - Both themes are first-class. Dark is a cool blue-black (`bg` #0e131a) with lifted state colours; it is not an inversion.
-- **Known contrast gaps in the source (kept exact):** white `on-accent` text on the dark-theme `accent` is 2.85:1, and white on the dark-theme `bad` (danger button) is 2.77:1. In light, `high` on `warn-soft` is 3.89:1, and `good`, `med`, `low` on their soft tints sit at 4.45–4.49:1. The `focus-ring` halo is `accent-soft`, so the visible focus cue is the accent border, not the halo.
+- Every text colour reaches 4.5:1 on the grounds its usage note names, in both themes; `tests/design-system/tokens.test.js` checks it. Labels on an `accent` or `bad` fill use `on-accent` and `on-bad`, which are white in light and dark ink in dark, never a literal white.
+- The `focus-ring` halo is `accent-soft` (1.2:1), so the focus cue is the `accent` border it is paired with, not the halo. Never use the halo alone.
 
 ### Type
 
@@ -60,7 +61,7 @@ Shift One is a browser simulator of an IT service desk. A player sits a Tier 1 s
 
 ## Using this system
 
-- Load `tokens.css`, the Archivo face (start screens only), then `components/bundle.css`. Components are plain HTML with the source's class names (`btn primary`, `prio p-high`, `status s-resolved`, `tbl clickable`); there is no JavaScript bundle.
+- Load the tokens (`css/tokens.css` in this repository), the Archivo face (start screens only), then `components/bundle.css`. Components are plain HTML with the source's class names (`btn primary`, `prio p-high`, `status s-resolved`, `tbl clickable`); there is no JavaScript bundle.
 - Theme by setting `data-theme="light"` or `data-theme="dark"` on the root element.
 - Every component's README lists its markup and variants. Copy the markup; don't restyle it inline.
 
@@ -68,7 +69,7 @@ Shift One is a browser simulator of an IT service desk. A player sits a Tier 1 s
 
 This folder is a copy of the published design system (https://claude.ai/artifact/CTDxLdRgRaC9qDJuDn95pJ).
 
-- `tokens.json` holds every token. `tokens.css` is compiled from it: light values on `:root`, dark ones on `[data-theme="dark"]`.
-- `components/bundle.css` is the component CSS from `css/`, rewritten to use the tokens. The app itself still loads `css/styles.css`, `css/landing.css` and `css/dispatch.css`.
-- `components/<Name>/preview.html` previews expect `tokens.css` and `bundle.css` to be loaded first, as the published page does.
+- `tokens.json` is the one place the app's colours, shadows, spacing, radii and font stacks are defined. Change a value here, then run `node tools/build-design-system.js`.
+- That script writes `css/tokens.css` (light on `:root`, dark under `prefers-color-scheme` and `[data-theme="dark"]`), which the app loads before `css/styles.css`, and `components/bundle.css`, which is the app's three stylesheets plus `components/preview-helpers.css`. Don't edit either output by hand; the tests fail if they drift.
+- `components/<Name>/preview.html` previews expect the tokens and `bundle.css` to be loaded first, as the published page does.
 - `assets/` holds the marks and sidebar icons as SVG; `assets/Images.md` points to the screenshots in `docs/`.
