@@ -1,0 +1,57 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shift One</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+<style>
+  html, body { margin:0; height:100%; }
+  body { padding:0; background:var(--bg); color:var(--text); font-family:var(--font-sans); overflow:hidden; }
+  .cover { position:relative; height:288px; overflow:hidden; }
+  .art { position:absolute; top:0; left:480px; width:480px; height:288px; overflow:hidden; }
+  .art svg { display:block; width:480px; height:288px; }
+  .cv-accent { fill:var(--accent); }
+  .cv-ink { fill:var(--text); }
+  .cv-ground { fill:var(--bg); }
+  .cv-soft { fill:var(--accent-soft); }
+  .cv-p1 { fill:var(--crit); } .cv-p2 { fill:var(--high); } .cv-p3 { fill:var(--med); } .cv-p4 { fill:var(--low); }
+  .cv-card { rx:var(--radius); }
+  .cv-row { rx:var(--radius-4); }
+  .words { position:absolute; left:24px; bottom:24px; max-width:440px; }
+  .name { margin:0; font-family:var(--font-display); font-size:112px; line-height:.95; font-weight:800; font-stretch:118%; letter-spacing:-.025em; color:var(--text); }
+  .cv-tagline { margin:12px 0 0 4px; font-size:14px; line-height:20px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      accent 176×224 slab bled off the top (the logo and favicon hue, the largest) · text-ink 288×168 bled off the right (the inverted primary desk card) · accent-soft 64×64 tint · the priority stripe crit/high/med/low as one 16px band of unequal bands 40/30/20/10% across the box
+  arrangement one tall slab with satellites over a strip of unequal bands: the start screen's 4px brand stripe, enlarged
+  pattern     a literal motif, the ticket queue: six queue rows cut from the ink block, each a radius-4 bar in the ground with a 4px priority bar (p1–p4) at its left, at a space-24 pitch; chosen because the live queue is the thing the product is
+  scales      gutters space-16; row pitch space-24, row height space-8, bar width space-4; block corners radius (10px), rows radius-4; stripe square like the source
+-->
+<rect class="cv-accent cv-card" x="0" y="-16" width="176" height="224" rx="10"/>
+<rect class="cv-soft cv-card" x="96" y="160" width="64" height="32" rx="10"/>
+<rect class="cv-ink cv-card" x="192" y="40" width="304" height="168" rx="10"/>
+<rect class="cv-p2" x="216" y="64" width="4" height="8"/><rect class="cv-ground cv-row" x="228" y="64" width="176" height="8" rx="4"/>
+<rect class="cv-p1" x="216" y="88" width="4" height="8"/><rect class="cv-ground cv-row" x="228" y="88" width="216" height="8" rx="4"/>
+<rect class="cv-p3" x="216" y="112" width="4" height="8"/><rect class="cv-ground cv-row" x="228" y="112" width="136" height="8" rx="4"/>
+<rect class="cv-p2" x="216" y="136" width="4" height="8"/><rect class="cv-ground cv-row" x="228" y="136" width="192" height="8" rx="4"/>
+<rect class="cv-p4" x="216" y="160" width="4" height="8"/><rect class="cv-ground cv-row" x="228" y="160" width="112" height="8" rx="4"/>
+<rect class="cv-p3" x="216" y="184" width="4" height="8"/><rect class="cv-ground cv-row" x="228" y="184" width="160" height="8" rx="4"/>
+<rect class="cv-p1" x="0" y="240" width="192" height="16"/>
+<rect class="cv-p2" x="192" y="240" width="144" height="16"/>
+<rect class="cv-p3" x="336" y="240" width="96" height="16"/>
+<rect class="cv-p4" x="432" y="240" width="48" height="16"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">Shift<br>One</h1>
+<p class="cv-tagline">Work a real Tier 1 service desk shift in your browser.</p>
+</div>
+</div>
+</body>
+</html>
