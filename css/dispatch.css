@@ -1,11 +1,7 @@
-/* Service Coordinator mode. Builds on styles.css tokens and components. */
-
-:root { --int: #fff8e6; --int-border: #f0d9a8; --hatch: rgba(100, 113, 132, .12); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --int: #2a2415; --int-border: #4a3d1e; --hatch: rgba(139, 151, 169, .14); } }
-:root[data-theme="dark"] { --int: #2a2415; --int-border: #4a3d1e; --hatch: rgba(139, 151, 169, .14); }
+/* Service Coordinator mode. Builds on css/tokens.css and the components in styles.css. */
 
 a.brand, a.btn { text-decoration: none; color: inherit; }
-a.btn.primary { color: #fff; }
+a.btn.primary { color: var(--on-accent); }
 .ok-t { color: var(--good); font-weight: 600; font-size: 12.5px; white-space: nowrap; }
 .bad-t { font-weight: 600; }
 .chip.ok { background: var(--good-soft); color: var(--good); }

@@ -229,7 +229,9 @@ flowchart TB
 ├── index.html            help desk simulator shell
 ├── dispatch.html         Service Coordinator mode shell
 ├── css/
-│   ├── styles.css        design tokens, light/dark themes, responsive layout
+│   ├── tokens.css        colour and type tokens, built from design-system/tokens.json
+│   ├── styles.css        components, light/dark themes, responsive layout
+│   ├── landing.css       start screens for both desks
 │   └── dispatch.css      dispatch board, call card, coordinator extras
 ├── js/
 │   ├── config.js         branding, pricing plans, payment links  ← edit me
@@ -237,6 +239,7 @@ flowchart TB
 │   ├── scenarios.js      tickets and their graders
 │   ├── app.js            engine, tools, rendering
 │   └── dispatch/         Service Coordinator mode: MSP data, scenarios, engine
+├── design-system/        tokens.json, brand book, component guidelines, marks and icons
 ├── docs/                 guides, screenshots, banner, demo GIF
 ├── tools/                screenshot automation (headless browser + Pillow)
 └── .github/              Pages deployment, issue templates

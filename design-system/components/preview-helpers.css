@@ -1,0 +1,11 @@
+/* ---------- Preview frames only (ds-*): not part of the product ---------- */
+html, body { height: auto; }
+body { padding: 16px; }
+.ds-stack { display: flex; flex-direction: column; gap: 12px; }
+.ds-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ds-cap { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+/* Show the full-width forms of the sidebar and topbar inside narrow preview frames */
+.ds-wide .nav { justify-content: flex-start; }
+.ds-wide .nav span { display: inline; flex: 1; }
+.ds-wide .nav em { display: inline; }
+.ds-wide .brand small { display: inline; }

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+New: **One design system for both desks.**
+
+- `design-system/` holds the brand book, the tokens, guidelines and previews for 37 components, and the marks and icons. It is also published as a browsable design system.
+- `design-system/tokens.json` is now the one place colours, shadows, spacing, radii and font stacks are defined. `node tools/build-design-system.js` compiles it to `css/tokens.css`, which both pages load; the colour blocks and hard-coded colours are gone from the stylesheets.
+- Better contrast. In dark mode, primary and danger buttons and your own chat bubbles use dark text on the lighter fills (6.5:1, was 2.8:1). In light mode, the High, Medium and Low priority badges and green status text are a shade darker so they pass WCAG AA.
+- Tests check that `css/tokens.css` matches the tokens, that every colour the CSS uses exists, and that text colours reach 4.5:1 in both themes.
+
 New: **Redesigned start screens** for both desks.
 
 - The hero shows the game: a live queue preview of real tickets from that mode, with an incoming call ringing.

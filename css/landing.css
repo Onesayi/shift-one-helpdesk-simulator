@@ -1,11 +1,9 @@
 /* Start screens for both desks: a pitch beside a live queue, the desks to clock in at,
-   a shift timeline, real tool snippets and an example report. Colours come from styles.css;
+   a shift timeline, real tool snippets and an example report. Colours come from css/tokens.css;
    the priority colours double as the brand stripe. */
 
 .landing {
-  --display: "Archivo", "Segoe UI", system-ui, sans-serif;
-  --p1: var(--crit); --p2: var(--high); --p3: var(--med); --p4: var(--low);
-  --term-bg: #0f1722; --term-fg: #c9d6e6; --term-dim: #8aa4c8; --term-ok: #6ad48c; --term-err: #ff8a80;
+  --display: var(--font-display);
   max-width: 1160px;
   font-family: var(--display);
 }
@@ -22,7 +20,7 @@
 .l-lede b { color: var(--text); }
 
 /* the live queue */
-.lq { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 18px 50px -24px rgba(17, 26, 36, .35); overflow: hidden; }
+.lq { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-queue); overflow: hidden; }
 .lq-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); font: 600 12px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .lq-count { margin-left: auto; color: var(--text); }
 .lq-led, .landing .led { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
