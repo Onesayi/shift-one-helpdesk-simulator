@@ -718,6 +718,12 @@ function requestRender() {
 }
 
 function render() {
+  const refocus = Focus.keep();
+  renderDom();
+  refocus();
+}
+
+function renderDom() {
   const app = $('#app');
   app.dataset.phase = G ? G.phase : 'start';
   G && (G.dirty = false);
@@ -835,7 +841,7 @@ function renderBoard() {
     ${banners()}
     <div class="card"><table class="tbl clickable board-tbl">
       <thead><tr><th>Priority</th><th>Ticket</th><th>Client</th><th>Status</th><th>Technician</th><th title="First response">Resp.</th></tr></thead>
-      <tbody>${list.map(t => { const a = finalAppt(t); return `<tr class="${G.active === t.id ? 'sel' : ''} ${t.unread && isOpen(t) ? 'unread' : ''}" data-act="open" data-id="${t.id}">
+      <tbody>${list.map(t => { const a = finalAppt(t); return `<tr class="${G.active === t.id ? 'sel' : ''} ${t.unread && isOpen(t) ? 'unread' : ''}" tabindex="0" data-act="open" data-id="${t.id}">
         <td>${prioBadge(t.triage?.priority)}</td>
         <td><div class="tid">#${t.id} ${chan(t.channel)}</div><div class="ttl">${esc(t.title)}</div></td>
         <td>${esc(client(t).name)}</td>
@@ -902,7 +908,7 @@ function renderTicketPanel() {
   return `<div class="tp-head">
       <div class="row">${prioBadge(t.triage?.priority)}<span class="tid">#${t.id}</span>${statusBadge(t.status)}${chan(t.channel)}<div class="grow"></div>${open && needsResponse(t) ? `<span class="muted small">Resp.</span> ${respCell(t)}` : ''}</div>
       <h3>${esc(t.title)}</h3>
-      <div class="requester" data-act="gotoClient" data-c="${t.client}" title="Open client notes">
+      <div class="requester" role="button" tabindex="0" data-act="gotoClient" data-c="${t.client}" title="Open client notes">
         <div class="avatar">${esc(name.replace(/^Dr\. /, '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase())}</div>
         <div><b>${esc(name)}</b> ${chips}<div class="muted small">${esc(role)} · ${esc(c.name)} · ${esc(c.agreement)}</div></div>
       </div>

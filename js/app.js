@@ -851,7 +851,9 @@ const I = {
 let rendering = false;
 function render() {
   rendering = true;
+  const refocus = Focus.keep();
   try { renderDom(); } finally { rendering = false; }
+  refocus();
 }
 
 function renderDom() {
@@ -981,7 +983,7 @@ function renderQueue() {
     <p class="hint">Pick a ticket, assign it to yourself, then use the tools on the left to fix it. Tickets are graded on the state of the systems, not on what you say you did.</p>
     <div class="card"><table class="tbl clickable">
       <thead><tr><th>Priority</th><th>Ticket</th><th>Requester</th><th>Status</th><th>${G.mode === 'practice' ? 'Score' : 'SLA left'}</th></tr></thead>
-      <tbody>${list.map(t => `<tr class="${G.active === t.id ? 'sel' : ''} ${t.unread && !t.result ? 'unread' : ''}" data-act="open" data-id="${t.id}">
+      <tbody>${list.map(t => `<tr class="${G.active === t.id ? 'sel' : ''} ${t.unread && !t.result ? 'unread' : ''}" tabindex="0" data-act="open" data-id="${t.id}">
         <td>${prioBadge(t.priority)}</td>
         <td><div class="tid">${t.id}${chanChip(t)}</div><div class="ttl">${esc(t.title)}</div></td>
         <td>${esc(t.external ? t.external : who(t.requester))}</td>
@@ -1002,7 +1004,7 @@ function renderTicketPanel() {
   return `<div class="tp-head">
       <div class="row">${prioBadge(t.priority)}<span class="tid">${t.id}</span>${statusBadge(t.status)}<div class="grow"></div>${G.mode === 'shift' && !closed ? `<span class="muted small">SLA</span> ${slaCell(t)}` : ''}</div>
       <h3>${esc(t.title)}</h3>
-      <div class="requester" data-act="gotoUser" data-u="${t.requester}" title="Open in Directory">
+      <div class="requester" role="button" tabindex="0" data-act="gotoUser" data-u="${t.requester}" title="Open in Directory">
         <div class="avatar">${esc(u.first[0] + u.last[0])}</div>
         <div><b>${esc(u.display)}</b>${t.external ? ` <span class="ext">EXTERNAL · ${esc(t.external)}</span>` : ''}<div class="muted small">${esc(u.title)} · ${esc(u.dept)} · ${esc(u.location)}</div></div>
       </div>

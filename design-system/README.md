@@ -23,7 +23,7 @@ Shift One is a browser simulator of an IT service desk. A player sits a Tier 1 s
 - Simulated machines use fixed colours that don't follow the theme: `console-*` (in-game command prompt), `term-*` (landing snippets), `desktop-1..3`, `taskbar`, `popup-*`, `ransom-*`. The toast is always dark (`toast-bg`) with a 4px tone edge (`toast-info`, `toast-good`, `toast-bad`, `toast-warn`). Grade tiles use `grade-a`…`grade-f` with a white letter.
 - Both themes are first-class. Dark is a cool blue-black (`bg` #0e131a) with lifted state colours; it is not an inversion.
 - Every text colour reaches 4.5:1 on the grounds its usage note names, in both themes; `tests/design-system/tokens.test.js` checks it. Labels on an `accent` or `bad` fill use `on-accent` and `on-bad`, which are white in light and dark ink in dark, never a literal white.
-- The `focus-ring` halo is `accent-soft` (1.2:1), so the focus cue is the `accent` border it is paired with, not the halo. Never use the halo alone.
+- The `focus` ring reaches 5:1 or better on every surface and tint in both themes (3:1 is the minimum). The `focus-ring` halo on text fields is `accent-soft` (1.2:1), so there the focus cue is the `accent` border it is paired with, never the halo alone.
 
 ### Type
 
@@ -50,7 +50,8 @@ Shift One is a browser simulator of an IT service desk. A player sits a Tier 1 s
 
 - Motion is functional and short: the ringing phone wobbles, typing dots blink, new queue rows drop in, the "End shift" button pulses when everything is closed. All of it stops under `prefers-reduced-motion`.
 - Hover: buttons take an `accent` border and text; list rows and nav take `surface-2`. Selected: `accent-soft` fill with `accent` text. Disabled: 55% opacity, `not-allowed` cursor.
-- Focus: inputs show an `accent` border plus the `focus-ring` halo.
+- Focus: every control shows a solid 2px ring in `focus` when reached by keyboard, 2px outside it. Inside containers that clip (sidebar, tabs, segmented buttons, lists, table rows) the ring sits inset. On the inverted primary desk card it switches to `surface`. Text fields keep their `accent` border plus the `focus-ring` halo instead. Mouse clicks show no ring (`:focus-visible`).
+- Anything clickable is reachable by keyboard: use a `<button>` or `<a>`; a row or card that acts as one gets `tabindex="0"` and a `data-act`, and Enter or Space runs it (`js/focus.js`). Re-renders keep focus on the same control, dialogs take focus when they open and hand it back when they close.
 
 ## Iconography
 

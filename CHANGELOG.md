@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+New: **Keyboard focus you can see, everywhere.**
+
+- Every button, link, tab, sidebar item, queue row and card shows a solid 2px focus ring when you reach it with the keyboard (mouse clicks don't). The ring is a design token, `focus`, and reaches 5:1 or better on every background in both themes.
+- Queue rows and the requester card are now reachable with Tab, and Enter or Space opens them.
+- Focus stays on the control you used after the screen updates, so you no longer land back at the top of the page. Dialogs take focus when they open and hand it back to the button that opened them when they close.
+- A test checks the ring's contrast on every background.
+- README images regenerated. They show the redesigned start screens and the new dark-mode button labels. The screenshot harnesses now load the start-screen styles and scripts they were missing.
+
 New: **One design system for both desks.**
 
 - `design-system/` holds the brand book, the tokens, guidelines and previews for 37 components, and the marks and icons. It is also published as a browsable design system.

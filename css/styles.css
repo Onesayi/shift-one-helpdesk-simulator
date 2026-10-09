@@ -69,6 +69,11 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 select, input:not([type]), input[type="password"], textarea { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; width: 100%; outline: none; }
 select.sm { width: auto; padding: 5px 8px; font-size: 12.5px; }
 select:focus, input:focus, textarea:focus { border-color: var(--accent); box-shadow: var(--focus-ring); }
+/* Keyboard focus: one solid ring on every control. Inset where the container clips (sidebar, tabs,
+   segmented buttons, lists, table rows). Text fields keep their accent border and halo instead. */
+:focus-visible { outline: 2px solid var(--ring, var(--focus)); outline-offset: 2px; }
+.nav:focus-visible, .tabs button:focus-visible, .seg button:focus-visible, .li:focus-visible, .ask:focus-visible, .tbl tr:focus-visible, .cell:focus-visible { outline-offset: -2px; }
+select:focus-visible, input:not([type]):focus-visible, input[type="password"]:focus-visible, textarea:focus-visible { outline: none; }
 textarea { resize: vertical; }
 .field { display: block; margin-bottom: 10px; }
 .field span { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }

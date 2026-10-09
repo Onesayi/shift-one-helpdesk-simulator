@@ -8,7 +8,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..', '..');
-const FILES = ['js/config.js', 'js/landing.js', 'js/dispatch/data.js', 'js/dispatch/scenarios.js', 'js/dispatch/app.js'];
+const FILES = ['js/config.js', 'js/focus.js', 'js/landing.js', 'js/dispatch/data.js', 'js/dispatch/scenarios.js', 'js/dispatch/app.js'];
 
 // Any property, call or string conversion works and does nothing.
 function inert() {
