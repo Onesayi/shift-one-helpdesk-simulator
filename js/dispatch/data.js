@@ -298,4 +298,13 @@ const PLAYBOOK = [
 <li><b>Tell the Account Manager.</b> Rob owns the relationship and the renewal, so he must never hear about a complaint from the client first.</li>
 <li><b>Fix the cause, not the symptom.</b> If quick fixes have already failed, book a Tier 2 or Tier 3 engineer. A third Tier 1 visit is the complaint happening again.</li></ol>
 <p>A low survey score left unanswered for an hour turns into a complaint to the Service Manager, and costs you more than the score did.</p>` },
+  { id: 'PB-16', title: 'Major incidents', tags: 'major incident outage multiple clients microsoft 365 bridge updates post-incident review pir', body: `
+<p>A <b>major incident</b> is one fault hurting several clients at once: a Microsoft 365 outage, a shared hosting failure, our own RMM going down. You stop working ticket by ticket and run it as one incident.</p>
+<ol><li><b>Spot the pattern.</b> Two or three clients reporting the same symptom within minutes is not a coincidence.</li>
+<li><b>Declare it</b> on the first ticket and triage that one as a P1. Link every other client's ticket to it, so there is one place for notes, one technician and one set of updates.</li>
+<li><b>Page the Service Manager within 15 minutes</b> of the first report.</li>
+<li><b>Open the vendor case</b> (Microsoft, the ISP, the host) to get an incident number and an ETA you can pass on.</li>
+<li><b>Update every affected client at least every 30 minutes</b>, even when the news is "no change". Updates sent from the incident reach every linked client. Always say when the next update is due.</li>
+<li><b>Keep the rest of the desk running.</b> Tickets that only look related (one printer, one expired password) are separate. Linking them to the incident hides them.</li>
+<li><b>Close it properly.</b> Confirm the fix to every linked client, then write the <b>post-incident review</b> for the Service Manager: the cause, who was affected, when it started and ended, and what changes so it goes better next time.</li></ol>` },
 ];

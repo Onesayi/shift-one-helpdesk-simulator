@@ -8,7 +8,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..', '..');
-const FILES = ['js/config.js', 'js/focus.js', 'js/landing.js', 'js/dispatch/data.js', 'js/dispatch/scenarios.js', 'js/dispatch/night.js', 'js/dispatch/interview.js', 'js/dispatch/app.js'];
+const FILES = ['js/config.js', 'js/focus.js', 'js/landing.js', 'js/dispatch/data.js', 'js/dispatch/scenarios.js', 'js/dispatch/night.js', 'js/dispatch/major.js', 'js/dispatch/interview.js', 'js/dispatch/app.js'];
 
 // Any property, call or string conversion works and does nothing.
 function inert() {
@@ -38,7 +38,7 @@ function load(storage = { getItem: () => null, setItem() {} }) {
     SCENARIOS, CLIENTS, TECHS, SKILLS, BOARDS, PRIORITIES, SLA, DAY, SHIFT_START, SHIFT_END, REASONS,
     buildShift, newGame, onMinute, now, ticket, grade, endShift, logged, finalAppt, checkSlot,
     loadHistory, saveShift, bestScore, startHandover, handoverNeed, gradeHandover, teamEvent, DISRUPTIONS, TEAM_EVENTS,
-    DRILLS, COMPLAINT, COMPLAINT_SM, CSAT_ESCALATE, followUpCsat, nextLeg, buildFriday, campaignOf, CAMPAIGN_LEGS, NIGHT_SCENARIOS, NIGHT_START, NIGHT_END, crew, isAfterHours, utilization, billingFor, postTime, weakestDrill, PREP, PLAYBOOK, prepCovered, prepAnswers, savePrepAnswer, prepStats,
+    TEMPLATES, DRILLS, MAJOR, MAJOR_SCENARIOS, MAJOR_RESTORE, MAJOR_FIRST, PIR, majorChildren, declareMajor, submitPir, COMPLAINT, COMPLAINT_SM, CSAT_ESCALATE, followUpCsat, nextLeg, buildFriday, campaignOf, CAMPAIGN_LEGS, NIGHT_SCENARIOS, NIGHT_START, NIGHT_END, crew, isAfterHours, utilization, billingFor, postTime, weakestDrill, PREP, PLAYBOOK, prepCovered, prepAnswers, savePrepAnswer, prepStats,
     answerCall, saveTriage, sendMessage, requestApproval, notify, vendorCase, merge, closeTicket, openSchedule, unschedule,
   })`, ctx);
 }

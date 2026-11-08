@@ -467,6 +467,7 @@ function buildShift(seed) {
   seed = normSeed(seed) || newSeed();
   if (drillOf(seed)) return buildDrill(seed, drillOf(seed));
   if (isNightSeed(seed)) return buildNight(seed);  // night.js
+  if (isMajorSeed(seed)) return buildMajor(seed);  // major.js
   const classic = seed === 'classic', rnd = seedRng(seed);
   const take = list => list.splice(Math.floor(rnd() * list.length), 1)[0];
   const when = ([lo, hi]) => lo + 5 * Math.floor(rnd() * (Math.floor((hi - lo) / 5) + 1));
