@@ -34,6 +34,7 @@ Real-world tools with the same shape: the ConnectWise PSA Dispatch Portal and sc
 | **Handover** | At 17:00 the clock stops and you hand over to Jordan Blake, the on-call engineer. Tick the open tickets Jordan needs to know about, give each a next step, and write a one-line summary. See [Shift handover](#shift-handover). |
 | **Time entries** | Every finished job leaves a time entry on the ticket. Code it *Covered by agreement*, *Billable* or *Block hours* before you close. See [Time entries and billing](#time-entries-and-billing). |
 | **After-hours on-call** | Shift code `night`: Thursday 17:00 to Friday 08:00 with one engineer, Jordan Blake. Decide what's worth waking Jordan for and book the rest on Friday's board, then hand over to the day coordinator. See [After-hours on-call shift](#after-hours-on-call-shift). |
+| **Client satisfaction** | Closing a ticket as resolved sends the client a 1–5 survey. The rating follows from how you handled it, and a 3 or lower needs a reply. See [Client satisfaction (CSAT)](#client-satisfaction-csat). |
 | **Skill drills** | Five short practice shifts, one area each, from the start page or suggested by your report. See [Skill drills](#skill-drills). |
 | **Interview prep** | `dispatch.html#prep`, or *Interview prep* in the top bar. See [Interview prep](#interview-prep). |
 | **Report** | Letter grade, KPIs (time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches, closed) and technician utilization, then per-ticket feedback with the reasoning behind the right answer. |
@@ -113,6 +114,22 @@ When a technician finishes, their booked time lands on the ticket as a time entr
 | Everything else on a managed agreement (premium covers onsite too) | Covered by agreement |
 
 An entry left uncoded costs 5 and a wrong code costs 10, on that ticket. The report shows the share of entries coded right, and it's tracked in your progress.
+
+## Client satisfaction (CSAT)
+
+When you close a ticket as *Resolved* and it has a client contact, the client answers a 1–5 survey five minutes later, in the ticket thread. Playbook article PB-14 covers it. Nothing random decides the score: it starts at 5 and loses a star for each thing the client noticed.
+
+| The client noticed | Stars lost |
+|---|---|
+| Told it was fixed when it wasn't | 1 |
+| Had to chase for an update | 1 per chaser, up to 2 |
+| Their call went to voicemail | 1 |
+| First response was later than the SLA | 1 |
+| Their appointment moved and nobody told them | 1 |
+| The work started later than it needed to | 1 |
+| Nobody sent a resolution confirmation | 1 |
+
+A rating of 3 or lower is a complaint. It shows on the Service Board until you open the closed ticket and press *Reply*, and leaving it unanswered costs 10 on that ticket. A survey that lands in the last 30 minutes of the shift isn't held against you. The report shows CSAT as the share of surveys rated 4 or 5, and it's tracked in your progress. The answer key gets 5/5 on every survey.
 
 ## After-hours on-call shift
 

@@ -439,6 +439,58 @@ function closeTicket(t) {
   record('close', { ticket: t.id, reason });
   post(t, 'system', `Closed: ${REASONS[reason]}. ${note}`, 'system');
   toast(`#${t.id} closed.`, 'good');
+  if (reason === 'resolved' && t.contact && !t.s.noResponseSla) later(CSAT_DELAY, () => survey(t));
+  render();
+}
+
+// ---------------------------------------------------------------------------
+// Client satisfaction (PB-14). Closing a ticket as resolved sends the client a 1–5 survey, and they
+// answer a few minutes later. The rating follows from how the ticket was handled, not from luck.
+// Anything 3 or under is a complaint: the coordinator replies to it.
+// ---------------------------------------------------------------------------
+const CSAT_DELAY = 5;      // sim minutes from closing to the client's answer
+const CSAT_LOW = 3;        // this rating or lower needs a follow-up
+const CSAT_GRACE = 30;     // a survey that lands this close to the end of the shift isn't graded on follow-up
+
+// What the client noticed, worst first. Each reason costs a star; being chased twice costs two.
+function csatFor(t) {
+  const T = t.s.truth, why = [];
+  let lost = 0;
+  const say = (text, n = 1) => { why.push(text); lost += n; };
+  if (logged('premature', e => e.ticket === t.id).length) say('I was told it was fixed when it wasn\'t.');
+  if (t.chasers) say(t.chasers > 1 ? 'I had to chase you more than once for an update.' : 'I had to chase you for an update.', Math.min(2, t.chasers));
+  if (t.missedCall) say('My call went to voicemail.');
+  if (needsResponse(t) && (t.firstResponseAt == null || t.firstResponseAt - t.arrived > respTarget(t))) say('It took a while for anyone to get back to me.');
+  const hit = G.disrupted[t.id];
+  if (hit && !logged('client-msg', e => e.ticket === t.id && e.at >= hit.at && ['update', 'sched'].includes(e.kind)).length) say('Nobody told me the appointment had changed.');
+  const a = finalAppt(t);
+  if (a && T.startBy && a.start > T.startBy) say('It took longer to sort out than it should have.');
+  if (!logged('client-msg', e => e.ticket === t.id && e.kind === 'resolved').length) say('Nobody told me it was done. I found out by trying it myself.');
+  const rating = Math.max(1, 5 - lost);
+  const comment = rating === 5 ? 'Quick, and you kept me in the loop the whole way. Thank you!'
+    : rating === 4 ? `Sorted in the end, thanks. ${why[0]}`
+    : `Not a great experience. ${why.join(' ')}`;
+  return { rating, why, comment };
+}
+
+const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+
+function survey(t) {
+  const c = contactOf(t), r = csatFor(t);
+  t.csat = Object.assign({ at: now(), followed: null }, r);
+  record('csat', { ticket: t.id, rating: r.rating });
+  post(t, t.contact, `${stars(r.rating)} ${r.rating}/5. ${r.comment}`, 'client', `${c.name} (satisfaction survey)`);
+  toast(`${c.name} rated #${t.id} ${r.rating}/5.`, r.rating <= CSAT_LOW ? 'bad' : 'good');
+}
+
+function followUpCsat(t) {
+  if (!t.csat || t.csat.rating > CSAT_LOW || t.csat.followed != null) return;
+  const c = contactOf(t);
+  t.csat.followed = now();
+  record('csat-follow', { ticket: t.id });
+  post(t, 'me', `Hi ${greet(c)}, thank you for the honest feedback on #${t.id}, and I'm sorry we fell short. ${t.csat.why[0]} That shouldn't have happened. I've shared this with our Service Manager, Dana Whitaker, so we can fix how it went wrong. If anything still isn't right, reply here and I'll pick it up straight away.`, 'me');
+  later(3, () => post(t, t.contact, 'Thanks for coming back to me. I appreciate it.', 'client'));
+  toast(`Followed up with ${c.name}.`, 'good');
   render();
 }
 
@@ -722,6 +774,13 @@ function grade(t) {
     else good.push(`Time coded as ${BILL[e.code]}.`);
   }
 
+  if (t.csat) {
+    const r = t.csat, who = greet(contactOf(t));
+    if (r.rating > CSAT_LOW) good.push(`${who} rated it ${r.rating}/5.`);
+    else if (r.followed != null) good.push(`${who} rated it ${r.rating}/5, and you followed up ${r.followed - r.at <= 30 ? 'quickly' : `after ${mins(r.followed - r.at)}`}.`);
+    else if (now() - r.at >= CSAT_GRACE) ded.push([10, `${who} rated it ${r.rating}/5 and nobody replied. A low score is a complaint: apologise and say what happens next (PB-14).`]);
+  }
+
   if (s.evaluate) s.evaluate(t, ded, good);
   return { score: Math.max(0, 100 - ded.reduce((x, d) => x + d[0], 0)), ded, good };
 }
@@ -738,6 +797,7 @@ function kpis() {
     chasers: logged('chaser').length,
     bounces: logged('work-done', e => e.kind === 'bounce').length,
     closed: G.tickets.filter(t => t.closed || t.parent).length,
+    csat: (() => { const rs = G.tickets.filter(t => t.csat); return rs.length ? Math.round(rs.filter(t => t.csat.rating >= 4).length / rs.length * 100) : null; })(),
     billing: G.time.length ? Math.round(G.time.filter(e => e.code && e.code === billingFor(ticket(e.ticket), e).code).length / G.time.length * 100) : null,
   };
 }
@@ -817,6 +877,7 @@ const PROGRESS = [
   { label: 'Dispatch', sub: 'wrong-tech dispatches', up: false, get: e => e.kpi.bounces },
   { label: 'Handover', sub: 'handover score', up: true, get: e => e.kpi.handover },
   { label: 'Billing', sub: 'time entries coded right', unit: '%', up: true, get: e => e.kpi.billing },
+  { label: 'CSAT', sub: 'surveys rated 4 or 5', unit: '%', up: true, get: e => e.kpi.csat },
 ];
 
 function loadHistory() {
@@ -983,6 +1044,8 @@ function banners() {
   }
   const done = G.tickets.filter(t => isOpen(t) && t.status === 'Completed');
   if (done.length) out.push(`<div class="alert info">Completed by technicians, waiting for you to confirm and close: ${done.map(t => '#' + t.id).join(', ')}.</div>`);
+  const low = G.tickets.filter(t => t.csat && t.csat.rating <= CSAT_LOW && t.csat.followed == null);
+  if (low.length) out.push(`<div class="alert warn">Low satisfaction scores waiting for your reply: ${low.map(t => `<button class="kb-link" data-act="open" data-id="${t.id}">#${t.id} (${t.csat.rating}/5)</button>`).join(', ')}.</div>`);
   const back = G.tickets.filter(t => isOpen(t) && t.status === 'Needs reassign');
   if (back.length) out.push(`<div class="alert warn">Handed back to dispatch: ${back.map(t => '#' + t.id).join(', ')}.</div>`);
   return out.length ? `<div class="alerts banners">${out.join('')}</div>` : '';
@@ -1082,7 +1145,18 @@ function renderTicketPanel() {
         ${open ? `<button class="btn sm ${needsScheduling(t) ? 'primary' : ''}" data-act="pick" data-id="${t.id}">Schedule</button>${a && a.state === 'booked' ? '<button class="btn sm ghost" data-act="unschedule">Unbook</button>' : ''}` : ''}</div>
     </div>
     <div class="thread" id="thread">${t.thread.map(renderMsg.bind(null, t)).join('')}</div>
-    ${open ? renderActions(t) : `<div class="tp-actions"><p class="muted small">${t.parent ? `Merged into <button class="kb-link" data-act="open" data-id="${t.parent}">#${t.parent}</button>.` : `Closed at ${hm(t.closed.at)} as <b>${REASONS[t.closed.reason]}</b>.`} You'll see how it was graded in the shift report.</p></div>`}`;
+    ${open ? renderActions(t) : `<div class="tp-actions">${renderCsat(t)}<p class="muted small">${t.parent ? `Merged into <button class="kb-link" data-act="open" data-id="${t.parent}">#${t.parent}</button>.` : `Closed at ${hm(t.closed.at)} as <b>${REASONS[t.closed.reason]}</b>.`} You'll see how it was graded in the shift report.</p></div>`}`;
+}
+
+function renderCsat(t) {
+  const r = t.csat;
+  if (!t.closed || t.closed.reason !== 'resolved' || !t.contact || t.s.noResponseSla) return '';
+  if (!r) return '<p class="muted small">Satisfaction survey sent. The client usually answers within a few minutes.</p>';
+  const low = r.rating <= CSAT_LOW;
+  return `<div class="card pad csat ${low ? 'low' : ''}"><div class="row"><b class="stars" aria-label="${r.rating} out of 5">${'★'.repeat(r.rating)}<span class="off">${'☆'.repeat(5 - r.rating)}</span></b><span class="muted small">${r.rating}/5 · ${hm(r.at)}</span></div>
+    ${low ? (r.followed == null ? `<p class="small">A low score is a complaint. Reply now: apologise, own what went wrong, and say what happens next.</p><button class="btn primary sm" data-act="csatFollow">Reply to ${esc(greet(contactOf(t)))}</button>`
+      : `<p class="muted small">You followed up at ${hm(r.followed)}.</p>`) : ''}
+    <button class="kb-link" data-act="gotoPb" data-k="PB-14">${I.pb} PB-14 Client satisfaction</button></div>`;
 }
 
 function renderMsg(t, m) {
@@ -1390,6 +1464,7 @@ function renderReport() {
       ${tile('Wrong-tech dispatches', k.bounces, 'handed back', k.bounces > 0)}
       ${tile('Closed or merged', k.closed, `of ${G.tickets.length} tickets`)}
       ${tile('Time coded right', (k.billing ?? '–') + (k.billing != null ? '%' : ''), 'of time entries', k.billing != null && k.billing < 100)}
+      ${tile('CSAT', (k.csat ?? '–') + (k.csat != null ? '%' : ''), 'of surveys rated 4 or 5', k.csat != null && k.csat < 80)}
     </div>
     ${R.suggest ? `<div class="card pad coach-cta drill-cta"><div><b>Practise next: ${esc(R.suggest.drill.title)}</b><div class="muted">Your ${R.suggest.n === 1 ? 'ticket' : `${R.suggest.n} tickets`} in this area averaged ${R.suggest.avg}. ${esc(R.suggest.drill.blurb)}</div></div><button class="btn primary" data-act="start" data-m="practice" data-seed="drill-${R.suggest.drill.id}">Start the drill</button></div>` : ''}
     ${R.drill ? '<div class="card pad"><p class="muted small">Drills aren\'t saved to your progress, so practise as often as you like.</p></div>' : renderProgress(R.history || [])}
@@ -1462,6 +1537,7 @@ const ACT = {
   merge: () => merge(ticket(G.active)),
   close: () => closeTicket(ticket(G.active)),
   bill: () => postTime(ticket(G.active)),
+  csatFollow: () => followUpCsat(ticket(G.active)),
   pick: d => { G.pick = d.id; G.active = d.id; G.view = 'dispatch'; const a = finalAppt(ticket(d.id)); G.day = a && a.start >= DAY ? DAY : G.day; render(); },
   unpick: () => { G.pick = null; render(); },
   unschedule: () => unschedule(ticket(G.active)),
