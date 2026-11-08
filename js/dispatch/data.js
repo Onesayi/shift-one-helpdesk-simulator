@@ -280,4 +280,10 @@ const PLAYBOOK = [
 <li>Remember who's out tomorrow before you book them. The day coordinator's note is on the Team page.</li>
 <li>Every other rule still applies: page the Service Manager for P1s, update P1 clients every 30 minutes, check block hours, pass on provider notices.</li>
 <li>At 08:00 hand over to the day coordinator. Flag what's still open and urgent, and anything waiting on someone. Work already booked with a day tech doesn't need a flag.</li></ul>` },
+  { id: 'PB-14', title: 'Client satisfaction', tags: 'csat survey satisfaction rating feedback complaint stars follow up', body: `
+<p>When you close a ticket as <b>Resolved</b>, the client gets a one-question survey: how did we do, from 1 to 5. Clients score what they saw: how fast we answered, whether they had to chase, whether we told them about changes, and whether we confirmed it was done.</p>
+<ul><li><b>4 or 5</b>: nothing to do. CSAT is the share of surveys that score 4 or 5.</li>
+<li><b>3 or lower is a complaint.</b> Reply the same day: thank them, apologise, own what went wrong in their words, and say what happens next. Don't argue with the score.</li>
+<li>Low scores show on the Service Board until you've replied. Open the closed ticket to answer.</li>
+<li>The best way to avoid a low score is the rest of this playbook: respond inside the SLA, update before they chase, and confirm the fix before you close.</li></ul>` },
 ];

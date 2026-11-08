@@ -146,3 +146,10 @@ a.btn.primary { color: var(--on-accent); }
 .prep .prep-points li.todo::before { content: '○'; position: absolute; left: 0; color: var(--muted); }
 .prep details.close-box { margin-top: 8px; }
 .prep .prep-q > .row.gap { margin-top: 12px; }
+
+/* Client satisfaction survey on a closed ticket (PB-14) */
+.csat { margin-bottom: 10px; display: grid; gap: 6px; }
+.csat .stars { color: var(--warn); letter-spacing: 2px; font-size: 16px; }
+.csat.low { border-color: var(--bad); background: var(--bad-soft); }
+.csat .row { gap: 8px; align-items: center; }
+.csat .stars .off { color: var(--muted); }

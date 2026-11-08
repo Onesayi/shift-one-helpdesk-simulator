@@ -677,6 +677,13 @@ a.btn.primary { color: var(--on-accent); }
 .prep details.close-box { margin-top: 8px; }
 .prep .prep-q > .row.gap { margin-top: 12px; }
 
+/* Client satisfaction survey on a closed ticket (PB-14) */
+.csat { margin-bottom: 10px; display: grid; gap: 6px; }
+.csat .stars { color: var(--warn); letter-spacing: 2px; font-size: 16px; }
+.csat.low { border-color: var(--bad); background: var(--bad-soft); }
+.csat .row { gap: 8px; align-items: center; }
+.csat .stars .off { color: var(--muted); }
+
 /* ---------- Preview frames only (ds-*): not part of the product ---------- */
 html, body { height: auto; }
 body { padding: 16px; }
