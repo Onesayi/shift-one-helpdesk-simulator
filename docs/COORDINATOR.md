@@ -33,6 +33,7 @@ Real-world tools with the same shape: the ConnectWise PSA Dispatch Portal and sc
 | **Disruptions** | Ben goes home sick every shift. Seeded shifts add one or two more: Luis's van breaks down, or Maya is pulled onto an internal outage, and they're off the board for an hour or more; or Lena asks to move the Eastgate scan-to-email to tomorrow. Bookings in the gap can't go ahead, so move them and tell the client. See [Shift variation](#shift-variation). |
 | **Handover** | At 17:00 the clock stops and you hand over to Jordan Blake, the on-call engineer. Tick the open tickets Jordan needs to know about, give each a next step, and write a one-line summary. See [Shift handover](#shift-handover). |
 | **Time entries** | Every finished job leaves a time entry on the ticket. Code it *Covered by agreement*, *Billable* or *Block hours* before you close. See [Time entries and billing](#time-entries-and-billing). |
+| **After-hours on-call** | Shift code `night`: Thursday 17:00 to Friday 08:00 with one engineer, Jordan Blake. Decide what's worth waking Jordan for and book the rest on Friday's board, then hand over to the day coordinator. See [After-hours on-call shift](#after-hours-on-call-shift). |
 | **Skill drills** | Five short practice shifts, one area each, from the start page or suggested by your report. See [Skill drills](#skill-drills). |
 | **Interview prep** | `dispatch.html#prep`, or *Interview prep* in the top bar. See [Interview prep](#interview-prep). |
 | **Report** | Letter grade, KPIs (time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches, closed) and technician utilization, then per-ticket feedback with the reasoning behind the right answer. |
@@ -108,9 +109,28 @@ When a technician finishes, their booked time lands on the ticket as a time entr
 | Anything for a block-hours client (Pixel & Pine) | Block hours. It comes off the client's balance on the Clients page |
 | Projects & Onboarding work, any client | Billable |
 | An onsite visit on a standard agreement (Oakridge, Brightline) | Billable. Standard covers remote support only |
+| After-hours work (17:00–08:00) on a standard agreement | Billable, at the after-hours rate (PB-13) |
 | Everything else on a managed agreement (premium covers onsite too) | Covered by agreement |
 
 An entry left uncoded costs 5 and a wrong code costs 10, on that ticket. The report shows the share of entries coded right, and it's tracked in your progress.
+
+## After-hours on-call shift
+
+Shift code `night`, from the start page. You cover the desk from Thursday 17:00 to Friday 08:00. Jordan Blake is the only engineer, and every booking wakes them up. Playbook article PB-13 sets the rule: book Jordan tonight for P1s on any agreement and P2s on premium agreements. Everything else gets acknowledged tonight and booked on Friday's board with the day team. Ben is still off sick, so he can't take Friday work. The night runs 4× faster than a day shift, except while a phone rings. At 08:00 you hand over to Priya Nair, the day coordinator. Flag what's still open and urgent and anything waiting on someone. Work already booked with a day tech needs no flag. The night is the same every time, and it's saved to your progress.
+
+| # | Arrives | Ticket | Right call |
+|---|---|---|---|
+| 4601 | 17:45 | HDG-DC01 backup failed twice | P2 premium: Jordan tonight, before the 23:00 run |
+| 4602 | 18:10 | Oakridge printer jam sensor | P3: Luis on Friday morning, inside 07:30–11:30 |
+| 4603 | 19:30 (call) | Tom Keller's phone mail | P2 premium VIP: Jordan tonight |
+| 4604 | 20:45 | Jess's MacBook login loop | P2 on block hours: Ana at 08:00, after Rob approves a top-up. Flag it in the handover |
+| 4605 | 22:30 (call) | Brightline warehouse scanners down | P1 on standard: Jordan now, page Dana, update every 30 min, code the time Billable |
+| 4606 | 23:40 | Oakridge lab VM offline | Noise: close it |
+| 4607 | Fri 01:00 | Comcast maintenance notice | Pass it on to Lena, close as no action needed |
+| 4608 | Fri 03:00 | Front desk monitor flickers | P4: Luis on Friday at Harbor Dental's 12:00 window |
+| 4609 | Fri 05:30 | Maria typed her password into a phish | P1 Security: Jordan now, page Dana |
+
+Booking Jordan for work that could wait costs 15 on that ticket. Leaving work that needed Jordan until the morning costs 20.
 
 ## Skill drills
 
