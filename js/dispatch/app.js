@@ -43,7 +43,7 @@ function newGame(mode, seed) {
   const shift = buildShift(seed), night = !!shift.night;
   const start = night ? NIGHT_START : SHIFT_START;
   G = {
-    phase: 'play', mode, clock: start, speed: 1, night, start, end: night ? NIGHT_END : SHIFT_END,
+    phase: 'play', mode, clock: start, speed: 1, night, start, end: night ? NIGHT_END : shift.end ?? SHIFT_END, majorRestored: null,
     seed: camp !== undefined ? 'campaign-' + shift.seed : shift.seed, drill: shift.drill, shift: shift.tickets, events: shift.events, time: [], timeSeq: 0,
     campaign: camp !== undefined ? { leg: 0, graded: new Set(), done: [], used: new Set(shift.tickets.map(t => t.key)) } : null,
     tickets: [], log: [], seq: 0, appts: [], apptSeq: 0, blocks: baseBlocks(),
@@ -269,6 +269,7 @@ function onMinute(m) {
 // Something happens to the team or a client mid-shift (TEAM_EVENTS and DISRUPTIONS in data.js).
 // Every ticket it knocks on is remembered in G.disrupted, and the grader checks the client was told.
 function teamEvent(ev, m) {
+  if (ev.run) { ev.run(m); return true; }  // a scripted moment, e.g. Microsoft's service health page (major.js)
   if (ev.kind === 'move') {
     const t = ticket(ev.ticket), a = t && finalAppt(t);
     if (!t || !isOpen(t) || t.status === 'Completed' || (a && ['working', 'done'].includes(a.state))) return false;
@@ -348,6 +349,10 @@ const TEMPLATES = {
   update: { label: 'Status update', text: (t, c) => `Hi ${greet(c)}, an update on #${t.id}: ${statusLine(t)}` },
   resolved: { label: 'Resolution confirmation', text: (t, c) => { const n = [...t.thread].reverse().find(m => m.kind === 'tech'); return `Hi ${greet(c)}, good news on #${t.id}. ${n ? n.text : 'The work is complete.'} If anything still isn't right, just reply and we'll pick it straight back up.`; } },
   apology: { label: 'Apology and plan', text: (t, c) => `Hi ${greet(c)}, I'm sorry about #${t.id} and the trouble it has caused. You shouldn't have had to come back to us about this. Here's the plan: ${statusLine(t)} Our Service Manager, Dana Whitaker, knows and will call you today, and we'll check in with you on Monday to make sure it has stayed fixed.` },
+  mi: {
+    label: 'Major incident update', only: t => t.major,
+    text: (t, c) => `Hi ${greet(c)}, an update on the Microsoft 365 sign-in outage affecting several of our clients (incident #${t.id}): ${statusLine(t)} We'll update you again by ${hm(now() + MAJOR_CADENCE)}, sooner if anything changes.`,
+  },
   declined: { label: 'Request declined', text: (t, c) => `Hi ${greet(c)}, we checked this request with an authorized approver at ${client(t).name} and it wasn't approved, so we're closing ticket #${t.id}. Please speak to them if you have questions.` },
 };
 
@@ -368,14 +373,17 @@ function sendMessage(t) {
   const block = tpl.need && tpl.need(t);
   if (block) return toast(block, 'bad');
   post(t, 'me', tpl.text(t, c), 'me');
-  record('client-msg', { ticket: t.id, kind });
+  // A major incident's updates and its fix go to every client whose ticket is linked to it (PB-16).
+  const to = t.major && ['mi', 'update', 'resolved'].includes(kind) ? majorChildren(t).filter(x => x.contact) : [];
+  for (const x of to) { post(x, 'me', tpl.text(t, contactOf(x)), 'me'); x.lastUpdateAt = now(); }
+  record('client-msg', { ticket: t.id, kind, to: to.map(x => x.id) });
   if (t.firstResponseAt == null) t.firstResponseAt = now();
   t.lastUpdateAt = now();
   if (kind === 'resolved') {
     if (t.status === 'Completed') later(2, () => { t.flags.confirmed = true; post(t, t.contact, 'Confirmed, all working now. Thank you!', 'client'); });
     else { record('premature', { ticket: t.id }); later(2, () => post(t, t.contact, 'Umm, it\'s still not working here? Nobody has done anything yet as far as I can tell.', 'client')); }
   } else if (kind === 'sched') later(2, () => post(t, t.contact, 'Perfect, thanks.', 'client'));
-  toast(`Sent to ${c.name}.`);
+  toast(to.length ? `Sent to ${c.name} and ${to.length} more affected ${to.length === 1 ? 'client' : 'clients'}.` : `Sent to ${c.name}.`);
   render();
 }
 
@@ -438,10 +446,21 @@ function merge(t) {
   cancelAppts(t);
   t.parent = p.id; t.status = 'Merged';
   record('merge', { ticket: t.id, parent: p.id });
-  post(t, 'system', `Merged into #${p.id} as a duplicate.`, 'system');
-  post(p, 'system', `#${t.id} (${contactOf(t)?.name || t.title}) merged into this ticket.`, 'system');
+  post(t, 'system', p.major ? `Linked to major incident #${p.id}. Updates sent there reach this client too.` : `Merged into #${p.id} as a duplicate.`, 'system');
+  post(p, 'system', `#${t.id} (${contactOf(t)?.name || t.title}${p.client !== t.client ? `, ${client(t).name}` : ''}) ${p.major ? 'linked to this incident' : 'merged into this ticket'}.`, 'system');
   G.active = p.id;
   toast(`#${t.id} merged into #${p.id}.`, 'good');
+  render();
+}
+
+// One fault hitting several clients becomes one major incident (PB-16): the other clients' tickets can
+// then be linked to it, and its updates reach all of them.
+function declareMajor(t) {
+  if (t.major || G.tickets.some(x => x.major && isOpen(x))) return;
+  t.major = true; t.majorAt = now();
+  record('mi-declare', { ticket: t.id });
+  post(t, 'system', 'Declared a major incident. Link the other clients\' tickets to this one, and send updates from here.', 'system');
+  toast(`#${t.id} is now a major incident.`, 'bad');
   render();
 }
 
@@ -1216,7 +1235,7 @@ function renderTicketPanel() {
   const chips = unknown ? '<span class="ext">UNKNOWN SENDER</span>' : direct ? `${ct.vip ? '<span class="chip warn">VIP</span>' : ''}${ct.auth ? '<span class="chip ok">✓ Authorized</span>' : '<span class="chip muted">Not an approver</span>'}` : '';
   const role = unknown ? 'No matching contact in the PSA' : direct ? ct.role : t.channel === 'alert' ? 'Automated alert' : 'External';
   return `<div class="tp-head">
-      <div class="row">${prioBadge(t.triage?.priority)}<span class="tid">#${t.id}</span>${statusBadge(t.status)}${chan(t.channel)}<div class="grow"></div>${open && needsResponse(t) ? `<span class="muted small">Resp.</span> ${respCell(t)}` : ''}</div>
+      <div class="row">${prioBadge(t.triage?.priority)}<span class="tid">#${t.id}</span>${statusBadge(t.status)}${chan(t.channel)}${t.major ? `<span class="chip warn" title="Major incident: ${majorChildren(t).length + 1} tickets">Major · ${majorChildren(t).length + 1}</span>` : ''}<div class="grow"></div>${open && needsResponse(t) ? `<span class="muted small">Resp.</span> ${respCell(t)}` : ''}</div>
       <h3>${esc(t.title)}</h3>
       <div class="requester" role="button" tabindex="0" data-act="gotoClient" data-c="${t.client}" title="Open client notes">
         <div class="avatar">${esc(name.replace(/^Dr\. /, '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase())}</div>
@@ -1227,7 +1246,16 @@ function renderTicketPanel() {
         ${open ? `<button class="btn sm ${needsScheduling(t) ? 'primary' : ''}" data-act="pick" data-id="${t.id}">Schedule</button>${a && a.state === 'booked' ? '<button class="btn sm ghost" data-act="unschedule">Unbook</button>' : ''}` : ''}</div>
     </div>
     <div class="thread" id="thread">${t.thread.map(renderMsg.bind(null, t)).join('')}</div>
-    ${open ? renderActions(t) : `<div class="tp-actions">${renderCsat(t)}<p class="muted small">${t.parent ? `Merged into <button class="kb-link" data-act="open" data-id="${t.parent}">#${t.parent}</button>.` : `Closed at ${hm(t.closed.at)} as <b>${REASONS[t.closed.reason]}</b>.`} You'll see how it was graded in the shift report.</p></div>`}`;
+    ${open ? renderActions(t) : `<div class="tp-actions">${renderPir(t)}${renderCsat(t)}<p class="muted small">${t.parent ? `Merged into <button class="kb-link" data-act="open" data-id="${t.parent}">#${t.parent}</button>.` : `Closed at ${hm(t.closed.at)} as <b>${REASONS[t.closed.reason]}</b>.`} You'll see how it was graded in the shift report.</p></div>`}`;
+}
+
+function renderPir(t) {
+  if (!t.major || !t.closed) return '';
+  if (t.pir) return `<div class="card pad pir"><b>Post-incident review</b><p class="muted small">Sent to Dana at ${hm(t.pir.at)}.</p><ul class="small">${PIR.map(f => `<li>${esc(f.q)} <b>${esc(f.opts[t.pir[f.id]])}</b></li>`).join('')}</ul></div>`;
+  return `<div class="card pad pir"><b>Post-incident review</b><p class="small">The incident is closed. Tell Dana what happened while it's fresh (PB-16).</p>
+    ${PIR.map(f => `<label class="field"><span>${esc(f.q)}</span><select id="d-pir-${f.id}" data-draft="pir-${f.id}"><option value="">Choose…</option>${Object.entries(f.opts).map(([k, l]) => `<option value="${k}" ${G.drafts['pir-' + f.id] === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`).join('')}
+    <button class="btn primary sm" data-act="pir">Submit the review</button>
+    <button class="kb-link" data-act="gotoPb" data-k="PB-16">${I.pb} PB-16 Major incidents</button></div>`;
 }
 
 function renderCsat(t) {
@@ -1274,15 +1302,17 @@ function renderActions(t) {
 
   const tpl = G.drafts['tpl-' + t.id] || 'ack';
   const ct = contactOf(t);
-  const msg = t.contact ? section(t, 'msg', `Message ${esc(greet(ct))}`, `<label class="field"><span>Template</span><select id="d-tpl-${t.id}" data-draft="tpl-${t.id}" data-live="1">${Object.entries(TEMPLATES).map(([k, x]) => `<option value="${k}" ${tpl === k ? 'selected' : ''}>${x.label}</option>`).join('')}</select></label>
+  const msg = t.contact ? section(t, 'msg', `Message ${esc(greet(ct))}`, `<label class="field"><span>Template</span><select id="d-tpl-${t.id}" data-draft="tpl-${t.id}" data-live="1">${Object.entries(TEMPLATES).filter(([, x]) => !x.only || x.only(t)).map(([k, x]) => `<option value="${k}" ${tpl === k ? 'selected' : ''}>${x.label}</option>`).join('')}</select></label>
       <div class="preview">${TEMPLATES[tpl].need && TEMPLATES[tpl].need(t) ? `<span class="muted">${esc(TEMPLATES[tpl].need(t))}</span>` : esc(TEMPLATES[tpl].text(t, ct))}</div>
       <button class="btn sm primary" data-act="send">Send to ${esc(ct.name)}</button>`, false) : '';
 
-  const others = G.tickets.filter(x => x !== t && isOpen(x) && x.client === t.client && !G.tickets.some(y => y.parent === t.id));
+  const others = t.major ? [] : G.tickets.filter(x => x !== t && isOpen(x) && (x.client === t.client || x.major) && !G.tickets.some(y => y.parent === t.id));
+  const canDeclare = G.drill?.id === 'major' && !t.major && !G.tickets.some(x => x.major && isOpen(x));
   const coord = section(t, 'coord', 'Approvals, escalations &amp; vendors', `
       <label class="field"><span>Request approval from</span><div class="reply"><select id="d-appr-${t.id}" data-draft="appr-${t.id}"><option value="">Choose a contact…</option>${Object.entries(c.contacts).map(([k, x]) => `<option value="${k}" ${G.drafts['appr-' + t.id] === k ? 'selected' : ''}>${esc(x.name)} · ${esc(x.role)}${x.auth ? ' ✓' : ''}</option>`).join('')}</select><button class="btn sm" data-act="approval">Ask</button></div></label>
       <div class="btn-grid"><button class="btn sm" data-act="notify" data-w="sm">Notify Service Manager</button><button class="btn sm" data-act="notify" data-w="am">Escalate to Account Manager</button></div>
       <label class="field"><span>Log vendor case</span><div class="reply"><select id="d-vendor-${t.id}" data-draft="vendor-${t.id}"><option value="">Choose a vendor…</option>${c.vendors.map(v => `<option ${G.drafts['vendor-' + t.id] === v ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select><button class="btn sm" data-act="vendor">Log</button></div></label>
+      ${canDeclare ? '<button class="btn sm danger" data-act="declareMajor">Declare major incident</button>' : ''}
       ${others.length ? `<label class="field"><span>Merge into (duplicate of)</span><div class="reply"><select id="d-merge-${t.id}" data-draft="merge-${t.id}"><option value="">Choose the parent ticket…</option>${others.map(x => `<option value="${x.id}" ${G.drafts['merge-' + t.id] === x.id ? 'selected' : ''}>#${x.id} ${esc(x.title)}</option>`).join('')}</select><button class="btn sm" data-act="merge">Merge</button></div></label>` : ''}`, false);
 
   const close = section(t, 'close', 'Close ticket', `
@@ -1411,6 +1441,11 @@ function renderStart() {
       <p class="muted">${NIGHT_SCENARIOS.length} tickets across fifteen hours, and one engineer. Every booking wakes <b>${esc(TECHS.jordan.name)}</b> up, so decide what really can't wait and put the rest on Friday's board for the day team. At 08:00 you hand over to the day coordinator. The night runs ${NIGHT_SPEED}× faster than a day shift, and slows down when the phone rings.</p>
       <p class="muted small"><i>${esc(NIGHT_BRIEF)}</i></p>
       <div class="row gap"><button class="btn primary" data-act="start" data-m="shift" data-seed="night">Start the night shift</button><button class="btn" data-act="start" data-m="practice" data-seed="night">Practice (pause any time)</button></div></section>
+
+    <section class="l-sec"><div class="l-eyebrow">Major incident · practice mode</div>
+      <h2>Microsoft 365 just went down for everyone.</h2>
+      <p class="muted">${MAJOR_SCENARIOS.length} tickets in three hours, most of them the same outage. Declare a major incident, link every client to it, keep them all updated every 30 minutes, and keep the rest of the desk running. When it's fixed, write the post-incident review. It doesn't count towards your progress.</p>
+      <div class="row gap"><button class="btn primary" data-act="start" data-m="practice" data-seed="major">Start the major incident</button></div></section>
 
     <section class="l-sec drills"><div class="l-eyebrow">Skill drills · practice mode</div>
       <h2>Short on time? Drill one skill.</h2>
@@ -1639,6 +1674,8 @@ const ACT = {
   close: () => closeTicket(ticket(G.active)),
   bill: () => postTime(ticket(G.active)),
   csatFollow: () => followUpCsat(ticket(G.active)),
+  declareMajor: () => declareMajor(ticket(G.active)),
+  pir: () => submitPir(ticket(G.active)),
   pick: d => { G.pick = d.id; G.active = d.id; G.view = 'dispatch'; const a = finalAppt(ticket(d.id)); G.day = a && a.start >= DAY && G.start < DAY ? DAY : G.day; render(); },
   nextLeg: () => nextLeg(),
   unpick: () => { G.pick = null; render(); },

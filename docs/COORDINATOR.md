@@ -132,6 +132,33 @@ When you close a ticket as *Resolved* and it has a client contact, the client an
 
 A rating of 3 or lower is a complaint. It shows on the Service Board until you open the closed ticket and press *Reply*, and leaving it unanswered costs 10 on that ticket. If it's still unanswered an hour after the survey, the client writes to Dana, Dana tells you to reply, and the ticket loses another 10. A survey that lands in the last 30 minutes of the shift isn't held against you. The report shows CSAT as the share of surveys rated 4 or 5, and it's tracked in your progress. The answer key gets 5/5 on every survey.
 
+## Major incident
+
+Shift code `major`, from the start page: Thursday 08:00 to 11:00, practice mode, no handover, not saved to progress. Microsoft 365 sign-ins fail for Harbor Dental, Keller & Finch, Brightline and Oakridge from 08:05, and Microsoft fixes it at 09:50. Playbook article PB-16 covers it.
+
+| # | Arrives | Ticket | Right answer |
+|---|---|---|---|
+| 4801 | 08:05 📞 | Harbor Dental: nobody can sign in | Declare a major incident, P1 Infrastructure M365 remote. Page Dana, open a Microsoft case, book Maya |
+| 4802 | 08:08 ✉️ | Keller & Finch: password prompts | Link to the incident |
+| 4803 | 08:10 ✉️ | Brightline: all users signed out | Link to the incident |
+| 4804 | 08:14 📞 | Oakridge: teachers can't get email | Link to the incident |
+| 4805 | 08:35 ✉️ | Harbor Dental: front desk printer offline | Separate P3, Help Desk, Printers, Ana |
+| 4806 | 08:45 📞 | Tom Keller: court filings due | Link to the incident |
+| 4807 | 10:05 ✉️ | Oakridge teacher still can't sign in | Separate P3: an expired password. Don't link it |
+
+*Declare major incident* is in a ticket's *Approvals, escalations & vendors* section. Once one is declared, any client's ticket can be merged into it, and the *Major incident update*, *Status update* and *Resolution confirmation* messages sent from it reach every linked client.
+
+| On the incident | Or lose |
+|---|---|
+| Declared as a major incident | 10 |
+| Service Manager paged within 15 minutes of 08:05 | 15 if never, 5 if late |
+| Microsoft case opened | 10 |
+| An incident update at least every 30 minutes until 09:50 | 10 per gap (max 20), 25 if none |
+| Every linked client told it's fixed | 5 each |
+| Post-incident review written after closing | 20 if missing, 5 per wrong answer |
+
+The review's answers: Microsoft's change to their sign-in service, four clients, first report 08:05, restored 09:50, and alert us from Microsoft's service health feed next time. Unlinked incident tickets lose 20 each as duplicates, and linking the printer or the expired password loses 40.
+
 ## Complaints
 
 Every seeded day shift (not `classic`, not the night) has one extra call on top of its 14 incidents: Helen Moore, Oakridge's principal, complaining that teachers' OneDrive keeps failing after two quick fixes. It arrives between 09:00 and 12:00, and its start-by time moves with it. It's also in the `drill-complaint` drill. Playbook article PB-15 covers it.
