@@ -65,6 +65,7 @@ test('a seeded shift plays and grades the same way twice', () => {
   const play = () => {
     const g = game('timed', 'k7m2qp');
     g.to(g.E.SHIFT_END, () => { if (g.G.ring) g.answer(); });
+    g.end();
     return plain({ final: g.G.report.final, rows: g.G.report.results.map(r => [r.score, r.ded.map(d => d.join(' '))]) });
   };
   const a = play();

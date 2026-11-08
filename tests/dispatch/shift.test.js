@@ -11,7 +11,8 @@ const { cleanRun } = require('./answer-key');
 test('doing nothing scores about 20 and gets an F', () => {
   const g = game();
   g.to(g.E.SHIFT_END);
-  const r = g.G.report;
+  assert.equal(g.G.phase, 'handover', 'at 17:00 the shift stops for the handover');
+  const r = g.end();
   assert.equal(g.G.phase, 'report');
   assert.equal(r.results.length, 18);
   assert.ok(r.final >= 10 && r.final <= 30, `expected about 20, got ${r.final}`);
@@ -24,6 +25,7 @@ test('playing the answer key scores 100 on every ticket', () => {
   const r = g.G.report;
   const lines = r.results.map((x, i) => x.ded.length ? `#${g.G.shift[i].id} ${x.score}: ${x.ded.map(d => `-${d[0]} ${d[1]}`).join(' | ')}` : null).filter(Boolean);
   assert.equal(lines.join('\n'), '', 'every ticket should score 100 when played by the answer key');
+  assert.equal(r.handover.ded.map(d => d[1]).join(' | '), '', 'the handover should lose nothing');
   assert.equal(r.final, 100);
   assert.equal(r.grade, 'A');
   assert.equal(r.kpi.missed, 0);

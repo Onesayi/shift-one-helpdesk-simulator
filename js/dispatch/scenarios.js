@@ -434,5 +434,11 @@ function buildShift(seed) {
   if (!classic) today.forEach((t, i) => { t.id = String(4501 + i); });
 
   const events = TEAM_EVENTS.map(ev => Object.assign({}, ev, { at: classic || !ev.window ? ev.at : when(ev.window) }));
+  // Seeded shifts get one or two more disruptions on top of Ben's sick call. Drawn last, so the
+  // tickets and Ben's time for a seed are the same as before disruptions existed.
+  if (!classic) {
+    const pool = DISRUPTIONS.slice(), n = rnd() < 0.5 ? 2 : 1;
+    for (let i = 0; i < n; i++) { const d = take(pool); events.push(Object.assign({}, d, { at: when(d.window) })); }
+  }
   return { seed, tickets: carried.concat(today), events };
 }

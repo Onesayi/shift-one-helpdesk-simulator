@@ -92,8 +92,9 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 | 📞 **Live phones** | Calls ring on a sim clock. Miss one and it becomes a voicemail and an unhappy client |
 | 🧭 **Triage** | Impact × urgency matrix, boards, skills, remote vs onsite, estimates, plus overrides for security incidents and backups |
 | 🗓️ **Dispatch Board** | Today and tomorrow for every tech: lunch, meetings, project time, travel, existing jobs. It blocks double-booking and warns about skills, onsite windows, block hours and approvals |
-| 🧑‍🔧 **Simulated technicians** | Booked work runs itself. The wrong skills bounce back, P1s can pull a tech off other work, and a tech goes home sick mid-morning |
+| 🧑‍🔧 **Simulated technicians** | Booked work runs itself. The wrong skills bounce back, P1s can pull a tech off other work, and a tech goes home sick mid-morning. Random shifts add more: a van breaks down, an internal outage takes an engineer away, or a client asks to move their appointment |
 | 🤝 **Coordination** | Client message templates, authorized-contact approvals, Service Manager and Account Manager escalations, ISP and RMA vendor cases, merging duplicates, closing with a reason |
+| 🌙 **Shift handover** | At 17:00 you brief the on-call engineer: flag the open P1/P2s, pending vendor cases and approvals, and anything nobody owns, each with a next step. It's graded like one more ticket |
 | 📈 **KPI report** | Time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches and technician utilization, plus per-ticket feedback explaining the right call |
 
 <table>

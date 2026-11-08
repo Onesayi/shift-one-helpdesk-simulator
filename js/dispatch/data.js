@@ -70,12 +70,27 @@ function baseBlocks() {
 
 // Events that happen to the team during the shift
 const TEAM_EVENTS = [
-  { at: 585, window: [555, 630], tech: 'ben', text: 'Ben Carter: "Sorry, I\'ve been sick all morning. I\'m heading home, and the doctor has signed me off until Monday."' },
+  { kind: 'sick', at: 585, window: [555, 630], tech: 'ben', text: 'Ben Carter: "Sorry, I\'ve been sick all morning. I\'m heading home, and the doctor has signed me off until Monday."' },
+];
+
+// Extra disruptions for seeded shifts (never in 'classic'). buildShift draws one or two of these.
+//   out:  the tech is off the board for `dur` minutes from the moment it happens. Anything booked
+//         with them in that time (travel included) can't go ahead: move it and tell the client.
+//   move: the client asks to move a carried-over appointment to tomorrow. Skipped if the work
+//         has already started.
+const DISRUPTIONS = [
+  { id: 'van', kind: 'out', tech: 'luis', window: [600, 780], dur: 90, label: 'Van broken down',
+    text: 'Luis Romero: "My van won\'t start. Roadside assistance says 90 minutes, so I can\'t get to a site until {until}."' },
+  { id: 'vpn', kind: 'out', tech: 'maya', window: [555, 780], dur: 60, label: 'Internal outage',
+    text: 'Dana Whitaker (Service Manager): "Our own VPN is down, so I\'ve pulled Maya onto it. She\'s off the board until {until}."' },
+  { id: 'move', kind: 'move', ticket: '4476', contact: 'lpark', window: [660, 750],
+    text: 'Hi, our Eastgate front desk is closing early today for staff training, so nobody will be there to test a scan. Could we move the scan-to-email setup to tomorrow instead? Thanks, Lena' },
 ];
 
 const INTERNAL = {
   sm: { name: 'Dana Whitaker', role: 'Service Manager' },
   am: { name: 'Rob Hale', role: 'Account Manager' },
+  oncall: { name: 'Jordan Blake', role: 'On-call engineer (17:00–08:00)' },
 };
 
 const CLIENTS = {
@@ -228,4 +243,12 @@ const PLAYBOOK = [
 <li>Close with the right reason: <b>Resolved</b>, <b>No action needed</b> (noise), or <b>Declined by client</b>.</li>
 <li>Write a note the next person can use. "Done" isn't a note.</li>
 <li>Never tell a client it's fixed before the tech says so.</li></ol>` },
+  { id: 'PB-11', title: 'Shift handover', tags: 'handover on-call evening overnight end of shift summary', body: `
+<p>At 17:00 the on-call engineer, <b>Jordan Blake</b>, takes over until 08:00. Jordan only knows what you hand over.</p>
+<ul><li>Flag every <b>P1 or P2 that's still open</b>.</li>
+<li>Flag anything <b>waiting on a vendor or an approval</b>, so Jordan knows who might call back.</li>
+<li>Flag work that <b>nobody owns</b>: not booked, handed back, or still booked with someone who can't do it.</li>
+<li>Every flag gets a note with the next step. "See ticket" isn't a note.</li>
+<li>Always write a one-line summary of the shift, even when it was quiet.</li></ul>
+<p>Work that's already booked for tomorrow with someone who'll be in doesn't need flagging. On-call needs the short list, not the whole board.</p>` },
 ];

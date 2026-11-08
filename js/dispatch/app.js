@@ -37,7 +37,7 @@ function newGame(mode, seed) {
     block: { pp: CLIENTS.pp.block },
     view: 'board', active: null, filter: 'open', pick: null, day: 0,
     client: 'hdg', pb: 'PB-01', teamSel: null,
-    timers: [], calls: [], ring: null, news: [], spawned: new Set(), eventsDone: new Set(),
+    timers: [], calls: [], ring: null, news: [], spawned: new Set(), eventsDone: new Set(), disrupted: {},
     drafts: {}, modal: null, dirty: false,
   };
   for (const s of G.shift.filter(x => x.at < 0)) spawnTicket(s);
@@ -165,10 +165,7 @@ function onMinute(m) {
   for (const ev of G.events) {
     if (G.eventsDone.has(ev) || m < ev.at) continue;
     G.eventsDone.add(ev);
-    G.techs[ev.tech].sickAt = ev.at;
-    G.news.push({ at: m, text: ev.text });
-    toast(ev.text, 'bad');
-    changed = true;
+    changed = teamEvent(ev, m) || changed;
   }
 
   for (const s of G.shift) {
@@ -192,7 +189,7 @@ function onMinute(m) {
   for (const a of G.appts) {
     if (a.state === 'booked' && a.start <= m) {
       const t = ticket(a.ticket), sick = G.techs[a.tech].sickAt;
-      if (sick != null && a.start >= sick) {
+      if ((sick != null && a.start >= sick) || a.atRisk) {
         a.state = 'missed';
         record('appt-missed', { ticket: t.id, tech: a.tech });
         t.status = 'Needs reassign';
@@ -234,8 +231,36 @@ function onMinute(m) {
     }
   }
 
-  if (m >= SHIFT_END) { endShift(); return true; }
+  if (m >= SHIFT_END) { startHandover(); return true; }
   return changed;
+}
+
+// Something happens to the team or a client mid-shift (TEAM_EVENTS and DISRUPTIONS in data.js).
+// Every ticket it knocks on is remembered in G.disrupted, and the grader checks the client was told.
+function teamEvent(ev, m) {
+  if (ev.kind === 'move') {
+    const t = ticket(ev.ticket), a = t && finalAppt(t);
+    if (!t || !isOpen(t) || t.status === 'Completed' || (a && ['working', 'done'].includes(a.state))) return false;
+    G.disrupted[t.id] = { kind: 'move', at: m };
+    post(t, ev.contact, ev.text, 'client');
+    record('move-request', { ticket: t.id });
+    toast(`${contactOf(t, ev.contact).name} asked to move #${t.id} to tomorrow.`, 'bad');
+    return true;
+  }
+  let text = ev.text;
+  if (ev.kind === 'out') {
+    const until = m + ev.dur;
+    text = text.replace('{until}', hm(until));
+    G.blocks.push({ tech: ev.tech, start: m, dur: ev.dur, kind: 'out', label: ev.label, soft: false });
+    for (const a of G.appts) {
+      if (a.tech !== ev.tech || a.state !== 'booked' || !overlaps(m, until, ...busyRange(a))) continue;
+      a.atRisk = true;
+      G.disrupted[a.ticket] = { kind: 'out', at: m, tech: ev.tech };
+    }
+  } else G.techs[ev.tech].sickAt = ev.at;
+  G.news.push({ at: m, text });
+  toast(text, 'bad');
+  return true;
 }
 
 function chase(t, text) {
@@ -592,6 +617,7 @@ function grade(t) {
     else {
       const x = TECHS[a.tech], sick = G.techs[a.tech].sickAt;
       if (sick != null && a.start >= sick && ['booked', 'missed'].includes(a.state)) ded.push([30, `Still booked with ${x.name}, who went home sick. Nobody turned up.`]);
+      else if (a.atRisk && ['booked', 'missed'].includes(a.state)) ded.push([30, `Still booked with ${x.name} while they were off the board. Nobody turned up.`]);
       else if (T.startBy && a.start > T.startBy) ded.push([10, `Booked for ${hm(a.start)}. It needed to start by ${hm(T.startBy)}.`]);
       else if (!wrong.has(a.tech)) good.push(`Booked ${x.name} for ${hm(a.start)}: right skills, in time.`);
       if (a.onsite && T.priority !== 'P1' && !inWindow(client(t), a)) ded.push([10, `${client(t).name} only allows visits ${client(t).onsiteText}.`]);
@@ -605,6 +631,14 @@ function grade(t) {
     if (worked) ded.push([25, 'A technician spent time on a ticket that needed no work.']);
     else if (scheds.length) ded.push([5, 'Booked a technician for a ticket that needed none (cancelled in time).']);
     else if (t.closed) good.push('No technician time wasted.');
+  }
+
+  const hit = G.disrupted[t.id];
+  if (hit && !t.parent) {
+    if (hit.kind === 'move' && a && a.start < DAY) ded.push([15, `${greet(contactOf(t))} asked to move this to tomorrow, but it stayed booked for today.`]);
+    else if (hit.kind === 'move' && a) good.push('Moved the appointment to tomorrow, as the client asked.');
+    if (t.contact && logged('client-msg', e => e.ticket === t.id && e.at >= hit.at && ['update', 'sched'].includes(e.kind)).length) good.push(`Told ${greet(contactOf(t))} about the new appointment.`);
+    else if (t.contact) ded.push([10, hit.kind === 'move' ? `Never confirmed the new time with ${greet(contactOf(t))}.` : `${TECHS[hit.tech].name.split(' ')[0]} was off the board at ${hm(hit.at)}, and ${greet(contactOf(t))} never heard the appointment had moved.`]);
   }
 
   if (t.closed) {
@@ -642,11 +676,48 @@ function kpis() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Shift handover (PB-11): at the end of the shift the coordinator briefs the on-call engineer.
+// ---------------------------------------------------------------------------
+function startHandover() {
+  if (G.phase !== 'play') return;
+  G.phase = 'handover'; G.modal = null; G.ring = null; G.calls = [];
+  render();
+}
+
+// Why an open ticket has to be in the handover, and what leaving it out costs. null = it doesn't.
+function handoverNeed(t) {
+  const T = t.s.truth, a = finalAppt(t);
+  if (!isOpen(t) || t.status === 'Completed') return null;
+  if (T.priority === 'P1' || T.priority === 'P2') return { pts: 20, why: `a ${T.priority} that's still open` };
+  if (t.status === 'Waiting on vendor') return { pts: 10, why: 'waiting on a vendor' };
+  if (t.status === 'Waiting on approval') return { pts: 10, why: 'waiting on an approval' };
+  const owned = a && ['booked', 'working'].includes(a.state) && !a.atRisk && G.techs[a.tech].sickAt == null;
+  if (T.dispatch && !owned) return { pts: 10, why: 'not booked with anyone who can work it' };
+  return null;
+}
+
+function gradeHandover() {
+  const d = k => G.drafts[k], ded = [], good = [];
+  for (const t of G.tickets.filter(isOpen)) {
+    const need = handoverNeed(t), flag = !!d('ho-flag-' + t.id), note = String(d('ho-note-' + t.id) || '').trim();
+    if (need && !flag) ded.push([need.pts, `#${t.id} is ${need.why}, and it wasn't in the handover. Overnight, nobody owns it.`]);
+    else if (need) good.push(`Handed over #${t.id}: ${need.why}.`);
+    if (flag && note.length < 15) ded.push([5, `Flagged #${t.id} without a note saying what happens next.`]);
+  }
+  if (String(d('ho-summary') || '').trim().length < 20) ded.push([10, 'No summary for the on-call engineer. Even a quiet shift needs one line.']);
+  else good.push('Left on-call a summary of the shift.');
+  return { score: Math.max(0, 100 - ded.reduce((x, e) => x + e[0], 0)), ded, good };
+}
+
 function endShift() {
   const results = G.shift.map(s => { const t = ticket(s.id); return t ? grade(t) : { score: 0, ded: [[100, 'Never arrived: the shift ended first.']], good: [] }; });
-  const final = Math.round(results.reduce((x, r) => x + r.score, 0) / results.length);
+  const handover = gradeHandover();
+  // The handover counts like one more ticket.
+  const final = Math.round((results.reduce((x, r) => x + r.score, 0) + handover.score) / (results.length + 1));
   const grade_ = final >= 90 ? 'A' : final >= 80 ? 'B' : final >= 70 ? 'C' : final >= 60 ? 'D' : 'F';
-  G.report = { final, grade: grade_, results, kpi: kpis(), time: now() };
+  const kpi = Object.assign(kpis(), { handover: handover.score });
+  G.report = { final, grade: grade_, results, handover, kpi, time: now() };
   G.report.history = saveShift({ at: Date.now(), mode: G.mode, seed: G.seed, final, grade: grade_, kpi: G.report.kpi });
   G.phase = 'report'; G.modal = null; G.ring = null;
   render();
@@ -665,6 +736,7 @@ const PROGRESS = [
   { label: 'Phones', sub: 'missed calls', up: false, get: e => e.kpi.missed },
   { label: 'Follow-up', sub: 'client chasers', up: false, get: e => e.kpi.chasers },
   { label: 'Dispatch', sub: 'wrong-tech dispatches', up: false, get: e => e.kpi.bounces },
+  { label: 'Handover', sub: 'handover score', up: true, get: e => e.kpi.handover },
 ];
 
 function loadHistory() {
@@ -731,6 +803,7 @@ function renderDom() {
   const mainScroll = $('#main').scrollTop, dScroll = $('.dscroll')?.scrollLeft;
 
   if (!G || G.phase === 'start') { $('#main').innerHTML = renderStart(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; $('#call-root').innerHTML = ''; Landing.mount(); return; }
+  if (G.phase === 'handover') { $('#main').innerHTML = renderHandover(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = renderModal(); $('#call-root').innerHTML = ''; return; }
   if (G.phase === 'report') { $('#main').innerHTML = renderReport(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = renderModal(); $('#call-root').innerHTML = ''; return; }
 
   $('#topbar').innerHTML = renderTopbar();
@@ -823,6 +896,10 @@ function banners() {
     const left = G.appts.filter(a => a.tech === id && a.state === 'booked' && a.start >= st.sickAt);
     if (left.length) out.push(`<div class="alert crit">${esc(TECHS[id].name)} went home sick at ${hm(st.sickAt)}. ${left.length} appointment${left.length > 1 ? 's are' : ' is'} still on their calendar: ${left.map(a => '#' + a.ticket).join(', ')}.</div>`);
   }
+  for (const b of G.blocks.filter(b => b.kind === 'out')) {
+    const hit = G.appts.filter(a => a.tech === b.tech && a.state === 'booked' && a.atRisk);
+    if (hit.length) out.push(`<div class="alert crit">${esc(TECHS[b.tech].name)} is off the board ${hm(b.start)}–${hm(b.start + b.dur)} (${esc(b.label.toLowerCase())}). ${hit.length} appointment${hit.length > 1 ? 's' : ''} in that time can't go ahead: ${hit.map(a => '#' + a.ticket).join(', ')}.</div>`);
+  }
   const done = G.tickets.filter(t => isOpen(t) && t.status === 'Completed');
   if (done.length) out.push(`<div class="alert info">Completed by technicians, waiting for you to confirm and close: ${done.map(t => '#' + t.id).join(', ')}.</div>`);
   const back = G.tickets.filter(t => isOpen(t) && t.status === 'Needs reassign');
@@ -869,7 +946,7 @@ function renderDispatch() {
     const blocks = G.blocks.filter(b => b.tech === id && b.start >= day && b.start < day + DAY)
       .map(b => `<div class="blk k-${b.kind}" style="${pos(b.start, b.dur)}" title="${esc(b.label)} · ${hm(b.start)}–${hm(b.start + b.dur)}"><span>${esc(b.label)}</span></div>`).join('');
     const appts = G.appts.filter(a => a.tech === id && a.start >= day && a.start < day + DAY && a.state !== 'cancelled').map(a => {
-      const tk = ticket(a.ticket), bad = a.state === 'missed' || (a.state === 'booked' && sick != null && a.start >= sick);
+      const tk = ticket(a.ticket), bad = a.state === 'missed' || (a.state === 'booked' && (a.atRisk || (sick != null && a.start >= sick)));
       return (a.onsite ? `<div class="blk k-travel" style="${pos(a.start - TRAVEL_MIN, TRAVEL_MIN)}" title="Travel"><span>Travel</span></div>` : '') +
         `<button class="appt s-${a.state} ${bad ? 'conflict' : ''} ${tk.id === G.active ? 'sel' : ''}" style="${pos(a.start, a.dur)}" data-act="appt" data-a="${a.id}" title="#${tk.id} ${esc(tk.title)} · ${hm(a.start)}–${hm((a.start + a.dur) % DAY)}">
           <b>#${tk.id}</b> <span>${esc(client(tk).name)}</span></button>`;
@@ -889,7 +966,7 @@ function renderDispatch() {
     <div class="card dscroll"><div class="dboard">
       <div class="drow dhead"><div class="dtech"></div><div class="dtrack hours">${hours.join('')}</div></div>
       ${rows}</div></div>
-    <div class="legend muted small"><span><i class="swatch k-ticket"></i>Ticket</span><span><i class="swatch k-lunch"></i>Lunch</span><span><i class="swatch k-meeting"></i>Meeting / project</span><span><i class="swatch k-travel"></i>Travel</span><span><i class="swatch k-job"></i>Existing job</span><span><i class="swatch k-conflict"></i>Conflict</span></div>
+    <div class="legend muted small"><span><i class="swatch k-ticket"></i>Ticket</span><span><i class="swatch k-lunch"></i>Lunch</span><span><i class="swatch k-meeting"></i>Meeting / project</span><span><i class="swatch k-travel"></i>Travel</span><span><i class="swatch k-job"></i>Existing job</span><span><i class="swatch k-out"></i>Off the board</span><span><i class="swatch k-conflict"></i>Conflict</span></div>
     <h4>Needs scheduling (${waiting.length})</h4>
     <div class="card">${waiting.length ? `<table class="tbl"><tbody>${waiting.map(w => `<tr class="${G.pick === w.id ? 'sel' : ''}"><td>${prioBadge(w.triage.priority)}</td><td><div class="tid">#${w.id}</div><div class="ttl">${esc(w.title)}</div></td><td>${esc(client(w).name)}</td><td class="small">${esc(w.triage.skill)} · ${w.triage.onsite ? 'onsite' : 'remote'} · ${mins(w.triage.est)}</td><td class="right"><button class="btn sm ${G.pick === w.id ? 'primary' : ''}" data-act="pick" data-id="${w.id}">${G.pick === w.id ? 'Picked' : 'Pick'}</button></td></tr>`).join('')}</tbody></table>`
       : '<div class="empty muted pad">Nothing waiting. Tickets appear here once they\'re triaged and need a technician.</div>'}</div>`;
@@ -1112,6 +1189,30 @@ function renderStart() {
     <footer class="site-foot">Built by ${esc(CONFIG.author)}${CONFIG.repoUrl ? ` · <a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">Source on GitHub</a>` : ''} · Northbound IT and its clients are fictional.</footer></div>`;
 }
 
+function renderHandover() {
+  const oc = INTERNAL.oncall, open = G.tickets.filter(isOpen), d = k => G.drafts[k];
+  const booking = t => {
+    const a = finalAppt(t);
+    if (!a || !['booked', 'working'].includes(a.state)) return '<span class="muted">Not booked</span>';
+    return `${esc(TECHS[a.tech].name.split(' ')[0])} · ${hm(a.start)}${a.state === 'working' ? ' (working)' : ''}`;
+  };
+  const rows = open.map(t => `<tr class="${d('ho-flag-' + t.id) ? 'sel' : ''}">
+      <td><input type="checkbox" id="d-ho-flag-${t.id}" data-draft="ho-flag-${t.id}" data-live="1" ${d('ho-flag-' + t.id) ? 'checked' : ''} aria-label="Hand over #${t.id}"></td>
+      <td>${prioBadge(t.triage?.priority)}</td>
+      <td><div class="tid">#${t.id}</div><div class="ttl">${esc(t.title)}</div><div class="muted small">${esc(client(t).name)}</div></td>
+      <td>${statusBadge(t.status)}</td><td class="small">${booking(t)}</td>
+      <td class="ho-note"><input id="d-ho-note-${t.id}" data-draft="ho-note-${t.id}" value="${esc(d('ho-note-' + t.id) || '')}" placeholder="Next step, and who owns it" aria-label="Handover note for #${t.id}"></td></tr>`).join('');
+  return `<div class="report handover">
+    <div class="view-head"><h2>Hand over to on-call</h2><span class="muted">Thursday ${hm(now())}</span></div>
+    <div class="card pad"><p><b>${esc(oc.name)}</b> is on call tonight, 17:00–08:00, and only knows what you tell them. Tick the tickets they need to know about and add the next step. Leave the rest off: on-call needs the short list, not the whole board.</p>
+      <button class="kb-link" data-act="reportPb" data-k="PB-11">${I.pb} Read PB-11 · Shift handover</button></div>
+    <h4>Open tickets (${open.length})</h4>
+    <div class="card">${open.length ? `<table class="tbl ho-table"><thead><tr><th>Flag</th><th>Pri</th><th>Ticket</th><th>Status</th><th>Booked</th><th>Note for ${esc(oc.name.split(' ')[0])}</th></tr></thead><tbody>${rows}</tbody></table>`
+      : '<div class="empty muted pad">Nothing is open. Say so in the summary.</div>'}</div>
+    <label class="field"><span>Summary for ${esc(oc.name.split(' ')[0])}</span><textarea id="d-ho-summary" data-draft="ho-summary" rows="3" placeholder="How the shift went, and anything to watch overnight">${esc(d('ho-summary') || '')}</textarea></label>
+    <div class="row gap"><div class="grow"></div><button class="btn primary lg" data-act="submitHandover">Submit handover and see the report</button></div></div>`;
+}
+
 function renderReport() {
   const R = G.report, k = R.kpi;
   const tile = (label, v, sub, bad) => `<div class="stat ${bad ? 'bad' : ''}"><small>${label}</small><b>${v}</b><span>${sub}</span></div>`;
@@ -1132,6 +1233,10 @@ function renderReport() {
     <div class="card pad"><h3>Technician utilization (today)</h3><p class="muted small">Booked ticket time as a share of each person's working day. 70–85% is healthy; nobody should be at 0% while tickets wait.</p>
       ${Object.entries(TECHS).map(([id, x]) => { const u = utilization(id); return `<div class="meter wide"><small>${esc(x.name)}</small><div><i style="width:${u}%" class="${u > 85 ? 'hi' : ''}"></i></div><span>${u}%</span></div>`; }).join('')}</div>
     <div class="card pad coach-cta"><div><b>Want someone to walk you through this report?</b><div class="muted">A tutor can replay the shift with you and turn every lost point into an interview answer.</div></div><a class="btn" href="index.html#pricing">See tutoring</a></div>
+    ${R.handover ? `<div class="card pad"><div class="row"><h3 class="grow">Shift handover</h3><b class="${R.handover.score >= 80 ? 'good-t' : R.handover.score >= 50 ? '' : 'bad-t'}">${R.handover.score}</b></div>
+      <p class="muted small">Counts like one more ticket. What on-call needed from you at ${hm(R.time)}.</p>
+      <ul class="fb">${R.handover.good.map(g => `<li class="g">${esc(g)}</li>`).join('')}${R.handover.ded.map(d => `<li class="b"><b>−${d[0]}</b> ${esc(d[1])}</li>`).join('')}</ul>
+      <button class="kb-link" data-act="reportPb" data-k="PB-11">${I.pb} Read PB-11</button></div>` : ''}
     <div class="report-grid">${G.shift.map((s, i) => {
       const r = R.results[i], t = ticket(s.id);
       return `<div class="card pad"><div class="row">${prioBadge(t?.triage?.priority)}<span class="tid">#${s.id}</span>${t ? statusBadge(t.status) : ''}<div class="grow"></div><b class="${r.score >= 80 ? 'good-t' : r.score >= 50 ? '' : 'bad-t'}">${r.score}</b></div>
@@ -1177,7 +1282,8 @@ const ACT = {
   start: d => newGame(d.m, d.seed ?? $('#seed-in')?.value),
   home: () => { G = null; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } render(); },
   theme: () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('shiftone-theme', r.dataset.theme); render(); },
-  endShift: () => modal({ title: 'End the shift now?', body: '<p>Tickets are graded as they stand. Anything that hasn\'t arrived yet scores 0.</p>', ok: 'End shift', danger: true, onOk: () => setTimeout(endShift) }),
+  endShift: () => modal({ title: 'End the shift now?', body: '<p>You\'ll write the handover for the on-call engineer next. Tickets are graded as they stand, and anything that hasn\'t arrived yet scores 0.</p>', ok: 'End shift', danger: true, onOk: () => setTimeout(startHandover) }),
+  submitHandover: () => endShift(),
   speed: d => { G.speed = Number(d.s); render(); },
   view: d => { G.view = d.v; render(); },
   filter: d => { G.filter = d.f; render(); },
