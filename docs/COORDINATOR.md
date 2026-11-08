@@ -34,6 +34,7 @@ Real-world tools with the same shape: the ConnectWise PSA Dispatch Portal and sc
 | **Handover** | At 17:00 the clock stops and you hand over to Jordan Blake, the on-call engineer. Tick the open tickets Jordan needs to know about, give each a next step, and write a one-line summary. See [Shift handover](#shift-handover). |
 | **Time entries** | Every finished job leaves a time entry on the ticket. Code it *Covered by agreement*, *Billable* or *Block hours* before you close. See [Time entries and billing](#time-entries-and-billing). |
 | **Skill drills** | Five short practice shifts, one area each, from the start page or suggested by your report. See [Skill drills](#skill-drills). |
+| **Interview prep** | `dispatch.html#prep`, or *Interview prep* in the top bar. See [Interview prep](#interview-prep). |
 | **Report** | Letter grade, KPIs (time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches, closed) and technician utilization, then per-ticket feedback with the reasoning behind the right answer. |
 
 ## Scenario answer key (for tutors)
@@ -122,6 +123,12 @@ A drill is a short practice shift built from one area's tickets, with no carry-o
 | `drill-approvals` | Approvals and block hours | Partners folder, Jess's MacBook, Rhea's Adobe licence, mail forwarding |
 | `drill-scheduling` | Onsite windows | Front desk printing, new starter, library Wi-Fi, hall projector, RMA motherboard |
 | `drill-p1` | P1s, vendors and duplicates | Clinic outage, the three Oakridge email tickets, KFL copier |
+
+## Interview prep
+
+Eleven questions MSPs ask service coordinators and dispatchers live in [`js/dispatch/interview.js`](../js/dispatch/interview.js): prioritising, a sick technician, an angry client, matching techs to work, access requests, a suspicious VIP request, a P1 outage, monitoring noise, billing, handover and KPIs. For each one the player writes the answer they'd give out loud. A checklist under it ticks off the key points as the answer covers them; it matches on wording, so it's a nudge, not a grade. Then they can open a model answer built from the playbook, read the linked playbook articles, and start the drill that practises the skill. Answers are saved in the browser (`shiftone-prep`).
+
+To add a question, give it `points` with a few patterns each, a `model` answer, the `kb` articles and a `drill`. The tests in [`tests/dispatch/interview.test.js`](../tests/dispatch/interview.test.js) check that every link is real and that the model answer covers all of its own points.
 
 ## Shift handover
 

@@ -26,6 +26,7 @@ const overlaps = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
 
 let G = null;
 let PAGE = 'start';
+let PREP_OPEN = false; // the interview prep page (dispatch.html#prep)
 
 function newGame(mode, seed) {
   const shift = buildShift(seed);
@@ -848,11 +849,12 @@ function render() {
 
 function renderDom() {
   const app = $('#app');
-  app.dataset.phase = G ? G.phase : 'start';
+  app.dataset.phase = G ? G.phase : PREP_OPEN ? 'prep' : 'start';
   G && (G.dirty = false);
   const a = document.activeElement, fid = a && a.id, s1 = a && a.selectionStart, s2 = a && a.selectionEnd;
   const mainScroll = $('#main').scrollTop, dScroll = $('.dscroll')?.scrollLeft;
 
+  if (!G && PREP_OPEN) { $('#main').innerHTML = renderPrep(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; $('#call-root').innerHTML = ''; return; }
   if (!G || G.phase === 'start') { $('#main').innerHTML = renderStart(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; $('#call-root').innerHTML = ''; Landing.mount(); return; }
   if (G.phase === 'handover') { $('#main').innerHTML = renderHandover(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = renderModal(); $('#call-root').innerHTML = ''; return; }
   if (G.phase === 'report') { $('#main').innerHTML = renderReport(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = renderModal(); $('#call-root').innerHTML = ''; return; }
@@ -886,7 +888,7 @@ function liveUpdate() {
 
 function topbarStart() {
   return `<a class="brand as-link" href="index.html">${logo()}<span>Shift One</span><small>Service Coordinator</small></a><div class="grow"></div>
-    <nav class="top-links"><a href="index.html">Help desk mode</a><a href="index.html#pricing">Tutoring &amp; Pricing</a>${CONFIG.repoUrl ? `<a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">GitHub</a>` : ''}</nav>${themeBtn()}`;
+    <nav class="top-links"><a href="#prep" data-act="prep">Interview prep</a><a href="index.html">Help desk mode</a><a href="index.html#pricing">Tutoring &amp; Pricing</a>${CONFIG.repoUrl ? `<a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">GitHub</a>` : ''}</nav>${themeBtn()}`;
 }
 function urlSeed() { try { return normSeed(new URLSearchParams(location.search).get('seed')); } catch { return ''; } }
 function logo() { return '<svg class="logo" viewBox="0 0 32 32"><rect x="3" y="6" width="26" height="22" rx="3"/><path d="M3 12h26M10 3v6M22 3v6M9 18h5M17 22h6"/></svg>'; }
@@ -1214,6 +1216,11 @@ function renderStart() {
       <div class="drill-grid">${DRILLS.map(d => `<div class="desk"><span class="desk-role">${d.keys.length} tickets</span><h3>${esc(d.title)}</h3><p>${esc(d.blurb)}</p>
         <div class="desk-go"><button class="btn" data-act="start" data-m="practice" data-seed="drill-${d.id}">Start drill</button></div></div>`).join('')}</div></section>
 
+    <section class="l-sec"><div class="l-eyebrow">Interview prep</div>
+      <h2>Got an interview coming up?</h2>
+      <p class="muted">${PREP.length} questions MSPs ask service coordinators, from "how do you prioritise?" to "what goes in a handover?". Write your answer, see which key points it covers, compare it with a model answer, then practise that skill in a drill.</p>
+      <div class="row gap"><button class="btn primary" data-act="prep">Start interview prep</button>${(() => { const st = prepStats(); return st.answered ? `<span class="muted small">${st.answered} of ${st.total} answered so far</span>` : ''; })()}</div></section>
+
     <section class="l-sec"><div class="l-eyebrow">The classic shift, in the order tickets arrive</div>
       <h2>Nine hours of dispatch in about eighteen minutes.</h2>
       ${Landing.timeline([
@@ -1275,6 +1282,53 @@ function renderHandover() {
       : '<div class="empty muted pad">Nothing is open. Say so in the summary.</div>'}</div>
     <label class="field"><span>Summary for ${esc(oc.name.split(' ')[0])}</span><textarea id="d-ho-summary" data-draft="ho-summary" rows="3" placeholder="How the shift went, and anything to watch overnight">${esc(d('ho-summary') || '')}</textarea></label>
     <div class="row gap"><div class="grow"></div><button class="btn primary lg" data-act="submitHandover">Submit handover and see the report</button></div></div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Interview prep (PREP in interview.js). Answers are kept in this browser only.
+// ---------------------------------------------------------------------------
+const PREP_KEY = 'shiftone-prep';
+function prepAnswers() {
+  try { const a = JSON.parse(store.get(PREP_KEY) || '{}'); return a && typeof a === 'object' && !Array.isArray(a) ? a : {}; } catch { return {}; }
+}
+function savePrepAnswer(id, text) {
+  const a = prepAnswers();
+  if (text.trim()) a[id] = text; else delete a[id];
+  store.set(PREP_KEY, JSON.stringify(a));
+}
+function prepStats(a = prepAnswers()) {
+  const done = PREP.filter(q => (a[q.id] || '').trim().length >= 40);
+  const hit = PREP.reduce((x, q) => x + prepCovered(q, a[q.id]).filter(Boolean).length, 0);
+  const all = PREP.reduce((x, q) => x + q.points.length, 0);
+  return { answered: done.length, total: PREP.length, hit, all };
+}
+const prepPoints = (q, text) => {
+  const c = prepCovered(q, text);
+  return q.points.map((p, i) => `<li class="${c[i] ? 'g' : 'todo'}">${esc(p.label)}</li>`).join('');
+};
+const prepSummary = st => `<b>${st.answered}</b> of ${st.total} questions answered · <b>${st.hit}</b> of ${st.all} key points covered`;
+
+function renderPrep() {
+  const a = prepAnswers();
+  const cards = PREP.map((q, i) => {
+    const d = q.drill && DRILLS.find(x => x.id === q.drill);
+    const arts = q.kb.map(k => PLAYBOOK.find(p => p.id === k)).filter(Boolean);
+    return `<div class="card pad prep-q" id="q-${q.id}">
+      <div class="row"><span class="tid">Q${i + 1}</span><h3 class="grow">${esc(q.q)}</h3></div>
+      <label class="field"><span>Your answer, as you'd say it out loud</span><textarea id="prep-${q.id}" data-prep="${q.id}" rows="4" placeholder="Talk it through: what you'd check, what you'd do, and why.">${esc(a[q.id] || '')}</textarea></label>
+      <div class="muted small">A strong answer covers:</div>
+      <ul class="fb prep-points" id="prep-pts-${q.id}">${prepPoints(q, a[q.id])}</ul>
+      <details class="close-box"><summary>Model answer</summary><p>${esc(q.model)}</p></details>
+      ${arts.map(p => `<details class="close-box"><summary>${p.id} · ${esc(p.title)}</summary><div class="article">${p.body}</div></details>`).join('')}
+      <div class="row gap"><button class="btn sm" data-act="start" data-m="practice" data-seed="${d ? 'drill-' + d.id : 'classic'}">${d ? `Practise it: ${esc(d.title)} drill` : 'Practise it in the classic shift'}</button></div>
+    </div>`;
+  }).join('');
+  return `<div class="report prep">
+    <div class="view-head"><h2>Interview prep</h2><span class="muted">Service coordinator · MSP dispatcher</span></div>
+    <div class="card pad"><p>These are the questions MSPs ask service coordinators and dispatchers. Write your answer the way you'd say it, and the checklist under it ticks off the key points as you cover them. Then compare with the model answer and practise the skill in the sim. Your answers stay in this browser.</p>
+      <p class="small" id="prep-sum">${prepSummary(prepStats(a))}</p>
+      <div class="row gap"><button class="btn" data-act="home">Back to the start page</button></div></div>
+    ${cards}</div>`;
 }
 
 function renderReport() {
@@ -1346,8 +1400,9 @@ function renderProgress(h) {
 // Event wiring
 // ---------------------------------------------------------------------------
 const ACT = {
-  start: d => newGame(d.m, d.seed ?? $('#seed-in')?.value),
-  home: () => { G = null; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } render(); },
+  start: d => { if (PREP_OPEN) { PREP_OPEN = false; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } } newGame(d.m, d.seed ?? $('#seed-in')?.value); },
+  prep: () => { G = null; PREP_OPEN = true; try { history.replaceState(null, '', location.pathname + '#prep'); } catch { /* ignore */ } render(); $('#main').scrollTop = 0; window.scrollTo(0, 0); },
+  home: () => { G = null; PREP_OPEN = false; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } render(); },
   theme: () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('shiftone-theme', r.dataset.theme); render(); },
   endShift: () => G.drill ? modal({ title: 'End the drill now?', body: '<p>Tickets are graded as they stand, so work that isn\'t finished or closed loses points.</p>', ok: 'End drill', danger: true, onOk: () => setTimeout(endShift) }) : modal({ title: 'End the shift now?', body: '<p>You\'ll write the handover for the on-call engineer next. Tickets are graded as they stand, and anything that hasn\'t arrived yet scores 0.</p>', ok: 'End shift', danger: true, onOk: () => setTimeout(startHandover) }),
   submitHandover: () => endShift(),
@@ -1413,6 +1468,15 @@ const onDraft = e => {
   else if (G.dirty && e.type === 'change') render();
 };
 document.addEventListener('input', onDraft);
+// Prep answers save as you type and update their own checklist, without a full re-render.
+document.addEventListener('input', e => {
+  const id = e.target.dataset?.prep, q = id && PREP.find(x => x.id === id);
+  if (!q) return;
+  savePrepAnswer(id, e.target.value);
+  const pts = document.getElementById('prep-pts-' + id), sum = document.getElementById('prep-sum');
+  if (pts) pts.innerHTML = prepPoints(q, e.target.value);
+  if (sum) sum.innerHTML = prepSummary(prepStats());
+});
 document.addEventListener('change', onDraft);
 document.addEventListener('focusout', () => { if (G && G.dirty) setTimeout(() => { if (G?.dirty && document.activeElement?.tagName !== 'SELECT') render(); }); });
 document.addEventListener('keydown', e => {
@@ -1425,5 +1489,6 @@ setInterval(tick, 250);
 (function init() {
   const saved = store.get('shiftone-theme');
   document.documentElement.dataset.theme = saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  try { PREP_OPEN = location.hash === '#prep'; } catch { /* ignore */ }
   render();
 })();

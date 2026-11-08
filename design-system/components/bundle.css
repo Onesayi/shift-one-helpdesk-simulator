@@ -666,6 +666,17 @@ a.btn.primary { color: var(--on-accent); }
 .drills .drill-grid .desk { display: flex; flex-direction: column; }
 .drills .drill-grid .desk-go { margin-top: auto; }
 
+/* Interview prep */
+#app[data-phase="prep"] { grid-template-columns: 1fr; }
+#app[data-phase="prep"] #sidebar, #app[data-phase="prep"] #ticketpanel { display: none; }
+.prep .prep-q h3 { font-size: 17px; }
+.prep .prep-q .field { display: block; margin: 12px 0 8px; }
+.prep .prep-points { margin: 6px 0 10px; }
+.prep .prep-points li.todo { color: var(--muted); }
+.prep .prep-points li.todo::before { content: '○'; position: absolute; left: 0; color: var(--muted); }
+.prep details.close-box { margin-top: 8px; }
+.prep .prep-q > .row.gap { margin-top: 12px; }
+
 /* ---------- Preview frames only (ds-*): not part of the product ---------- */
 html, body { height: auto; }
 body { padding: 16px; }
