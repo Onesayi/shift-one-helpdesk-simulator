@@ -684,6 +684,11 @@ a.btn.primary { color: var(--on-accent); }
 .csat .row { gap: 8px; align-items: center; }
 .csat .stars .off { color: var(--muted); }
 
+/* Campaign summary on the report */
+.grade-chip { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 6px; color: #fff; font-weight: 800; font-size: 12px; margin-right: 4px; }
+.campaign .big { font-size: 22px; }
+.campaign .row { gap: 6px; align-items: center; }
+
 /* ---------- Preview frames only (ds-*): not part of the product ---------- */
 html, body { height: auto; }
 body { padding: 16px; }
