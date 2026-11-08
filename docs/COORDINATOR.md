@@ -33,6 +33,7 @@ Real-world tools with the same shape: the ConnectWise PSA Dispatch Portal and sc
 | **Disruptions** | Ben goes home sick every shift. Seeded shifts add one or two more: Luis's van breaks down, or Maya is pulled onto an internal outage, and they're off the board for an hour or more; or Lena asks to move the Eastgate scan-to-email to tomorrow. Bookings in the gap can't go ahead, so move them and tell the client. See [Shift variation](#shift-variation). |
 | **Handover** | At 17:00 the clock stops and you hand over to Jordan Blake, the on-call engineer. Tick the open tickets Jordan needs to know about, give each a next step, and write a one-line summary. See [Shift handover](#shift-handover). |
 | **Time entries** | Every finished job leaves a time entry on the ticket. Code it *Covered by agreement*, *Billable* or *Block hours* before you close. See [Time entries and billing](#time-entries-and-billing). |
+| **Campaign** | Shift code `campaign` or `campaign-<seed>`: Thursday's day shift, the on-call night, then Friday, on one clock. Open work carries over. See [Campaign](#campaign). |
 | **After-hours on-call** | Shift code `night`: Thursday 17:00 to Friday 08:00 with one engineer, Jordan Blake. Decide what's worth waking Jordan for and book the rest on Friday's board, then hand over to the day coordinator. See [After-hours on-call shift](#after-hours-on-call-shift). |
 | **Client satisfaction** | Closing a ticket as resolved sends the client a 1–5 survey. The rating follows from how you handled it, and a 3 or lower needs a reply. See [Client satisfaction (CSAT)](#client-satisfaction-csat). |
 | **Skill drills** | Five short practice shifts, one area each, from the start page or suggested by your report. See [Skill drills](#skill-drills). |
@@ -130,6 +131,15 @@ When you close a ticket as *Resolved* and it has a client contact, the client an
 | Nobody sent a resolution confirmation | 1 |
 
 A rating of 3 or lower is a complaint. It shows on the Service Board until you open the closed ticket and press *Reply*, and leaving it unanswered costs 10 on that ticket. A survey that lands in the last 30 minutes of the shift isn't held against you. The report shows CSAT as the share of surveys rated 4 or 5, and it's tracked in your progress. The answer key gets 5/5 on every survey.
+
+## Campaign
+
+Shift code `campaign` starts a new one, and `campaign-<seed>` replays one. There are three legs on one continuous clock: Thursday's day shift (the seeded shift for `<seed>`), the after-hours night, then Friday's day shift. Nothing resets between legs. Open tickets, bookings, vendor cases and approvals all carry on, and a call that's ringing at a changeover is still ringing when the next leg starts. Your handover is your only briefing: each flagged ticket gets your note in its thread, and your summary is on the Team page.
+
+- **Friday** draws up to 8 scenarios that Thursday didn't use, moved forward a day, plus one team disruption. Ben is still off sick. Scenarios that are always due "tomorrow" are left out, because Friday has no tomorrow, so Thursday's Friday bookings are the only Friday-dated work.
+- **Grading:** each ticket is graded once, at the end of the leg where it's closed or merged. A resolved ticket waits for its survey before it's graded. Anything still open at Friday 17:00 is graded then. Each leg's score averages the tickets graded in it plus that leg's handover. The overall score averages every ticket and all three handovers.
+- **Ending a leg early** grades what's finished. The rest of that shift still plays out before the next leg starts.
+- Night tickets keep their on-call rules (PB-13) even when they're graded on Friday. Campaigns aren't saved to your progress.
 
 ## After-hours on-call shift
 

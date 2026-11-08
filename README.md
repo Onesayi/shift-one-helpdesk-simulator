@@ -95,6 +95,7 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 | 🧑‍🔧 **Simulated technicians** | Booked work runs itself. The wrong skills bounce back, P1s can pull a tech off other work, and a tech goes home sick mid-morning. Random shifts add more: a van breaks down, an internal outage takes an engineer away, or a client asks to move their appointment |
 | 🤝 **Coordination** | Client message templates, authorized-contact approvals, Service Manager and Account Manager escalations, ISP and RMA vendor cases, merging duplicates, closing with a reason |
 | 🧾 **Time entries** | Every finished job leaves a time entry. Code it covered, billable or block hours by the client's agreement, and watch prepaid blocks run down |
+| 📅 **Campaign** | Thursday's day shift, the on-call night, then Friday, on one clock. Open work carries over, your handover is your only briefing, and each ticket is graded once, when it's finished |
 | 🌃 **After-hours on-call** | Cover the desk from 17:00 to 08:00 with one engineer. Decide what's worth waking them for, put the rest on Friday's board, and hand over to the day coordinator at 08:00 |
 | ⭐ **Client satisfaction** | Resolved tickets get a 1–5 survey that scores how you handled them: late replies, chasers and missed updates all cost stars. Reply to anything 3 or under, and watch your CSAT on the report |
 | 🎯 **Skill drills** | Five short practice rounds, one skill each (triage, alerts, approvals, onsite windows, P1s). The report suggests the one you need most |

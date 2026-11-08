@@ -480,3 +480,45 @@ function buildShift(seed) {
   }
   return { seed, drill: null, tickets: carried.concat(today), events };
 }
+
+// ---------------------------------------------------------------------------
+// Campaign (shift code 'campaign-<seed>'): Thursday's seeded day shift, the on-call night (night.js),
+// then Friday's day shift, on one continuous clock. Friday draws the scenarios Thursday didn't use,
+// moved forward a day. Work that was always meant for "tomorrow" is left out, because Friday has no tomorrow.
+// ---------------------------------------------------------------------------
+const FRIDAY_SIZE = 8;
+const campaignOf = seed => /^campaign(-|$)/.test(seed) ? (seed.slice(9) || null) : undefined;
+
+function buildFriday(seed, used) {
+  const rnd = seedRng(seed + '-friday');
+  const take = list => list.splice(Math.floor(rnd() * list.length), 1)[0];
+  const when = ([lo, hi]) => lo + 5 * Math.floor(rnd() * (Math.floor((hi - lo) / 5) + 1));
+  const units = [];
+  for (const s of SCENARIOS) {
+    if (s.at < 0 || used.has(s.id)) continue;
+    const u = s.group && units.find(x => x[0].group === s.group);
+    if (u) u.push(s); else units.push([s]);
+  }
+  let pool = units.filter(u => u.every(s => s.truth.startBy == null || s.truth.startBy < DAY));
+  const chosen = [];
+  while (chosen.length < FRIDAY_SIZE && pool.length) {
+    const u = take(pool);
+    chosen.push(u);
+    pool = pool.filter(x => !(x[0].avoid || []).includes(u[0].id) && !(u[0].avoid || []).includes(x[0].id));
+  }
+  const copy = (s, extra) => Object.assign(Object.create(s), { key: s.id }, extra);
+  const tickets = [];
+  for (const u of chosen) {
+    const delta = u[0].window ? when(u[0].window) - u[0].at : 0;
+    for (const s of u) {
+      const truth = s.truth.startBy == null ? s.truth : Object.assign({}, s.truth, { startBy: s.truth.startBy + DAY + (s.slide ? delta : 0) });
+      tickets.push(copy(s, { at: s.at + delta, truth }));
+    }
+  }
+  tickets.sort((a, b) => a.at - b.at || SCENARIOS.indexOf(Object.getPrototypeOf(a)) - SCENARIOS.indexOf(Object.getPrototypeOf(b)));
+  tickets.forEach((t, i) => { t.id = String(4701 + i); });
+  // One team disruption on Friday too (Ben is still off sick from Thursday).
+  const outs = DISRUPTIONS.filter(d => d.kind === 'out'), d = outs[Math.floor(rnd() * outs.length)];
+  const events = [Object.assign({}, d, { at: DAY + when(d.window) })];
+  return { seed, drill: null, tickets, events };
+}
