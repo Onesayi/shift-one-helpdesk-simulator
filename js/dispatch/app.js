@@ -31,7 +31,7 @@ function newGame(mode, seed) {
   const shift = buildShift(seed);
   G = {
     phase: 'play', mode, clock: SHIFT_START, speed: 1,
-    seed: shift.seed, shift: shift.tickets, events: shift.events,
+    seed: shift.seed, drill: shift.drill, shift: shift.tickets, events: shift.events, time: [], timeSeq: 0,
     tickets: [], log: [], seq: 0, appts: [], apptSeq: 0, blocks: baseBlocks(),
     techs: Object.fromEntries(Object.keys(TECHS).map(k => [k, { sickAt: null }])),
     block: { pp: CLIENTS.pp.block },
@@ -231,7 +231,7 @@ function onMinute(m) {
     }
   }
 
-  if (m >= SHIFT_END) { startHandover(); return true; }
+  if (m >= SHIFT_END) { if (G.drill) endShift(); else startHandover(); return true; }
   return changed;
 }
 
@@ -281,6 +281,10 @@ function defaultWork(t, a, tech) {
 function workDone(t, techId, out) {
   if (!isOpen(t)) return;
   record('work-done', { ticket: t.id, tech: techId, kind: out.kind });
+  if (out.kind === 'done') {
+    const a = [...G.appts].reverse().find(x => x.ticket === t.id && x.tech === techId && x.state === 'done');
+    G.time.push({ id: ++G.timeSeq, ticket: t.id, tech: techId, mins: a ? a.dur : (t.triage?.est || 30), onsite: !!a?.onsite, at: now(), code: null });
+  }
   post(t, techId, out.note, 'tech');
   t.status = { done: 'Completed', bounce: 'Needs reassign', vendor: 'Waiting on vendor' }[out.kind];
   const msg = { done: `${TECHS[techId].name} completed #${t.id}.`, bounce: `${TECHS[techId].name} handed #${t.id} back: wrong skills.`, vendor: `${TECHS[techId].name} needs a vendor case on #${t.id}.` }[out.kind];
@@ -417,6 +421,31 @@ function closeTicket(t) {
   record('close', { ticket: t.id, reason });
   post(t, 'system', `Closed: ${REASONS[reason]}. ${note}`, 'system');
   toast(`#${t.id} closed.`, 'good');
+  render();
+}
+
+// Time entries (PB-12). Each finished job leaves one; the coordinator codes it before closing.
+const BILL = { covered: 'Covered by agreement', billable: 'Billable', block: 'Block hours' };
+
+function billingFor(t, e) {
+  const c = client(t), T = t.s.truth;
+  if (c.block != null) return { code: 'block', why: `${c.name} buys prepaid blocks, so every minute comes off the block.` };
+  if ([].concat(T.board)[0] === 'Projects & Onboarding') return { code: 'billable', why: 'Project and onboarding work is billed separately, even on a managed agreement.' };
+  if (c.sla === 'standard' && e.onsite) return { code: 'billable', why: `${c.name}'s standard agreement covers remote support only. Onsite visits are billed.` };
+  return { code: 'covered', why: `${c.name}'s ${c.agreement.toLowerCase()} agreement covers this work.` };
+}
+
+function postTime(t) {
+  const open = G.time.filter(e => e.ticket === t.id && !e.code);
+  const ready = open.filter(e => BILL[G.drafts['bill-' + e.id]]);
+  if (!ready.length) return toast('Choose a billing code for the time entry.', 'bad');
+  for (const e of ready) {
+    e.code = G.drafts['bill-' + e.id];
+    record('time-code', { ticket: t.id, entry: e.id, code: e.code });
+    if (e.code === 'block' && G.block[t.client] != null) G.block[t.client] = Math.round((G.block[t.client] - e.mins / 60) * 100) / 100;
+    post(t, 'system', `Time entry posted: ${TECHS[e.tech].name}, ${mins(e.mins)}, ${BILL[e.code]}.`, 'system');
+  }
+  toast(`Posted ${ready.length} time entr${ready.length > 1 ? 'ies' : 'y'} on #${t.id}.`, 'good');
   render();
 }
 
@@ -657,6 +686,13 @@ function grade(t) {
     else if (!completed) ded.push([10, 'Still not fixed at the end of the shift.']);
   }
 
+  for (const e of G.time.filter(e => e.ticket === t.id)) {
+    const want = billingFor(t, e), who = `${TECHS[e.tech].name.split(' ')[0]}'s ${mins(e.mins)}`;
+    if (!e.code) ded.push([5, `${who} time entry was never coded, so it can't be invoiced or reported.`]);
+    else if (e.code !== want.code) ded.push([10, `${who} was coded "${BILL[e.code]}"; it should be "${BILL[want.code]}". ${want.why}`]);
+    else good.push(`Time coded as ${BILL[e.code]}.`);
+  }
+
   if (s.evaluate) s.evaluate(t, ded, good);
   return { score: Math.max(0, 100 - ded.reduce((x, d) => x + d[0], 0)), ded, good };
 }
@@ -673,6 +709,7 @@ function kpis() {
     chasers: logged('chaser').length,
     bounces: logged('work-done', e => e.kind === 'bounce').length,
     closed: G.tickets.filter(t => t.closed || t.parent).length,
+    billing: G.time.length ? Math.round(G.time.filter(e => e.code && e.code === billingFor(ticket(e.ticket), e).code).length / G.time.length * 100) : null,
   };
 }
 
@@ -710,15 +747,28 @@ function gradeHandover() {
   return { score: Math.max(0, 100 - ded.reduce((x, e) => x + e[0], 0)), ded, good };
 }
 
+// The drill whose tickets went worst this shift (average under 90), to suggest on the report.
+function weakestDrill(results) {
+  let worst = null;
+  for (const d of DRILLS) {
+    const rs = G.shift.map((s, i) => d.keys.includes(s.key) ? results[i].score : null).filter(x => x != null);
+    if (!rs.length) continue;
+    const avg = Math.round(rs.reduce((x, y) => x + y, 0) / rs.length);
+    if (avg < 90 && (!worst || avg < worst.avg)) worst = { drill: d, avg, n: rs.length };
+  }
+  return worst;
+}
+
 function endShift() {
   const results = G.shift.map(s => { const t = ticket(s.id); return t ? grade(t) : { score: 0, ded: [[100, 'Never arrived: the shift ended first.']], good: [] }; });
-  const handover = gradeHandover();
-  // The handover counts like one more ticket.
-  const final = Math.round((results.reduce((x, r) => x + r.score, 0) + handover.score) / (results.length + 1));
+  // The handover counts like one more ticket. Drills have no handover and aren't saved to progress.
+  const handover = G.drill ? null : gradeHandover();
+  const scores = results.map(r => r.score).concat(handover ? [handover.score] : []);
+  const final = Math.round(scores.reduce((x, y) => x + y, 0) / scores.length);
   const grade_ = final >= 90 ? 'A' : final >= 80 ? 'B' : final >= 70 ? 'C' : final >= 60 ? 'D' : 'F';
-  const kpi = Object.assign(kpis(), { handover: handover.score });
-  G.report = { final, grade: grade_, results, handover, kpi, time: now() };
-  G.report.history = saveShift({ at: Date.now(), mode: G.mode, seed: G.seed, final, grade: grade_, kpi: G.report.kpi });
+  const kpi = Object.assign(kpis(), { handover: handover ? handover.score : null });
+  G.report = { final, grade: grade_, results, handover, kpi, time: now(), drill: G.drill, suggest: G.drill ? null : weakestDrill(results) };
+  G.report.history = G.drill ? loadHistory() : saveShift({ at: Date.now(), mode: G.mode, seed: G.seed, final, grade: grade_, kpi: G.report.kpi });
   G.phase = 'report'; G.modal = null; G.ring = null;
   render();
 }
@@ -737,6 +787,7 @@ const PROGRESS = [
   { label: 'Follow-up', sub: 'client chasers', up: false, get: e => e.kpi.chasers },
   { label: 'Dispatch', sub: 'wrong-tech dispatches', up: false, get: e => e.kpi.bounces },
   { label: 'Handover', sub: 'handover score', up: true, get: e => e.kpi.handover },
+  { label: 'Billing', sub: 'time entries coded right', unit: '%', up: true, get: e => e.kpi.billing },
 ];
 
 function loadHistory() {
@@ -844,7 +895,7 @@ function themeBtn() { return `<button class="icon-btn" data-act="theme" title="T
 function renderTopbar() {
   const k = kpis(), open = G.tickets.filter(isOpen);
   const speeds = SPEED_LABEL.map((l, i) => (i === 0 && G.mode !== 'practice') ? '' : `<button class="${G.speed === i ? 'on' : ''}" data-act="speed" data-s="${i}" title="${i ? `${SPEEDS[i]} sim min per second` : 'Pause'}">${l}</button>`).join('');
-  return `<div class="brand">${logo()}<span>Shift One</span><small>${G.mode === 'practice' ? 'Practice' : 'Timed shift'} · shift ${esc(G.seed)}</small></div>
+  return `<div class="brand">${logo()}<span>Shift One</span><small>${G.drill ? `Drill · ${esc(G.drill.title)}` : `${G.mode === 'practice' ? 'Practice' : 'Timed shift'} · shift ${esc(G.seed)}`}</small></div>
     <div class="stats">
       <div><small>Thursday</small><b id="clock">${hm(now())}</b></div>
       <div><small>Open</small><b>${open.length}</b></div>
@@ -855,7 +906,7 @@ function renderTopbar() {
     <div class="grow"></div>
     <div class="seg speed" aria-label="Simulation speed">${speeds}</div>
     ${themeBtn()}
-    <button class="btn" data-act="endShift">End shift</button>`;
+    <button class="btn" data-act="endShift">${G.drill ? 'End drill' : 'End shift'}</button>`;
 }
 
 function renderSidebar() {
@@ -1046,10 +1097,17 @@ function renderActions(t) {
       <label class="field"><span>Closing note</span><textarea id="d-cnote-${t.id}" data-draft="cnote-${t.id}" rows="2" placeholder="What happened, and why it's closed">${esc(G.drafts['cnote-' + t.id] || '')}</textarea></label>
       <button class="btn primary sm" data-act="close">Close ticket</button>`, false);
 
+  const entries = G.time.filter(e => e.ticket === t.id);
+  const time = entries.length ? section(t, 'time', `Time entries${entries.some(e => !e.code) ? ' <span class="chip warn">To code</span>' : ''}`, `
+      <table class="tbl compact"><tbody>${entries.map(e => `<tr><td><b>${esc(TECHS[e.tech].name)}</b><div class="muted small">${hm(e.at)} · ${mins(e.mins)}${e.onsite ? ' · onsite' : ' · remote'}</div></td>
+        <td class="right">${e.code ? `<span class="chip ${e.code === 'covered' ? 'muted' : 'ok'}">${BILL[e.code]}</span>` : `<select id="d-bill-${e.id}" data-draft="bill-${e.id}" aria-label="Billing code"><option value="">Code as…</option>${Object.entries(BILL).map(([k, l]) => `<option value="${k}" ${G.drafts['bill-' + e.id] === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`}</td></tr>`).join('')}</tbody></table>
+      ${entries.some(e => !e.code) ? '<button class="btn primary sm" data-act="bill">Post time</button>' : ''}
+      <button class="kb-link" data-act="gotoPb" data-k="PB-12">${I.pb} PB-12 Time entries and billing</button>`, entries.some(e => !e.code)) : '';
+
   const pb = PLAYBOOK.find(p => p.id === t.s.kb);
   return `<div class="tp-actions">
     ${section(t, 'tri', t.triage ? `Triage <span class="muted small">· ${t.triage.priority} · ${esc(t.triage.board)}</span>` : 'Triage', triage, !t.triage)}
-    ${msg}${coord}${close}
+    ${msg}${coord}${time}${close}
     ${pb ? `<button class="kb-link" data-act="gotoPb" data-k="${pb.id}">${I.pb} Playbook: ${pb.id} ${esc(pb.title)}</button>` : ''}
   </div>`;
 }
@@ -1150,6 +1208,12 @@ function renderStart() {
         <span class="desk-link">Go to the help desk →</span></a>
     </div>
 
+    <section class="l-sec drills"><div class="l-eyebrow">Skill drills · practice mode</div>
+      <h2>Short on time? Drill one skill.</h2>
+      <p class="muted">Four or five tickets from one area, with no sick calls and no handover. Run it at 4× until the techs finish, then end the drill. Drills don't count towards your progress.</p>
+      <div class="drill-grid">${DRILLS.map(d => `<div class="desk"><span class="desk-role">${d.keys.length} tickets</span><h3>${esc(d.title)}</h3><p>${esc(d.blurb)}</p>
+        <div class="desk-go"><button class="btn" data-act="start" data-m="practice" data-seed="drill-${d.id}">Start drill</button></div></div>`).join('')}</div></section>
+
     <section class="l-sec"><div class="l-eyebrow">The classic shift, in the order tickets arrive</div>
       <h2>Nine hours of dispatch in about eighteen minutes.</h2>
       ${Landing.timeline([
@@ -1218,9 +1282,10 @@ function renderReport() {
   const tile = (label, v, sub, bad) => `<div class="stat ${bad ? 'bad' : ''}"><small>${label}</small><b>${v}</b><span>${sub}</span></div>`;
   return `<div class="report">
     <div class="report-head"><div class="grade g-${R.grade}">${R.grade}</div>
-      <div><h1>Shift report</h1><p class="muted">Northbound IT · Thursday 08:00–${hm(R.time)} · ${G.mode === 'practice' ? 'practice mode' : 'timed shift'} · shift <b>${esc(G.seed)}</b></p>
+      <div><h1>${R.drill ? 'Drill report' : 'Shift report'}</h1><p class="muted">Northbound IT · Thursday 08:00–${hm(R.time)} · ${R.drill ? `drill: <b>${esc(R.drill.title)}</b>` : `${G.mode === 'practice' ? 'practice mode' : 'timed shift'} · shift <b>${esc(G.seed)}</b>`}</p>
       <div class="big-score">${R.final}<small>/100</small></div></div>
-      <div class="grow"></div><div class="col gap"><button class="btn primary lg" data-act="start" data-m="${G.mode}" data-seed="">New shift</button><button class="btn" data-act="start" data-m="${G.mode}" data-seed="${esc(G.seed)}" title="Same tickets, same times: compare your score">Replay shift ${esc(G.seed)}</button><button class="btn" data-act="home">Main menu</button></div></div>
+      <div class="grow"></div><div class="col gap">${R.drill ? `<button class="btn primary lg" data-act="start" data-m="practice" data-seed="${esc(G.seed)}">Retry the drill</button><button class="btn" data-act="start" data-m="shift" data-seed="">Full shift</button>`
+        : `<button class="btn primary lg" data-act="start" data-m="${G.mode}" data-seed="">New shift</button><button class="btn" data-act="start" data-m="${G.mode}" data-seed="${esc(G.seed)}" title="Same tickets, same times: compare your score">Replay shift ${esc(G.seed)}</button>`}<button class="btn" data-act="home">Main menu</button></div></div>
     <div class="cards4 kpis">
       ${tile('Avg time to triage', k.triage ?? '–', 'minutes', k.triage > 15)}
       ${tile('First response in SLA', (k.resp ?? '–') + (k.resp != null ? '%' : ''), 'of tickets', k.resp != null && k.resp < 80)}
@@ -1228,8 +1293,10 @@ function renderReport() {
       ${tile('Client chasers', k.chasers, '"any update?"', k.chasers > 0)}
       ${tile('Wrong-tech dispatches', k.bounces, 'handed back', k.bounces > 0)}
       ${tile('Closed or merged', k.closed, `of ${G.tickets.length} tickets`)}
+      ${tile('Time coded right', (k.billing ?? '–') + (k.billing != null ? '%' : ''), 'of time entries', k.billing != null && k.billing < 100)}
     </div>
-    ${renderProgress(R.history || [])}
+    ${R.suggest ? `<div class="card pad coach-cta drill-cta"><div><b>Practise next: ${esc(R.suggest.drill.title)}</b><div class="muted">Your ${R.suggest.n === 1 ? 'ticket' : `${R.suggest.n} tickets`} in this area averaged ${R.suggest.avg}. ${esc(R.suggest.drill.blurb)}</div></div><button class="btn primary" data-act="start" data-m="practice" data-seed="drill-${R.suggest.drill.id}">Start the drill</button></div>` : ''}
+    ${R.drill ? '<div class="card pad"><p class="muted small">Drills aren\'t saved to your progress, so practise as often as you like.</p></div>' : renderProgress(R.history || [])}
     <div class="card pad"><h3>Technician utilization (today)</h3><p class="muted small">Booked ticket time as a share of each person's working day. 70–85% is healthy; nobody should be at 0% while tickets wait.</p>
       ${Object.entries(TECHS).map(([id, x]) => { const u = utilization(id); return `<div class="meter wide"><small>${esc(x.name)}</small><div><i style="width:${u}%" class="${u > 85 ? 'hi' : ''}"></i></div><span>${u}%</span></div>`; }).join('')}</div>
     <div class="card pad coach-cta"><div><b>Want someone to walk you through this report?</b><div class="muted">A tutor can replay the shift with you and turn every lost point into an interview answer.</div></div><a class="btn" href="index.html#pricing">See tutoring</a></div>
@@ -1282,7 +1349,7 @@ const ACT = {
   start: d => newGame(d.m, d.seed ?? $('#seed-in')?.value),
   home: () => { G = null; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } render(); },
   theme: () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('shiftone-theme', r.dataset.theme); render(); },
-  endShift: () => modal({ title: 'End the shift now?', body: '<p>You\'ll write the handover for the on-call engineer next. Tickets are graded as they stand, and anything that hasn\'t arrived yet scores 0.</p>', ok: 'End shift', danger: true, onOk: () => setTimeout(startHandover) }),
+  endShift: () => G.drill ? modal({ title: 'End the drill now?', body: '<p>Tickets are graded as they stand, so work that isn\'t finished or closed loses points.</p>', ok: 'End drill', danger: true, onOk: () => setTimeout(endShift) }) : modal({ title: 'End the shift now?', body: '<p>You\'ll write the handover for the on-call engineer next. Tickets are graded as they stand, and anything that hasn\'t arrived yet scores 0.</p>', ok: 'End shift', danger: true, onOk: () => setTimeout(startHandover) }),
   submitHandover: () => endShift(),
   speed: d => { G.speed = Number(d.s); render(); },
   view: d => { G.view = d.v; render(); },
@@ -1296,6 +1363,7 @@ const ACT = {
   vendor: () => vendorCase(ticket(G.active)),
   merge: () => merge(ticket(G.active)),
   close: () => closeTicket(ticket(G.active)),
+  bill: () => postTime(ticket(G.active)),
   pick: d => { G.pick = d.id; G.active = d.id; G.view = 'dispatch'; const a = finalAppt(ticket(d.id)); G.day = a && a.start >= DAY ? DAY : G.day; render(); },
   unpick: () => { G.pick = null; render(); },
   unschedule: () => unschedule(ticket(G.active)),

@@ -137,6 +137,7 @@ const CLIENTS = {
     notes: [
       'Co-managed: Brightline runs its own Tier 1 service desk. When they escalate, the basics are already done. Don\'t bounce it back to Tier 1.',
       'We look after their servers (DC01, FS01, PRINT01) and core network.',
+      'Standard agreement: remote support is covered, onsite visits are billed.',
     ],
     onsite: [[480, 1020]], onsiteText: 'office hours',
     vendors: ['AT&T Business (ISP)', 'Dell (hardware warranty)', 'Microsoft'],
@@ -155,6 +156,7 @@ const CLIENTS = {
       'School hours 07:30–15:30. No onsite visits 11:30–12:30 (lunch and recess). Sign in at the front office.',
       'OAK-LAB-VM01 to VM04 are classroom lab VMs that shut down every night. "Offline" alerts for them are expected: close as no action needed.',
       'The school office pays for Microsoft 365 by card. Renewals have lapsed before.',
+      'Standard agreement: remote support is covered, onsite visits are billed.',
     ],
     onsite: [[450, 690], [750, 930]], onsiteText: '07:30–11:30 and 12:30–15:30',
     vendors: ['Verizon Fios (ISP)', 'Epson (projector warranty)', 'Microsoft'],
@@ -251,4 +253,13 @@ const PLAYBOOK = [
 <li>Every flag gets a note with the next step. "See ticket" isn't a note.</li>
 <li>Always write a one-line summary of the shift, even when it was quiet.</li></ul>
 <p>Work that's already booked for tomorrow with someone who'll be in doesn't need flagging. On-call needs the short list, not the whole board.</p>` },
+  { id: 'PB-12', title: 'Time entries and billing', tags: 'time entry billing billable covered agreement block hours invoice', body: `
+<p>When a technician finishes, their time lands on the ticket as a <b>time entry</b>. Code every entry before you close the ticket. Uncoded time can't be invoiced or reported.</p>
+<table class="tbl compact"><thead><tr><th>Work</th><th>Code</th></tr></thead><tbody>
+<tr><td>Any work for a <b>block-hours</b> client</td><td><b>Block hours</b> (it comes off their prepaid balance)</td></tr>
+<tr><td><b>Projects &amp; Onboarding</b> work (new starters, planned projects), for any client</td><td><b>Billable</b></td></tr>
+<tr><td><b>Onsite visits</b> on a <b>standard</b> agreement</td><td><b>Billable</b> (standard covers remote support only)</td></tr>
+<tr><td>Everything else on a managed agreement (premium covers onsite too)</td><td><b>Covered by agreement</b></td></tr></tbody></table>
+<ul><li>Billing covered work makes an angry client and a credit note. Giving away billable work is lost revenue.</li>
+<li>Check the agreement on the Clients page if you're not sure.</li></ul>` },
 ];

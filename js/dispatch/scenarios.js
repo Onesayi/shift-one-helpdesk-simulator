@@ -392,8 +392,45 @@ function seedRng(seed) {
   };
 }
 
+// Skill drills: short practice shifts built from one area's tickets, with no carry-overs, no sick
+// calls and no handover. Shift code `drill-<id>`. Each ticket arrives at the start of its window.
+const DRILLS = [
+  { id: 'triage', title: 'Priority and routing', blurb: 'Impact × urgency, the overrides, and the right board for each ticket.',
+    keys: ['4504', '4502', '4511', '4512', '4513'] },
+  { id: 'noise', title: 'Alerts and noise', blurb: 'Which alerts need a tech, which are expected, and what to tell the client.',
+    keys: ['4503', 'pp-offline', 'bl-maint', '4502', '4511'] },
+  { id: 'approvals', title: 'Approvals and block hours', blurb: 'Who can approve, verifying odd requests, and checking the block before you book.',
+    keys: ['4505', '4510', 'pp-adobe', '4516'] },
+  { id: 'scheduling', title: 'Onsite windows', blurb: 'Remote or onsite, travel time, and each client\'s visiting hours.',
+    keys: ['4501', '4504', 'oak-wifi', '4514', '4515'] },
+  { id: 'p1', title: 'P1s, vendors and duplicates', blurb: 'Page the Service Manager, log the vendor case, merge the duplicates, keep updating.',
+    keys: ['4506', '4507', '4508', '4509', 'kfl-copier'] },
+];
+const drillOf = seed => DRILLS.find(d => 'drill-' + d.id === seed) || null;
+
+function buildDrill(seed, d) {
+  const copy = (s, extra) => Object.assign(Object.create(s), { key: s.id }, extra);
+  const units = [];
+  for (const k of d.keys) {
+    const s = SCENARIOS.find(x => x.id === k), u = s.group && units.find(x => x[0].group === s.group);
+    if (u) u.push(s); else units.push([s]);
+  }
+  const today = [];
+  for (const u of units) {
+    const delta = u[0].window ? u[0].window[0] - u[0].at : 0;
+    for (const s of u) {
+      const truth = s.slide && s.truth.startBy != null ? Object.assign({}, s.truth, { startBy: s.truth.startBy + delta }) : s.truth;
+      today.push(copy(s, { at: s.at + delta, truth }));
+    }
+  }
+  today.sort((a, b) => a.at - b.at || d.keys.indexOf(a.key) - d.keys.indexOf(b.key));
+  today.forEach((t, i) => { t.id = String(4501 + i); });
+  return { seed, drill: d, tickets: today, events: [] };
+}
+
 function buildShift(seed) {
   seed = normSeed(seed) || newSeed();
+  if (drillOf(seed)) return buildDrill(seed, drillOf(seed));
   const classic = seed === 'classic', rnd = seedRng(seed);
   const take = list => list.splice(Math.floor(rnd() * list.length), 1)[0];
   const when = ([lo, hi]) => lo + 5 * Math.floor(rnd() * (Math.floor((hi - lo) / 5) + 1));
@@ -440,5 +477,5 @@ function buildShift(seed) {
     const pool = DISRUPTIONS.slice(), n = rnd() < 0.5 ? 2 : 1;
     for (let i = 0; i < n; i++) { const d = take(pool); events.push(Object.assign({}, d, { at: when(d.window) })); }
   }
-  return { seed, tickets: carried.concat(today), events };
+  return { seed, drill: null, tickets: carried.concat(today), events };
 }

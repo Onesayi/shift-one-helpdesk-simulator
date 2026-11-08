@@ -130,3 +130,8 @@ a.btn.primary { color: var(--on-accent); }
   .handover .ho-table td:nth-child(4), .handover .ho-table td:nth-child(5) { grid-column: 2 / -1; }
   .handover .ho-note { grid-column: 1 / -1; width: auto; min-width: 0; }
 }
+
+/* Skill drills */
+.drills .drill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+.drills .drill-grid .desk { display: flex; flex-direction: column; }
+.drills .drill-grid .desk-go { margin-top: auto; }
