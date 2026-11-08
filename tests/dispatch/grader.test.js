@@ -172,7 +172,7 @@ test('duplicates: merging an unrelated ticket costs 40', () => {
 });
 
 test('scores never go below 0', () => {
-  const r = game().to(1020).G.report;
+  const r = game().to(1020).end();
   assert.ok(r.results.every(x => x.score >= 0 && x.score <= 100));
   assert.ok(r.results.some(x => x.score === 0), 'doing nothing should floor at least one ticket at 0');
 });

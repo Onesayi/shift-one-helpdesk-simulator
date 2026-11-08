@@ -48,6 +48,9 @@ function cleanRun() {
       g.close(t.id, 'resolved', 'Technician completed the work and the client was told.');
     }
   });
+  // 17:00: the only open work is booked for Friday with techs who'll be in, so on-call needs no flags.
+  g.handover({}, 'Quiet close. Daniel Cho setup and the Eastgate RMA install are booked for Friday.');
+  g.end();
   return g;
 }
 

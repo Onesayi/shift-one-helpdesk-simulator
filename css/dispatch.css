@@ -63,6 +63,7 @@ a.btn.primary { color: var(--on-accent); }
 .k-meeting, .k-project { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--border); }
 .k-travel { background: repeating-linear-gradient(135deg, var(--warn-soft) 0 5px, transparent 5px 10px); color: var(--warn); border-color: var(--warn-soft); }
 .k-job { background: var(--bubble); color: var(--text); border-color: var(--border); }
+.k-out { background: repeating-linear-gradient(135deg, var(--bad-soft) 0 6px, transparent 6px 12px); color: var(--bad); border-color: var(--bad); }
 .appt { pointer-events: auto; cursor: pointer; background: var(--accent); color: var(--surface); text-align: left; font: inherit; font-size: 11px; top: 6px; bottom: 6px; z-index: 2; }
 .appt b { font-weight: 700; display: block; }
 .appt.s-working { background: var(--warn); }
@@ -113,3 +114,19 @@ a.btn.primary { color: var(--on-accent); }
 }
 .hero p.small { font-size: 13.5px; margin: 14px 0 10px; }
 .seed-field { max-width: 300px; margin: 14px 0 0; }
+
+/* Shift handover */
+#app[data-phase="handover"] { grid-template-columns: 1fr; }
+#app[data-phase="handover"] #sidebar, #app[data-phase="handover"] #ticketpanel { display: none; }
+.handover .ho-table td { vertical-align: middle; }
+.handover .ho-note { min-width: 220px; width: 40%; }
+.handover .ho-note input, .handover textarea { width: 100%; }
+.handover .field { display: block; margin: 16px 0; }
+@media (max-width: 720px) {
+  .handover .ho-table thead { display: none; }
+  .handover .ho-table tr { display: grid; grid-template-columns: auto auto 1fr; gap: 4px 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .handover .ho-table td { border: 0; padding: 0; }
+  .handover .ho-table td:nth-child(3) { grid-column: 3; }
+  .handover .ho-table td:nth-child(4), .handover .ho-table td:nth-child(5) { grid-column: 2 / -1; }
+  .handover .ho-note { grid-column: 1 / -1; width: auto; min-width: 0; }
+}

@@ -30,6 +30,8 @@ Real-world tools with the same shape: the ConnectWise PSA Dispatch Portal and sc
 | **Technicians** | Booked work starts on its own. A tech with the wrong skills hands it back; a tech who can do it posts what they did; some tickets need a vendor case before they can finish. A P1 can pull a tech off lower-priority work that's in progress. |
 | **Coordination** | Message templates (acknowledge, appointment confirmation, status update, resolution, declined), approvals from any client contact, Service Manager and Account Manager escalations, vendor cases, merging duplicates, and closing with a reason. |
 | **Clients** | Premium, standard, co-managed and block-hours agreements, each with SLA targets, onsite windows, authorized approvers, VIPs, notes and vendors. |
+| **Disruptions** | Ben goes home sick every shift. Seeded shifts add one or two more: Luis's van breaks down, or Maya is pulled onto an internal outage, and they're off the board for an hour or more; or Lena asks to move the Eastgate scan-to-email to tomorrow. Bookings in the gap can't go ahead, so move them and tell the client. See [Shift variation](#shift-variation). |
+| **Handover** | At 17:00 the clock stops and you hand over to Jordan Blake, the on-call engineer. Tick the open tickets Jordan needs to know about, give each a next step, and write a one-line summary. See [Shift handover](#shift-handover). |
 | **Report** | Letter grade, KPIs (time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches, closed) and technician utilization, then per-ticket feedback with the reasoning behind the right answer. |
 
 ## Scenario answer key (for tutors)
@@ -56,6 +58,8 @@ This is the **`classic`** shift: type `classic` into *Replay a shift* on the sta
 | 4515 | 12:00 | Dell RMA motherboard delivered to HDG Eastgate | Luis onsite **Friday 12:00** (today's 12:00–13:00 window can't fit travel plus an hour), then send Lena the appointment | Booking outside HDG's window |
 | 4516 | 13:00 | "Tom Keller" asks to forward all mail to Gmail | Unknown sender on a lookalike domain (`kellerfinch-law.co`). **Security** board; verify with Maria or Tom through a known contact; send **Maya** to investigate | A Help Desk tech does the forwarding, and the attacker gets the partner's mail |
 
+At 17:00, everything still open is booked for Friday with techs who'll be in, so the handover needs no flags, just a summary line.
+
 A clean run scores in the high 90s. Doing nothing scores about 20–35, depending on the shift.
 
 ### Extra tickets in the pool
@@ -79,9 +83,31 @@ A shift is built from a seed (the shift code), in [`buildShift()`](../js/dispatc
 - **Which tickets.** 14 incidents are drawn from 21 (the three Oakridge email duplicates count as one). Every shift has at least one P1, one noise alert, one approval and one onsite job. The two carried-over tickets are always there.
 - **When.** Each ticket arrives somewhere in its own `window`, in 5-minute steps, chosen so the right answer still holds. The projector has to come in late morning to keep its 12:30 trap; the clinic outage can come any time up to 11:20. For urgent tickets (`slide`), the start-by deadline moves with the arrival time.
 - **Ben's sick call** lands between 09:15 and 10:30.
+- **One or two more disruptions** are drawn from `DISRUPTIONS` in [`data.js`](../js/dispatch/data.js), each at a time inside its window. The classic shift has none.
+
+| Disruption | When | What happens | Right call |
+|---|---|---|---|
+| Luis's van breaks down | 10:00–13:00 | Luis is off the board for 90 min | Rebook anything in the gap (travel counts) and tell the client |
+| Internal VPN outage | 09:15–13:00 | Maya is off the board for 60 min | Same |
+| Lena moves the Eastgate scan-to-email | 11:00–12:30 | Lena asks to do it tomorrow instead. Skipped if the work has started | Book it for Friday and confirm the new time with Lena |
+
+Nothing can be booked with a tech while they're off the board, and a booking left in the gap is missed when its time comes: the client chases, just as with Ben.
 - **Numbering.** Tickets are numbered #4501 upward in arrival order.
 
 All randomness happens when the shift is built. Technicians, clients and the grader are deterministic, so the same shift code with the same actions always gives the same score.
+
+## Shift handover
+
+At 17:00 (or when you press *End shift*) the clock stops and you hand over to the on-call engineer. The screen lists every open ticket with a checkbox and a note, plus a summary box. Playbook article PB-11 sets the rule:
+
+| Open ticket | Left out of the handover |
+|---|---|
+| A P1 or P2 that isn't completed | −20 |
+| Waiting on a vendor or an approval | −10 |
+| Needs a tech and isn't booked with anyone who can work it (never booked, handed back, or still with someone off sick or off the board) | −10 |
+| Booked for later with a tech who'll be in, or completed and waiting to close | no flag needed |
+
+A flag with a note shorter than 15 characters costs 5, and a missing summary costs 10. The handover scores out of 100 and counts like one more ticket in the shift score.
 
 ## Grading
 
@@ -103,8 +129,11 @@ Each ticket starts at 100. The engine applies standard checks, then the scenario
 | Tech time on a ticket that needed none | −25 |
 | Wrong close reason / closed before the work was done / completed but never closed | −10 / −25 / −10 |
 | Paged the Service Manager or Account Manager for nothing | −5 |
+| Still booked with a tech while they were off the board | −30 |
+| Didn't tell the client their appointment moved after a disruption | −10 |
+| Client asked to move it to tomorrow, and it stayed booked for today | −15 |
 
-The shift score is the average over every ticket in the shift (18 in classic). A ticket that never arrived because the shift ended early scores 0.
+The shift score is the average over every ticket in the shift (18 in classic) plus the handover. A ticket that never arrived because the shift ended early scores 0.
 
 The tests in [`tests/dispatch/`](../tests/dispatch/) check each row of this table, the scenario traps above, and both ends of the scale: the answer key scores 100 and doing nothing scores about 20. If you change a rule, change its test.
 
@@ -125,7 +154,7 @@ Scenarios live in [`js/dispatch/scenarios.js`](../js/dispatch/scenarios.js); cli
 }
 ```
 
-Useful events for graders: `triage`, `client-msg` (`kind`), `approval-req`, `approval` (`ok`, `auth`), `notify-sm`, `notify-am`, `am-approved`, `vendor-case`, `vendor-msg`, `schedule` (`tech`, `start`, `onsite`, `bumps`), `unschedule`, `interrupt`, `merge`, `close`, `call-answer`, `call-missed`, `chaser`, `work-start`, `work-done` (`kind`: done / bounce / vendor), `appt-missed`, `premature`.
+Useful events for graders: `triage`, `client-msg` (`kind`), `approval-req`, `approval` (`ok`, `auth`), `notify-sm`, `notify-am`, `am-approved`, `vendor-case`, `vendor-msg`, `schedule` (`tech`, `start`, `onsite`, `bumps`), `unschedule`, `interrupt`, `merge`, `close`, `call-answer`, `call-missed`, `chaser`, `work-start`, `work-done` (`kind`: done / bounce / vendor), `appt-missed`, `premature`, `move-request`. Tickets a disruption knocked on are in `G.disrupted`.
 
 For shift variation, give it a `window: [earliest, latest]` in which the `truth` still holds, `slide: true` if its `startBy` is relative to arrival, and `pick` if it fills a must-have category. Use `avoid` for scenarios that can't share a shift. New tickets that shouldn't change the classic shift get `extra: true`.
 

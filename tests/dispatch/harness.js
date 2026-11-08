@@ -37,7 +37,7 @@ function load(storage = { getItem: () => null, setItem() {} }) {
     get G() { return G; },
     SCENARIOS, CLIENTS, TECHS, SKILLS, BOARDS, PRIORITIES, SLA, DAY, SHIFT_START, SHIFT_END, REASONS,
     buildShift, newGame, onMinute, now, ticket, grade, endShift, logged, finalAppt, checkSlot,
-    loadHistory, saveShift, bestScore,
+    loadHistory, saveShift, bestScore, startHandover, handoverNeed, gradeHandover, teamEvent, DISRUPTIONS, TEAM_EVENTS,
     answerCall, saveTriage, sendMessage, requestApproval, notify, vendorCase, merge, closeTicket, openSchedule, unschedule,
   })`, ctx);
 }
@@ -106,7 +106,14 @@ function game(mode = 'timed', seed = 'classic') {
       return sim;
     },
     grade: id => E.grade(t(id)),
-    end() { E.endShift(); return E.G.report; },
+    // Fill in the end-of-shift handover: flags = { ticketId: 'note' }, then a summary line.
+    handover(flags = {}, summary = '') {
+      for (const [id, note] of Object.entries(flags)) Object.assign(E.G.drafts, { ['ho-flag-' + id]: true, ['ho-note-' + id]: note });
+      E.G.drafts['ho-summary'] = summary;
+      return sim;
+    },
+    // Submit the handover (if the shift is still running, it ends first) and grade the shift.
+    end() { E.startHandover(); E.endShift(); return E.G.report; },
   };
   return sim;
 }
