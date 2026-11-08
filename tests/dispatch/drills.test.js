@@ -10,7 +10,7 @@ const { cleanRun } = require('./answer-key');
 const plain = x => JSON.parse(JSON.stringify(x));
 
 test('every drill builds its own tickets, numbered in arrival order, with nothing else', () => {
-  const { DRILLS, SCENARIOS, buildShift } = load();
+  const { DRILLS, SCENARIOS, COMPLAINT, buildShift } = load();
   assert.equal(new Set(DRILLS.map(d => d.id)).size, DRILLS.length);
   for (const d of DRILLS) {
     const sh = buildShift('drill-' + d.id), at = `drill ${d.id}`;
@@ -20,7 +20,7 @@ test('every drill builds its own tickets, numbered in arrival order, with nothin
     assert.deepEqual(plain(sh.tickets.map(t => t.id)), plain(sh.tickets.map((_, i) => String(4501 + i))), `${at}: numbered`);
     for (let i = 1; i < sh.tickets.length; i++) assert.ok(sh.tickets[i].at >= sh.tickets[i - 1].at, `${at}: sorted`);
     for (const t of sh.tickets) {
-      const s = SCENARIOS.find(x => x.id === t.key), lead = s.group ? SCENARIOS.find(x => x.group === s.group) : s;
+      const s = SCENARIOS.find(x => x.id === t.key) || (t.key === COMPLAINT.id ? COMPLAINT : null), lead = s.group ? SCENARIOS.find(x => x.group === s.group) : s;
       assert.ok(s, `${at}: unknown ticket ${t.key}`);
       const delta = t.at - s.at;
       if (lead.window) assert.equal(lead.at + delta, lead.window[0], `${at}: ${t.key} arrives at the start of its window`);

@@ -369,6 +369,39 @@ const SCENARIOS = [
   },
 ];
 
+// A VIP complaint (PB-15). Not part of SCENARIOS: every seeded day shift gets it on top of its 14
+// incidents, drawn last so the rest of the shift for a seed is unchanged. The skill is the order of
+// things: apologise and say what happens next, page the Service Manager, tell the Account Manager,
+// and give the repeat fault to someone senior instead of a third quick fix.
+const COMPLAINT_SM = 30;  // minutes the Service Manager should hear about a complaint within
+const COMPLAINT = {
+  id: 'oak-complaint', complaint: true, at: 90, window: [60, 240], slide: true, channel: 'phone', client: 'oak', contact: 'hmoore', sm: true, kb: 'PB-15',
+  title: 'Complaint: teachers keep losing OneDrive files',
+  body: 'Helen Moore, principal at Oakridge. I want to make a complaint. This is the third time this month our teachers\' OneDrive has stopped syncing and they\'ve lost lesson plans. Every time, someone remotes in, says it\'s fixed and closes the ticket, and a week later it\'s back. I have parent conferences on Monday and I\'m starting to wonder what we pay you for. I want someone senior to own this.',
+  truth: { priority: 'P2', okPri: ['P1'], board: 'Help Desk', skill: 'M365', onsite: false, est: 60, dispatch: true, startBy: 750, closeAs: 'resolved',
+    why: 'Every teacher is affected, a VIP is unhappy and it keeps coming back: P2. Two quick fixes have already failed, so it goes to a Tier 2 engineer for the root cause, not back to Tier 1.' },
+  smReply: 'Thanks for flagging it fast. I\'ll call Helen myself this afternoon. Make sure she has an apology and a plan from the desk, get Maya on the root cause rather than another quick fix, and we\'ll check in with her on Monday morning before the conferences.',
+  am: { reply: 'Thanks. Helen\'s renewal is in January, so I\'ll ring her after Dana has. Keep me posted on the fix.', topUp: false },
+  fixNote: 'Found the root cause: the shared Teachers library had grown past OneDrive\'s sync limit, so the client gave up and stopped syncing every few days. Split the library into one per year group, re-synced all 14 teacher laptops and checked no lesson plans were lost. It should stay fixed now.',
+  evaluate(t, ded, good) {
+    const mine = e => e.ticket === t.id, arrived = t.arrived;
+    const msgs = logged('client-msg', mine), apology = msgs.find(e => e.kind === 'apology');
+    if (!apology) ded.push([15, 'Helen made a complaint and never got an apology or a plan. Use the "Apology and plan" message (PB-15).']);
+    else {
+      good.push('Apologised to Helen and told her what happens next.');
+      if (msgs[0] !== apology) ded.push([5, `Opened with a "${msgs[0].kind === 'ack' ? 'logged your ticket' : 'standard'}" message. A complaint needs the apology first.`]);
+    }
+    const sm = logged('notify-sm', mine)[0];
+    if (!sm) ded.push([15, 'A principal complained and the Service Manager never heard. Complaints go to Dana straight away (PB-15).']);
+    else if (sm.at - arrived > COMPLAINT_SM) ded.push([5, `Took ${mins(sm.at - arrived)} to tell the Service Manager about a complaint. Do it within ${COMPLAINT_SM} minutes.`]);
+    else good.push('Brought the Service Manager in straight away.');
+    if (logged('notify-am', mine).length) good.push('Told the Account Manager, who owns the relationship.');
+    else ded.push([5, 'Helen asked what Oakridge pays for, and the Account Manager never heard. Loop Rob in on complaints (PB-15).']);
+    if (logged('schedule', e => mine(e) && ['ana', 'ben'].includes(e.tech)).length) ded.push([10, 'Gave a repeat fault to Tier 1 again. Two quick fixes have failed; it needs a Tier 2 engineer.']);
+  },
+};
+const scenario = id => SCENARIOS.find(s => s.id === id) || (id === COMPLAINT.id ? COMPLAINT : undefined);
+
 // ---------------------------------------------------------------------------
 // Building a shift. The seed decides which tickets come in, when they arrive, and when Ben goes home,
 // so the same seed always plays out (and grades) the same way. 'classic' is the original fixed shift.
@@ -405,6 +438,8 @@ const DRILLS = [
     keys: ['4501', '4504', 'oak-wifi', '4514', '4515'] },
   { id: 'p1', title: 'P1s, vendors and duplicates', blurb: 'Page the Service Manager, log the vendor case, merge the duplicates, keep updating.',
     keys: ['4506', '4507', '4508', '4509', 'kfl-copier'] },
+  { id: 'complaint', title: 'Complaints', blurb: 'An angry VIP on the phone: apologise, bring in the managers, and give the repeat fault to someone senior.',
+    keys: ['oak-complaint', '4504', '4510'] },
 ];
 const drillOf = seed => DRILLS.find(d => 'drill-' + d.id === seed) || null;
 
@@ -412,7 +447,7 @@ function buildDrill(seed, d) {
   const copy = (s, extra) => Object.assign(Object.create(s), { key: s.id }, extra);
   const units = [];
   for (const k of d.keys) {
-    const s = SCENARIOS.find(x => x.id === k), u = s.group && units.find(x => x[0].group === s.group);
+    const s = scenario(k), u = s.group && units.find(x => x[0].group === s.group);
     if (u) u.push(s); else units.push([s]);
   }
   const today = [];
@@ -467,17 +502,20 @@ function buildShift(seed) {
       today.push(copy(s, { at: s.at + delta, truth }));
     }
   }
-  // The day's tickets are numbered in the order they arrive.
-  today.sort((a, b) => a.at - b.at || SCENARIOS.indexOf(Object.getPrototypeOf(a)) - SCENARIOS.indexOf(Object.getPrototypeOf(b)));
-  if (!classic) today.forEach((t, i) => { t.id = String(4501 + i); });
-
   const events = TEAM_EVENTS.map(ev => Object.assign({}, ev, { at: classic || !ev.window ? ev.at : when(ev.window) }));
   // Seeded shifts get one or two more disruptions on top of Ben's sick call. Drawn last, so the
   // tickets and Ben's time for a seed are the same as before disruptions existed.
   if (!classic) {
     const pool = DISRUPTIONS.slice(), n = rnd() < 0.5 ? 2 : 1;
     for (let i = 0; i < n; i++) { const d = take(pool); events.push(Object.assign({}, d, { at: when(d.window) })); }
+    // Then the complaint call, drawn after everything else for the same reason.
+    const delta = when(COMPLAINT.window) - COMPLAINT.at;
+    today.push(copy(COMPLAINT, { at: COMPLAINT.at + delta, truth: Object.assign({}, COMPLAINT.truth, { startBy: COMPLAINT.truth.startBy + delta }) }));
   }
+  // The day's tickets are numbered in the order they arrive.
+  const order = s => { const i = SCENARIOS.indexOf(s); return i < 0 ? SCENARIOS.length : i; };
+  today.sort((a, b) => a.at - b.at || order(Object.getPrototypeOf(a)) - order(Object.getPrototypeOf(b)));
+  if (!classic) today.forEach((t, i) => { t.id = String(4501 + i); });
   return { seed, drill: null, tickets: carried.concat(today), events };
 }
 

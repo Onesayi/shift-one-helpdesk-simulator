@@ -283,7 +283,19 @@ const PLAYBOOK = [
   { id: 'PB-14', title: 'Client satisfaction', tags: 'csat survey satisfaction rating feedback complaint stars follow up', body: `
 <p>When you close a ticket as <b>Resolved</b>, the client gets a one-question survey: how did we do, from 1 to 5. Clients score what they saw: how fast we answered, whether they had to chase, whether we told them about changes, and whether we confirmed it was done.</p>
 <ul><li><b>4 or 5</b>: nothing to do. CSAT is the share of surveys that score 4 or 5.</li>
-<li><b>3 or lower is a complaint.</b> Reply the same day: thank them, apologise, own what went wrong in their words, and say what happens next. Don't argue with the score.</li>
+<li><b>3 or lower is a complaint.</b> Reply within the hour: thank them, apologise, own what went wrong in their words, and say what happens next. Don't argue with the score. Leave it longer and the client takes it to the Service Manager themselves (PB-15).</li>
 <li>Low scores show on the Service Board until you've replied. Open the closed ticket to answer.</li>
 <li>The best way to avoid a low score is the rest of this playbook: respond inside the SLA, update before they chase, and confirm the fix before you close.</li></ul>` },
+  { id: 'PB-15', title: 'Complaints', tags: 'complaint angry vip escalation apology service manager account manager repeat fault senior', body: `
+<p>A complaint is a client telling you we let them down, on the phone, by email or in a low survey score. Being calm and quick matters more than being right.</p>
+<h4>On the call</h4><ul>
+<li>Let them finish. Don't interrupt, defend the last technician or quote the contract.</li>
+<li>Say sorry for how it has affected them, in their words ("lost lesson plans", "a week later it's back").</li>
+<li>Tell them what happens next and when: who is fixing it, when you'll update them, and a date you'll check back.</li></ul>
+<h4>Straight after</h4><ol>
+<li>Send the <b>Apology and plan</b> message before anything else. A "we've logged your ticket" reply to a complaint makes it worse.</li>
+<li><b>Page the Service Manager within 30 minutes.</b> Dana calls the client herself and decides if anything else is owed.</li>
+<li><b>Tell the Account Manager.</b> Rob owns the relationship and the renewal, so he must never hear about a complaint from the client first.</li>
+<li><b>Fix the cause, not the symptom.</b> If quick fixes have already failed, book a Tier 2 or Tier 3 engineer. A third Tier 1 visit is the complaint happening again.</li></ol>
+<p>A low survey score left unanswered for an hour turns into a complaint to the Service Manager, and costs you more than the score did.</p>` },
 ];

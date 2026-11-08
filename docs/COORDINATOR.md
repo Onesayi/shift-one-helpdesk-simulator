@@ -36,7 +36,7 @@ Real-world tools with the same shape: the ConnectWise PSA Dispatch Portal and sc
 | **Campaign** | Shift code `campaign` or `campaign-<seed>`: Thursday's day shift, the on-call night, then Friday, on one clock. Open work carries over. See [Campaign](#campaign). |
 | **After-hours on-call** | Shift code `night`: Thursday 17:00 to Friday 08:00 with one engineer, Jordan Blake. Decide what's worth waking Jordan for and book the rest on Friday's board, then hand over to the day coordinator. See [After-hours on-call shift](#after-hours-on-call-shift). |
 | **Client satisfaction** | Closing a ticket as resolved sends the client a 1–5 survey. The rating follows from how you handled it, and a 3 or lower needs a reply. See [Client satisfaction (CSAT)](#client-satisfaction-csat). |
-| **Skill drills** | Five short practice shifts, one area each, from the start page or suggested by your report. See [Skill drills](#skill-drills). |
+| **Skill drills** | Six short practice shifts, one area each, from the start page or suggested by your report. See [Skill drills](#skill-drills). |
 | **Interview prep** | `dispatch.html#prep`, or *Interview prep* in the top bar. See [Interview prep](#interview-prep). |
 | **Report** | Letter grade, KPIs (time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches, closed) and technician utilization, then per-ticket feedback with the reasoning behind the right answer. |
 
@@ -130,7 +130,20 @@ When you close a ticket as *Resolved* and it has a client contact, the client an
 | The work started later than it needed to | 1 |
 | Nobody sent a resolution confirmation | 1 |
 
-A rating of 3 or lower is a complaint. It shows on the Service Board until you open the closed ticket and press *Reply*, and leaving it unanswered costs 10 on that ticket. A survey that lands in the last 30 minutes of the shift isn't held against you. The report shows CSAT as the share of surveys rated 4 or 5, and it's tracked in your progress. The answer key gets 5/5 on every survey.
+A rating of 3 or lower is a complaint. It shows on the Service Board until you open the closed ticket and press *Reply*, and leaving it unanswered costs 10 on that ticket. If it's still unanswered an hour after the survey, the client writes to Dana, Dana tells you to reply, and the ticket loses another 10. A survey that lands in the last 30 minutes of the shift isn't held against you. The report shows CSAT as the share of surveys rated 4 or 5, and it's tracked in your progress. The answer key gets 5/5 on every survey.
+
+## Complaints
+
+Every seeded day shift (not `classic`, not the night) has one extra call on top of its 14 incidents: Helen Moore, Oakridge's principal, complaining that teachers' OneDrive keeps failing after two quick fixes. It arrives between 09:00 and 12:00, and its start-by time moves with it. It's also in the `drill-complaint` drill. Playbook article PB-15 covers it.
+
+| Do this | Or lose |
+|---|---|
+| Send the *Apology and plan* message | 15 if never sent, 5 if a different message went first |
+| Page the Service Manager within 30 minutes | 15 if never, 5 if late |
+| Escalate to the Account Manager | 5 |
+| Book a Tier 2 engineer (Maya) for the root cause | 10 if Ana or Ben is booked |
+
+The right triage is P2, Help Desk, M365, remote, an hour. Dana and Rob both answer in their own words, and Rob's reply doesn't add block hours.
 
 ## Campaign
 
@@ -170,6 +183,7 @@ A drill is a short practice shift built from one area's tickets, with no carry-o
 | `drill-approvals` | Approvals and block hours | Partners folder, Jess's MacBook, Rhea's Adobe licence, mail forwarding |
 | `drill-scheduling` | Onsite windows | Front desk printing, new starter, library Wi-Fi, hall projector, RMA motherboard |
 | `drill-p1` | P1s, vendors and duplicates | Clinic outage, the three Oakridge email tickets, KFL copier |
+| `drill-complaint` | Complaints | Helen Moore's complaint, new starter, Jess's MacBook |
 
 ## Interview prep
 
