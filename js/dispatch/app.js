@@ -244,6 +244,8 @@ function onMinute(m) {
   }
 
   for (const t of G.tickets) {
+    const r = t.csat;
+    if (r && r.rating <= CSAT_LOW && r.followed == null && r.escalated == null && m - r.at >= CSAT_ESCALATE) { escalateCsat(t); changed = true; }
     if (!isOpen(t) || !needsResponse(t)) continue;
     const sla = respTarget(t);
     if (t.firstResponseAt == null && !t.flags.chased && m - t.arrived >= sla + Math.max(15, sla / 2)) {
@@ -345,6 +347,7 @@ const TEMPLATES = {
   },
   update: { label: 'Status update', text: (t, c) => `Hi ${greet(c)}, an update on #${t.id}: ${statusLine(t)}` },
   resolved: { label: 'Resolution confirmation', text: (t, c) => { const n = [...t.thread].reverse().find(m => m.kind === 'tech'); return `Hi ${greet(c)}, good news on #${t.id}. ${n ? n.text : 'The work is complete.'} If anything still isn't right, just reply and we'll pick it straight back up.`; } },
+  apology: { label: 'Apology and plan', text: (t, c) => `Hi ${greet(c)}, I'm sorry about #${t.id} and the trouble it has caused. You shouldn't have had to come back to us about this. Here's the plan: ${statusLine(t)} Our Service Manager, Dana Whitaker, knows and will call you today, and we'll check in with you on Monday to make sure it has stayed fixed.` },
   declined: { label: 'Request declined', text: (t, c) => `Hi ${greet(c)}, we checked this request with an authorized approver at ${client(t).name} and it wasn't approved, so we're closing ticket #${t.id}. Please speak to them if you have questions.` },
 };
 
@@ -400,7 +403,7 @@ function notify(t, who) {
     record('notify-sm', { ticket: t.id });
     post(t, 'system', 'Paged Dana Whitaker (Service Manager).', 'system');
     later(1, () => {
-      if (t.s.sm) post(t, 'sm', 'Thanks, I\'m watching this one. Keep the client updated at least every 30 minutes and shout if you need more hands.', 'internal');
+      if (t.s.sm) post(t, 'sm', t.s.smReply || 'Thanks, I\'m watching this one. Keep the client updated at least every 30 minutes and shout if you need more hands.', 'internal');
       else { post(t, 'sm', 'Thanks, but this one doesn\'t need me. Page me for P1s, security incidents and complaints.', 'internal'); record('sm-noise', { ticket: t.id }); }
     });
   } else {
@@ -409,8 +412,10 @@ function notify(t, who) {
     later(4, () => {
       if (t.s.am) {
         post(t, 'am', t.s.am.reply, 'internal');
-        record('am-approved', { ticket: t.id });
-        G.block[t.client] = (G.block[t.client] || 0) + 10;
+        if (t.s.am.topUp !== false) {
+          record('am-approved', { ticket: t.id });
+          G.block[t.client] = (G.block[t.client] || 0) + 10;
+        }
       } else { post(t, 'am', 'Nothing for me here. This is covered by their agreement.', 'internal'); record('am-noise', { ticket: t.id }); }
     });
   }
@@ -462,6 +467,17 @@ function closeTicket(t) {
 const CSAT_DELAY = 5;      // sim minutes from closing to the client's answer
 const CSAT_LOW = 3;        // this rating or lower needs a follow-up
 const CSAT_GRACE = 30;     // a survey that lands this close to the end of the shift isn't graded on follow-up
+const CSAT_ESCALATE = 60;  // a low score left this long without a reply goes over your head to the Service Manager
+
+// The client gives up waiting for a reply to their low score and complains to Dana directly (PB-15).
+function escalateCsat(t) {
+  const c = contactOf(t);
+  t.csat.escalated = now();
+  record('complaint', { ticket: t.id });
+  post(t, t.contact, `I rated #${t.id} ${t.csat.rating}/5 an hour ago and nobody has come back to me, so I've written to your Service Manager.`, 'client');
+  later(2, () => post(t, 'sm', `${c.name} has just emailed me about #${t.id}. Please reply to them today and copy me in. A low score is a complaint and gets an answer within the hour (PB-15).`, 'internal'));
+  toast(`${c.name} complained to Dana about #${t.id}.`, 'bad');
+}
 
 // What the client noticed, worst first. Each reason costs a star; being chased twice costs two.
 function csatFor(t) {
@@ -790,6 +806,7 @@ function grade(t) {
     if (r.rating > CSAT_LOW) good.push(`${who} rated it ${r.rating}/5.`);
     else if (r.followed != null) good.push(`${who} rated it ${r.rating}/5, and you followed up ${r.followed - r.at <= 30 ? 'quickly' : `after ${mins(r.followed - r.at)}`}.`);
     else if (now() - r.at >= CSAT_GRACE) ded.push([10, `${who} rated it ${r.rating}/5 and nobody replied. A low score is a complaint: apologise and say what happens next (PB-14).`]);
+    if (r.escalated != null) ded.push([10, `${who} waited ${mins(r.escalated - r.at)} for a reply to the low score, then complained to the Service Manager.`]);
   }
 
   if (s.evaluate) s.evaluate(t, ded, good);

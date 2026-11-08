@@ -31,8 +31,8 @@ test('the same seed always builds the same shift; different seeds differ', () =>
 });
 
 test('every seeded shift is well formed', () => {
-  const { buildShift, SCENARIOS, TECHS } = load();
-  const base = id => SCENARIOS.find(s => s.id === id);
+  const { buildShift, SCENARIOS, TECHS, COMPLAINT } = load();
+  const base = id => SCENARIOS.find(s => s.id === id) || (id === COMPLAINT.id ? COMPLAINT : undefined);
   for (const seed of SEEDS) {
     const sh = buildShift(seed), today = sh.tickets.filter(t => t.at >= 0);
     const keys = today.map(t => t.key), at = `seed ${seed}`;
@@ -42,7 +42,8 @@ test('every seeded shift is well formed', () => {
     for (const tag of ['p1', 'noise', 'approval', 'onsite']) assert.ok(today.some(t => t.pick === tag), `${at}: has a ${tag} ticket`);
     const groups = new Set(today.filter(t => t.group).map(t => t.group));
     assert.equal(new Set(keys).size, keys.length, `${at}: no duplicates`);
-    assert.equal(today.length - today.filter(t => t.group).length + groups.size, 14, `${at}: 14 incidents`);
+    assert.equal(today.filter(t => t.complaint).length, 1, `${at}: one complaint call`);
+    assert.equal(today.length - today.filter(t => t.group || t.complaint).length + groups.size, 14, `${at}: 14 incidents`);
     for (const g of groups) assert.equal(SCENARIOS.filter(s => s.group === g).length, today.filter(t => t.group === g).length, `${at}: group ${g} arrives whole`);
     for (const t of today) for (const x of t.avoid || []) assert.ok(!keys.includes(x), `${at}: ${t.key} shares a shift with ${x}`);
     for (const t of today) {
