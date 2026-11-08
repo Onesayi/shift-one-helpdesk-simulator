@@ -1,0 +1,58 @@
+name: Deploy to Library of Code
+
+# Ships main to the Library of Code Cloud Services container (see docs/DEPLOY.md).
+# It does nothing until the repository variable LOC_DEPLOY is set to "true", so it's safe to merge
+# before the account exists. GitHub Pages keeps deploying either way.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loc-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.LOC_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: library-of-code
+      url: ${{ vars.LOC_SITE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run tests
+        run: node --test 'tests/**/*.test.js'
+      - name: Build site
+        run: tools/build-site.sh _site
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.LOC_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.LOC_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/loc_deploy
+          chmod 600 ~/.ssh/loc_deploy
+          # Pinned host key: the deploy refuses to talk to a server it doesn't recognise.
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Upload, switch and health check
+        env:
+          DEPLOY_HOST: ${{ vars.LOC_SSH_HOST }}
+          DEPLOY_USER: ${{ vars.LOC_SSH_USER }}
+          DEPLOY_SSH_PORT: ${{ vars.LOC_SSH_PORT || '22' }}
+          DEPLOY_ROOT: ${{ vars.LOC_SITE_ROOT || '/srv/shift-one' }}
+          SITE_URL: ${{ vars.LOC_SITE_URL }}
+          SITE_DIR: _site
+        run: |
+          export DEPLOY_KEY_FILE="$HOME/.ssh/loc_deploy"
+          tools/deploy/deploy.sh
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/loc_deploy

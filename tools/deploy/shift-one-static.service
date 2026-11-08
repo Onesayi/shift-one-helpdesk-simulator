@@ -1,0 +1,22 @@
+# Fallback if you'd rather not run nginx: Python's built-in static server as a systemd *user* unit,
+# the pattern the Library of Code FAQ describes. Install with install-server.sh --python, or by hand:
+#   cp shift-one-static.service ~/.config/systemd/user/ && edit PORT and ROOT below
+#   systemctl --user daemon-reload && systemctl --user enable --now shift-one-static
+#   sudo loginctl enable-linger "$USER"   # keeps it running when you log out
+[Unit]
+Description=Shift One static site (Python http.server)
+After=network-online.target
+
+[Service]
+Environment=PORT=__PORT__
+Environment=ROOT=__ROOT__
+# --directory goes through the `current` symlink on every request, so deploys need no restart.
+ExecStart=/usr/bin/python3 -m http.server ${PORT} --bind 0.0.0.0 --directory ${ROOT}/current
+Restart=on-failure
+RestartSec=5
+# Small footprint on a shared box.
+MemoryMax=64M
+CPUQuota=25%
+
+[Install]
+WantedBy=default.target

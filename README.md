@@ -206,6 +206,8 @@ Open **http://localhost:8765** for the help desk simulator, or **http://localhos
 
 The repo includes a GitHub Actions workflow that publishes to **GitHub Pages** on every push to `main`. Enable it under **Settings → Pages → Source: GitHub Actions**.
 
+To host it on your own Linux box or container as well (nginx on a port behind a reverse proxy, deployed over SSH on every push, with one-command rollback), see [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## 🏗️ Architecture
 
 ```mermaid
@@ -245,7 +247,7 @@ flowchart TB
 │   └── dispatch/         Service Coordinator mode: MSP data, scenarios, engine
 ├── design-system/        tokens.json, brand book, component guidelines, marks and icons
 ├── docs/                 guides, screenshots, banner, demo GIF
-├── tools/                screenshot automation (headless browser + Pillow)
+├── tools/                screenshot automation, build-site.sh, deploy/ (server kit)
 └── .github/              Pages deployment, issue templates
 ```
 
