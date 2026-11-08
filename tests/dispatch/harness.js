@@ -38,6 +38,7 @@ function load(storage = { getItem: () => null, setItem() {} }) {
     SCENARIOS, CLIENTS, TECHS, SKILLS, BOARDS, PRIORITIES, SLA, DAY, SHIFT_START, SHIFT_END, REASONS,
     buildShift, newGame, onMinute, now, ticket, grade, endShift, logged, finalAppt, checkSlot,
     loadHistory, saveShift, bestScore, startHandover, handoverNeed, gradeHandover, teamEvent, DISRUPTIONS, TEAM_EVENTS,
+    DRILLS, billingFor, postTime, weakestDrill,
     answerCall, saveTriage, sendMessage, requestApproval, notify, vendorCase, merge, closeTicket, openSchedule, unschedule,
   })`, ctx);
 }
@@ -103,6 +104,13 @@ function game(mode = 'timed', seed = 'classic') {
       const ok = E.G.modal.onOk();
       E.G.modal = null;
       if (ok === false) throw new Error(`Booking #${id} with ${tech} at ${start} refused: ${R.errors[0]}`);
+      return sim;
+    },
+    // Code every uncoded time entry on a ticket (by default, the way PB-12 says) and post it.
+    bill(id, code) {
+      const x = t(id);
+      for (const e of E.G.time.filter(e => e.ticket === x.id && !e.code)) E.G.drafts['bill-' + e.id] = code || E.billingFor(x, e).code;
+      E.postTime(x);
       return sim;
     },
     grade: id => E.grade(t(id)),

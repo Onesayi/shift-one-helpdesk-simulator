@@ -94,6 +94,8 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 | 🗓️ **Dispatch Board** | Today and tomorrow for every tech: lunch, meetings, project time, travel, existing jobs. It blocks double-booking and warns about skills, onsite windows, block hours and approvals |
 | 🧑‍🔧 **Simulated technicians** | Booked work runs itself. The wrong skills bounce back, P1s can pull a tech off other work, and a tech goes home sick mid-morning. Random shifts add more: a van breaks down, an internal outage takes an engineer away, or a client asks to move their appointment |
 | 🤝 **Coordination** | Client message templates, authorized-contact approvals, Service Manager and Account Manager escalations, ISP and RMA vendor cases, merging duplicates, closing with a reason |
+| 🧾 **Time entries** | Every finished job leaves a time entry. Code it covered, billable or block hours by the client's agreement, and watch prepaid blocks run down |
+| 🎯 **Skill drills** | Five short practice rounds, one skill each (triage, alerts, approvals, onsite windows, P1s). The report suggests the one you need most |
 | 🌙 **Shift handover** | At 17:00 you brief the on-call engineer: flag the open P1/P2s, pending vendor cases and approvals, and anything nobody owns, each with a next step. It's graded like one more ticket |
 | 📈 **KPI report** | Time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches and technician utilization, plus per-ticket feedback explaining the right call |
 

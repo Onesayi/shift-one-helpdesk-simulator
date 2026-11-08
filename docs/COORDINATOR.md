@@ -32,6 +32,8 @@ Real-world tools with the same shape: the ConnectWise PSA Dispatch Portal and sc
 | **Clients** | Premium, standard, co-managed and block-hours agreements, each with SLA targets, onsite windows, authorized approvers, VIPs, notes and vendors. |
 | **Disruptions** | Ben goes home sick every shift. Seeded shifts add one or two more: Luis's van breaks down, or Maya is pulled onto an internal outage, and they're off the board for an hour or more; or Lena asks to move the Eastgate scan-to-email to tomorrow. Bookings in the gap can't go ahead, so move them and tell the client. See [Shift variation](#shift-variation). |
 | **Handover** | At 17:00 the clock stops and you hand over to Jordan Blake, the on-call engineer. Tick the open tickets Jordan needs to know about, give each a next step, and write a one-line summary. See [Shift handover](#shift-handover). |
+| **Time entries** | Every finished job leaves a time entry on the ticket. Code it *Covered by agreement*, *Billable* or *Block hours* before you close. See [Time entries and billing](#time-entries-and-billing). |
+| **Skill drills** | Five short practice shifts, one area each, from the start page or suggested by your report. See [Skill drills](#skill-drills). |
 | **Report** | Letter grade, KPIs (time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches, closed) and technician utilization, then per-ticket feedback with the reasoning behind the right answer. |
 
 ## Scenario answer key (for tutors)
@@ -96,6 +98,31 @@ Nothing can be booked with a tech while they're off the board, and a booking lef
 
 All randomness happens when the shift is built. Technicians, clients and the grader are deterministic, so the same shift code with the same actions always gives the same score.
 
+## Time entries and billing
+
+When a technician finishes, their booked time lands on the ticket as a time entry. Playbook article PB-12 sets the code, checked in this order:
+
+| Work | Code |
+|---|---|
+| Anything for a block-hours client (Pixel & Pine) | Block hours. It comes off the client's balance on the Clients page |
+| Projects & Onboarding work, any client | Billable |
+| An onsite visit on a standard agreement (Oakridge, Brightline) | Billable. Standard covers remote support only |
+| Everything else on a managed agreement (premium covers onsite too) | Covered by agreement |
+
+An entry left uncoded costs 5 and a wrong code costs 10, on that ticket. The report shows the share of entries coded right, and it's tracked in your progress.
+
+## Skill drills
+
+A drill is a short practice shift built from one area's tickets, with no carry-overs, no sick calls, no disruptions and no handover. Each ticket arrives at the start of its window, so the right answer is the same as in a full shift. Shift codes are `drill-<id>`. The start page lists them all. After a full shift, the report suggests the drill whose tickets averaged lowest, if any averaged under 90. Drills aren't saved to your progress.
+
+| Code | Drill | Tickets |
+|---|---|---|
+| `drill-triage` | Priority and routing | New starter, file server disk, backup failures, co-managed spooler, DocuSign phish |
+| `drill-noise` | Alerts and noise | Lab VM, Theo's MacBook, AT&T maintenance, file server disk, backup failures |
+| `drill-approvals` | Approvals and block hours | Partners folder, Jess's MacBook, Rhea's Adobe licence, mail forwarding |
+| `drill-scheduling` | Onsite windows | Front desk printing, new starter, library Wi-Fi, hall projector, RMA motherboard |
+| `drill-p1` | P1s, vendors and duplicates | Clinic outage, the three Oakridge email tickets, KFL copier |
+
 ## Shift handover
 
 At 17:00 (or when you press *End shift*) the clock stops and you hand over to the on-call engineer. The screen lists every open ticket with a checkbox and a note, plus a summary box. Playbook article PB-11 sets the rule:
@@ -132,6 +159,7 @@ Each ticket starts at 100. The engine applies standard checks, then the scenario
 | Still booked with a tech while they were off the board | −30 |
 | Didn't tell the client their appointment moved after a disruption | −10 |
 | Client asked to move it to tomorrow, and it stayed booked for today | −15 |
+| Time entry never coded / coded wrong | −5 / −10 |
 
 The shift score is the average over every ticket in the shift (18 in classic) plus the handover. A ticket that never arrived because the shift ended early scores 0.
 

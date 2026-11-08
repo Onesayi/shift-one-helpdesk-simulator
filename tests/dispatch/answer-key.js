@@ -45,6 +45,7 @@ function cleanRun() {
     for (const t of g.G.tickets) {
       if (t.closed || t.parent || t.status !== 'Completed') continue;
       if (t.contact && !t.s.noResponseSla) g.send(t.id, 'resolved');
+      g.bill(t.id);
       g.close(t.id, 'resolved', 'Technician completed the work and the client was told.');
     }
   });
