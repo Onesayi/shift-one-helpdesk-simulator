@@ -49,6 +49,12 @@ const TECHS = {
     start: 480, end: 1020,
     note: 'Our only field tech. Drives between sites, so every visit needs travel time.',
   },
+  // Only on the board in the after-hours shift (seed 'night'). abs: start and end are absolute minutes.
+  jordan: {
+    name: 'Jordan Blake', role: 'On-call engineer (after hours)', skills: ['M365', 'Windows', 'Servers', 'Backup', 'Network', 'Security'], onsite: true,
+    start: 1020, end: DAY + 480, abs: true, night: true,
+    note: 'On call 17:00–08:00 from home, and can drive out for a P1. Every booking wakes them up, so only page them for work that can\'t wait until morning (PB-13).',
+  },
 };
 
 // Calendar blocks that exist before the shift starts. soft = can be bumped for urgent work (at a cost).
@@ -133,6 +139,7 @@ const CLIENTS = {
     contacts: {
       bldesk: { name: 'Brightline IT Service Desk', role: 'Client\'s own Tier 1 desk', auth: true, greet: 'Brightline team' },
       dokafor: { name: 'Daniel Okafor', role: 'CFO (owns the IT budget)', auth: true, vip: true },
+      mwebb: { name: 'Marcus Webb', role: 'Warehouse night supervisor', auth: false },
     },
     notes: [
       'Co-managed: Brightline runs its own Tier 1 service desk. When they escalate, the basics are already done. Don\'t bounce it back to Tier 1.',
@@ -259,7 +266,18 @@ const PLAYBOOK = [
 <tr><td>Any work for a <b>block-hours</b> client</td><td><b>Block hours</b> (it comes off their prepaid balance)</td></tr>
 <tr><td><b>Projects &amp; Onboarding</b> work (new starters, planned projects), for any client</td><td><b>Billable</b></td></tr>
 <tr><td><b>Onsite visits</b> on a <b>standard</b> agreement</td><td><b>Billable</b> (standard covers remote support only)</td></tr>
+<tr><td><b>After-hours work</b> (17:00–08:00) on a <b>standard</b> agreement</td><td><b>Billable</b> at the after-hours rate (PB-13)</td></tr>
 <tr><td>Everything else on a managed agreement (premium covers onsite too)</td><td><b>Covered by agreement</b></td></tr></tbody></table>
 <ul><li>Billing covered work makes an angry client and a credit note. Giving away billable work is lost revenue.</li>
 <li>Check the agreement on the Clients page if you're not sure.</li></ul>` },
+  { id: 'PB-13', title: 'After hours and on-call', tags: 'after hours on-call overnight night call-out page wake jordan morning premium standard', body: `
+<p>From 17:00 to 08:00 <b>Jordan Blake</b> is the only engineer. Booking Jordan tonight means waking them up, so decide what really can't wait.</p>
+<table class="tbl compact"><thead><tr><th>Agreement</th><th>Book Jordan tonight for</th><th>Everything else</th></tr></thead><tbody>
+<tr><td>Premium</td><td><b>P1 and P2</b> (24/7 cover)</td><td rowspan="3">Acknowledge it tonight, then book it on <b>Friday's board</b> with the day team.</td></tr>
+<tr><td>Standard</td><td><b>P1 only</b>, billed at the after-hours rate</td></tr>
+<tr><td>Block hours</td><td><b>P1 only</b>, off the block</td></tr></tbody></table>
+<ul><li>"First thing tomorrow" work goes on Friday's board at 08:00 or later, with the right day tech and inside the client's onsite window.</li>
+<li>Remember who's out tomorrow before you book them. The day coordinator's note is on the Team page.</li>
+<li>Every other rule still applies: page the Service Manager for P1s, update P1 clients every 30 minutes, check block hours, pass on provider notices.</li>
+<li>At 08:00 hand over to the day coordinator. Flag what's still open and urgent, and anything waiting on someone. Work already booked with a day tech doesn't need a flag.</li></ul>` },
 ];
