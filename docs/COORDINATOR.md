@@ -218,6 +218,15 @@ Eleven questions MSPs ask service coordinators and dispatchers live in [`js/disp
 
 To add a question, give it `points` with a few patterns each, a `model` answer, the `kb` articles and a `drill`. The tests in [`tests/dispatch/interview.test.js`](../tests/dispatch/interview.test.js) check that every link is real and that the model answer covers all of its own points.
 
+### Support assessment practice
+
+The *Support assessment* tab (`dispatch.html#assess`) practises the skills test SaaS support desks send for L1 technical support roles. The questions are reworded practice versions, not any company's real test. It's `ASSESS` in `interview.js`:
+
+- **Quiz** (`kind: 'mcq'`): Zendesk statuses (Pending vs On-hold), triggers vs automations, 401 vs 403, why an on-premises agent only needs outbound HTTPS, and what a 504 means. Picking an option shows whether it's right and explains every option.
+- **Written tasks** (`kind: 'write'`): a chat reply with no more than 2 questions, triaging five tickets, troubleshooting an agent that can't reach the cloud, a client email built from a docs excerpt, an L2 escalation note, a process fix for repeat tickets, a frustrated login email, a known-bug email, and a spoken explanation for a non-technical customer. Each has key `points`, `traps` (like asking for a password, or opening an inbound port) and `limits` on questions, messages and words.
+
+A quick-reference sheet (statuses, business rules, HTTP codes) sits at the top. Answers share the prep store, keyed `as-<id>`. [`tests/dispatch/assess.test.js`](../tests/dispatch/assess.test.js) checks that every model answer covers its points, fits its limits and falls into none of its traps.
+
 ## Shift handover
 
 At 17:00 (or when you press *End shift*) the clock stops and you hand over to the on-call engineer. The screen lists every open ticket with a checkbox and a note, plus a summary box. Playbook article PB-11 sets the rule:
