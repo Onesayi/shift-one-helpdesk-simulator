@@ -36,7 +36,7 @@ Real-world tools with the same shape: the ConnectWise PSA Dispatch Portal and sc
 | **Campaign** | Shift code `campaign` or `campaign-<seed>`: Thursday's day shift, the on-call night, then Friday, on one clock. Open work carries over. See [Campaign](#campaign). |
 | **After-hours on-call** | Shift code `night`: Thursday 17:00 to Friday 08:00 with one engineer, Jordan Blake. Decide what's worth waking Jordan for and book the rest on Friday's board, then hand over to the day coordinator. See [After-hours on-call shift](#after-hours-on-call-shift). |
 | **Client satisfaction** | Closing a ticket as resolved sends the client a 1–5 survey. The rating follows from how you handled it, and a 3 or lower needs a reply. See [Client satisfaction (CSAT)](#client-satisfaction-csat). |
-| **Skill drills** | Six short practice shifts, one area each, from the start page or suggested by your report. See [Skill drills](#skill-drills). |
+| **Skill drills** | Seven short practice shifts, one area each, from the start page or suggested by your report. See [Skill drills](#skill-drills). |
 | **Interview prep** | `dispatch.html#prep`, or *Interview prep* in the top bar. See [Interview prep](#interview-prep). |
 | **Report** | Letter grade, KPIs (time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches, closed) and technician utilization, then per-ticket feedback with the reasoning behind the right answer. |
 
@@ -81,6 +81,9 @@ These never appear in the classic shift.
 | 📞 KFL copier error SC542 | Log a case with **Ricoh (copier lease)**, pass Ricoh's visit time to Maria, leave it open for Ricoh | Sending a tech to a leased copier |
 | Dr. Reyes: work email stopped on iPhone | **P3** Help Desk, M365, remote today | Inflating it to P1/P2 because she's a VIP |
 | Rhea: Adobe licence removed | P3 Help Desk, Mac. 15 minutes fits in the 0.5 h block, so just book it | Escalating to the Account Manager for nothing |
+| Alert: KFL backup, 403 Forbidden on one SharePoint site | **P2** (P1 accepted) Infrastructure, **Backup**, Maya remote. Sign-in worked for 41 sites, so 403 is a missing permission on that one site | Treating it as a password problem, or as alert noise |
+| Brightline: new server shows offline in RMM | P3 Infrastructure, **Network**, remote. It works on the LAN, so the fault is outbound: DNS, 443 or the proxy | Sending it to our Tier 1 after Brightline's desk already restarted the agent (−5) |
+| Kwame: "It's not working again" | Send **Ask for details** first, then triage from his answer: P3 Infrastructure, Network, remote (a web filter blocking one site) | Triaging before asking (−10) or never asking (−15) |
 
 ## Shift variation
 
@@ -211,6 +214,7 @@ A drill is a short practice shift built from one area's tickets, with no carry-o
 | `drill-scheduling` | Onsite windows | Front desk printing, new starter, library Wi-Fi, hall projector, RMA motherboard |
 | `drill-p1` | P1s, vendors and duplicates | Clinic outage, the three Oakridge email tickets, KFL copier |
 | `drill-complaint` | Complaints | Helen Moore's complaint, new starter, Jess's MacBook |
+| `drill-support` | Technical support | KFL backup 403, Brightline agent offline, Kwame's vague ticket, co-managed spooler |
 
 ## Interview prep
 

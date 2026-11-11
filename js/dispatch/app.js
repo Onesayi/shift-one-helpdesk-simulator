@@ -354,6 +354,7 @@ const TEMPLATES = {
     label: 'Major incident update', only: t => t.major,
     text: (t, c) => `Hi ${greet(c)}, an update on the Microsoft 365 sign-in outage affecting several of our clients (incident #${t.id}): ${statusLine(t)} We'll update you again by ${hm(now() + MAJOR_CADENCE)}, sooner if anything changes.`,
   },
+  info: { label: 'Ask for details', text: (t, c) => `Hi ${greet(c)}, thanks for getting in touch about #${t.id}. So we can send the right person, could you tell us what you were trying to do and exactly what the screen says? A screenshot, and roughly when it started, would help too.` },
   declined: { label: 'Request declined', text: (t, c) => `Hi ${greet(c)}, we checked this request with an authorized approver at ${client(t).name} and it wasn't approved, so we're closing ticket #${t.id}. Please speak to them if you have questions.` },
 };
 
@@ -384,8 +385,21 @@ function sendMessage(t) {
     if (t.status === 'Completed') later(2, () => { t.flags.confirmed = true; post(t, t.contact, 'Confirmed, all working now. Thank you!', 'client'); });
     else { record('premature', { ticket: t.id }); later(2, () => post(t, t.contact, 'Umm, it\'s still not working here? Nobody has done anything yet as far as I can tell.', 'client')); }
   } else if (kind === 'sched') later(2, () => post(t, t.contact, 'Perfect, thanks.', 'client'));
+  else if (kind === 'info') askForInfo(t);
   toast(to.length ? `Sent to ${c.name} and ${to.length} more affected ${to.length === 1 ? 'client' : 'clients'}.` : `Sent to ${c.name}.`);
   render();
+}
+
+// Waiting on the client (Pending, in Zendesk terms): the ticket waits until they answer.
+function askForInfo(t) {
+  const before = t.status;
+  if (isOpen(t) && ['New', 'Triaged'].includes(before)) t.status = 'Waiting on client';
+  later(8, () => {
+    if (t.s.infoReply) { post(t, t.contact, t.s.infoReply, 'client'); t.flags.infoIn = true; }
+    else { post(t, t.contact, 'Everything I know is in my first message. Is something missing?', 'client'); record('info-noise', { ticket: t.id }); }
+    if (t.status === 'Waiting on client') t.status = t.triage ? 'Triaged' : 'New';
+    toast(`${contactOf(t).name} replied on #${t.id}.`);
+  });
 }
 
 function requestApproval(t) {
@@ -751,6 +765,7 @@ function grade(t) {
   if (logged('premature', e => e.ticket === t.id).length) ded.push([15, 'Told the client it was fixed before the technician had finished.']);
   if (logged('sm-noise', e => e.ticket === t.id).length) ded.push([5, 'Paged the Service Manager for a routine ticket.']);
   if (logged('am-noise', e => e.ticket === t.id).length) ded.push([5, 'Sent a covered ticket to the Account Manager.']);
+  if (logged('info-noise', e => e.ticket === t.id).length) ded.push([5, 'Asked for details the client had already given. Read the ticket first.']);
 
   const scheds = logged('schedule', e => e.ticket === t.id);
   const a = finalAppt(t);
@@ -1126,7 +1141,7 @@ function respCell(t) {
 
 function needsScheduling(t) {
   if (!isOpen(t) || !t.triage) return false;
-  if (['Waiting on approval', 'Approval declined', 'Completed', 'Waiting on vendor'].includes(t.status)) return false;
+  if (['Waiting on approval', 'Approval declined', 'Completed', 'Waiting on vendor', 'Waiting on client'].includes(t.status)) return false;
   const a = finalAppt(t);
   if (!a || a.state === 'missed' || a.state === 'done') return true;
   const sick = G.techs[a.tech].sickAt;

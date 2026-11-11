@@ -548,7 +548,7 @@ a.btn.primary { color: var(--on-accent); }
 .s-in-progress, .s-onsite { color: var(--warn); border-color: transparent; background: var(--warn-soft); }
 .s-completed { color: var(--good); border-color: transparent; background: var(--good-soft); }
 .s-needs-reassign, .s-approval-declined { color: var(--bad); border-color: transparent; background: var(--bad-soft); }
-.s-waiting-on-approval, .s-waiting-on-vendor { color: var(--med); border-color: transparent; background: var(--warn-soft); }
+.s-waiting-on-approval, .s-waiting-on-vendor, .s-waiting-on-client { color: var(--med); border-color: transparent; background: var(--warn-soft); }
 .s-closed, .s-merged { color: var(--muted); }
 
 .alert.info { background: var(--good-soft); border-color: var(--good); }
@@ -696,8 +696,8 @@ a.btn.primary { color: var(--on-accent); }
 .prep .mcq { display: grid; gap: 8px; margin: 10px 0; }
 .prep .mcq-opt { display: grid; grid-template-columns: auto auto 1fr; gap: 10px; align-items: start; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
 .prep .mcq-opt input { margin-top: 3px; }
-.prep .mcq-opt.right { border-color: var(--good); background: var(--good-soft); }
-.prep .mcq-opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.prep .mcq-opt.is-right { border-color: var(--good); background: var(--good-soft); }
+.prep .mcq-opt.is-wrong { border-color: var(--bad); background: var(--bad-soft); }
 .prep .mcq-why { border-radius: 8px; padding: 10px 12px; font-size: 14px; }
 .prep .mcq-why.ok { background: var(--good-soft); }
 .prep .mcq-why.bad { background: var(--bad-soft); }
