@@ -29,6 +29,7 @@ const isAfterHours = m => { const x = ((m % DAY) + DAY) % DAY; return x >= SHIFT
 let G = null;
 let PAGE = 'start';
 let PREP_OPEN = false; // the interview prep page (dispatch.html#prep)
+let PREP_TAB = 'coord'; // which set it shows: 'coord' (PREP) or 'assess' (ASSESS, dispatch.html#assess)
 
 // The campaign's three legs, on one clock from Thursday 08:00 to Friday 17:00.
 const CAMPAIGN_LEGS = [
@@ -1456,7 +1457,7 @@ function renderStart() {
     <section class="l-sec"><div class="l-eyebrow">Interview prep</div>
       <h2>Got an interview coming up?</h2>
       <p class="muted">${PREP.length} questions MSPs ask service coordinators, from "how do you prioritise?" to "what goes in a handover?". Write your answer, see which key points it covers, compare it with a model answer, then practise that skill in a drill.</p>
-      <div class="row gap"><button class="btn primary" data-act="prep">Start interview prep</button>${(() => { const st = prepStats(); return st.answered ? `<span class="muted small">${st.answered} of ${st.total} answered so far</span>` : ''; })()}</div></section>
+      <div class="row gap"><button class="btn primary" data-act="prep" data-t="coord">Start interview prep</button><button class="btn" data-act="prep" data-t="assess">Support assessment practice</button>${(() => { const st = prepStats(); return st.answered ? `<span class="muted small">${st.answered} of ${st.total} answered so far</span>` : ''; })()}</div></section>
 
     <section class="l-sec"><div class="l-eyebrow">The classic shift, in the order tickets arrive</div>
       <h2>Nine hours of dispatch in about eighteen minutes.</h2>
@@ -1546,8 +1547,52 @@ const prepPoints = (q, text) => {
 };
 const prepSummary = st => `<b>${st.answered}</b> of ${st.total} questions answered · <b>${st.hit}</b> of ${st.all} key points covered`;
 
+// Support assessment practice (ASSESS in interview.js). Answers share the prep store, keyed 'as-<id>'.
+function assessStats(a = prepAnswers()) {
+  const mcq = ASSESS.filter(x => x.kind === 'mcq'), wr = ASSESS.filter(x => x.kind === 'write');
+  return {
+    mcq: mcq.length, tried: mcq.filter(x => a['as-' + x.id]).length, right: mcq.filter(x => a['as-' + x.id] === x.a).length,
+    wr: wr.length, written: wr.filter(x => (a['as-' + x.id] || '').trim().length >= 40).length,
+    hit: wr.reduce((n, x) => n + prepCovered(x, a['as-' + x.id]).filter(Boolean).length, 0), all: wr.reduce((n, x) => n + x.points.length, 0),
+  };
+}
+const assessSummary = st => `Quiz: <b>${st.right}</b> of ${st.mcq} right (${st.tried} tried) · Written: <b>${st.written}</b> of ${st.wr} tasks written, <b>${st.hit}</b> of ${st.all} key points covered`;
+function assessFeedback(x, text) {
+  const shape = assessShape(x, text), traps = assessTraps(x, text);
+  return `${prepPoints(x, text)}${shape.map(c => `<li class="${c.ok ? 'g' : 'todo'}">${esc(c.label)}</li>`).join('')}${traps.map(t => `<li class="b">${esc(t.label)}</li>`).join('')}`;
+}
+function assessCard(x, i, a) {
+  const v = a['as-' + x.id] || '';
+  const head = `<div class="row"><span class="tid">${i + 1}</span><span class="chip muted">${esc(x.topic)}</span></div><h3>${esc(x.q.split('\n')[0])}</h3>${x.q.includes('\n') ? `<pre class="brief">${esc(x.q.split('\n').slice(1).join('\n'))}</pre>` : ''}`;
+  if (x.kind === 'mcq') {
+    return `<div class="card pad prep-q" id="as-${x.id}">${head}
+      <div class="mcq" role="radiogroup">${Object.entries(x.opts).map(([k, o]) => `<label class="mcq-opt ${v ? (k === x.a ? 'is-right' : k === v ? 'is-wrong' : '') : ''}"><input type="radio" name="as-${x.id}" value="${k}" data-mcq="${x.id}" ${v === k ? 'checked' : ''}><b>${k}</b><span>${esc(o)}</span></label>`).join('')}</div>
+      ${v ? `<div class="mcq-why ${v === x.a ? 'ok' : 'bad'}"><b>${v === x.a ? 'Right.' : `Not quite: it's ${x.a}.`}</b> ${esc(x.why[x.a])}${v !== x.a ? `<br><span class="muted">${v}: ${esc(x.why[v])}</span>` : ''}</div>
+      <details class="close-box"><summary>Why each option is right or wrong</summary><ul class="small">${Object.keys(x.opts).map(k => `<li><b>${k}.</b> ${esc(x.why[k])}</li>`).join('')}</ul></details>` : ''}
+    </div>`;
+  }
+  return `<div class="card pad prep-q" id="as-${x.id}">${head}
+    <label class="field"><span>Your answer, as you'd send it</span><textarea id="as-in-${x.id}" data-assess="${x.id}" rows="7" placeholder="Write it the way the client or the engineer would read it.">${esc(v)}</textarea></label>
+    <div class="muted small">A strong answer covers:</div>
+    <ul class="fb prep-points" id="as-pts-${x.id}">${assessFeedback(x, v)}</ul>
+    <details class="close-box"><summary>Model answer</summary><p class="model">${esc(x.model)}</p></details>
+  </div>`;
+}
+function renderAssess() {
+  const a = prepAnswers();
+  return `<div class="card pad"><p>A practice version of the skills test SaaS support desks send for L1 technical support roles: a Zendesk and networking quiz, then written tasks (a chat reply, triage, troubleshooting, client emails, an escalation note and a process fix). Graders weigh clear reasoning as much as the right answer, so the checklists look at what you cover and how, not just the facts. Your answers stay in this browser.</p>
+      <p class="small" id="as-sum">${assessSummary(assessStats(a))}</p>
+      <details class="close-box"><summary>Quick reference: Zendesk statuses, business rules and HTTP codes</summary><div class="article">${ASSESS_REF}</div></details></div>
+    ${ASSESS.map((x, i) => assessCard(x, i, a)).join('')}`;
+}
+
 function renderPrep() {
   const a = prepAnswers();
+  const tabs = `<div class="seg prep-tabs" role="tablist"><button class="${PREP_TAB === 'coord' ? 'on' : ''}" data-act="prepTab" data-t="coord" role="tab" aria-selected="${PREP_TAB === 'coord'}">Coordinator interview</button><button class="${PREP_TAB === 'assess' ? 'on' : ''}" data-act="prepTab" data-t="assess" role="tab" aria-selected="${PREP_TAB === 'assess'}">Support assessment</button></div>`;
+  if (PREP_TAB === 'assess') return `<div class="report prep">
+    <div class="view-head"><h2>Interview prep</h2>${tabs}</div>
+    ${renderAssess()}
+    <div class="row gap"><button class="btn" data-act="home">Back to the start page</button></div></div>`;
   const cards = PREP.map((q, i) => {
     const d = q.drill && DRILLS.find(x => x.id === q.drill);
     const arts = q.kb.map(k => PLAYBOOK.find(p => p.id === k)).filter(Boolean);
@@ -1562,7 +1607,7 @@ function renderPrep() {
     </div>`;
   }).join('');
   return `<div class="report prep">
-    <div class="view-head"><h2>Interview prep</h2><span class="muted">Service coordinator · MSP dispatcher</span></div>
+    <div class="view-head"><h2>Interview prep</h2>${tabs}</div>
     <div class="card pad"><p>These are the questions MSPs ask service coordinators and dispatchers. Write your answer the way you'd say it, and the checklist under it ticks off the key points as you cover them. Then compare with the model answer and practise the skill in the sim. Your answers stay in this browser.</p>
       <p class="small" id="prep-sum">${prepSummary(prepStats(a))}</p>
       <div class="row gap"><button class="btn" data-act="home">Back to the start page</button></div></div>
@@ -1655,7 +1700,8 @@ function renderProgress(h) {
 // ---------------------------------------------------------------------------
 const ACT = {
   start: d => { if (PREP_OPEN) { PREP_OPEN = false; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } } newGame(d.m, d.seed ?? $('#seed-in')?.value); },
-  prep: () => { G = null; PREP_OPEN = true; try { history.replaceState(null, '', location.pathname + '#prep'); } catch { /* ignore */ } render(); $('#main').scrollTop = 0; window.scrollTo(0, 0); },
+  prep: d => { G = null; PREP_OPEN = true; if (d?.t) PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); $('#main').scrollTop = 0; window.scrollTo(0, 0); },
+  prepTab: d => { PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); },
   home: () => { G = null; PREP_OPEN = false; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } render(); },
   theme: () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('shiftone-theme', r.dataset.theme); render(); },
   endShift: () => G.drill ? modal({ title: 'End the drill now?', body: '<p>Tickets are graded as they stand, so work that isn\'t finished or closed loses points.</p>', ok: 'End drill', danger: true, onOk: () => setTimeout(endShift) }) : modal({ title: 'End the shift now?', body: '<p>You\'ll write the handover for the ' + (G.night ? 'day coordinator' : 'on-call engineer') + ' next. ' + (G.campaign ? 'Finished tickets are graded now. The rest of this shift still happens before the next one starts, and open work carries over.' : 'Tickets are graded as they stand, and anything that hasn\'t arrived yet scores 0.') + '</p>', ok: 'End shift', danger: true, onOk: () => setTimeout(startHandover) }),
@@ -1735,6 +1781,23 @@ document.addEventListener('input', e => {
   if (pts) pts.innerHTML = prepPoints(q, e.target.value);
   if (sum) sum.innerHTML = prepSummary(prepStats());
 });
+// Assessment answers: written tasks update their checklist as you type; a quiz pick redraws its card.
+document.addEventListener('input', e => {
+  const id = e.target.dataset?.assess, x = id && ASSESS.find(q => q.id === id);
+  if (!x) return;
+  savePrepAnswer('as-' + id, e.target.value);
+  const pts = document.getElementById('as-pts-' + id), sum = document.getElementById('as-sum');
+  if (pts) pts.innerHTML = assessFeedback(x, e.target.value);
+  if (sum) sum.innerHTML = assessSummary(assessStats());
+});
+document.addEventListener('change', e => {
+  const id = e.target.dataset?.mcq, i = ASSESS.findIndex(q => q.id === id);
+  if (i < 0) return;
+  savePrepAnswer('as-' + id, e.target.value);
+  const card = document.getElementById('as-' + id), sum = document.getElementById('as-sum');
+  if (card) card.outerHTML = assessCard(ASSESS[i], i, prepAnswers());
+  if (sum) sum.innerHTML = assessSummary(assessStats());
+});
 document.addEventListener('change', onDraft);
 document.addEventListener('focusout', () => { if (G && G.dirty) setTimeout(() => { if (G?.dirty && document.activeElement?.tagName !== 'SELECT') render(); }); });
 document.addEventListener('keydown', e => {
@@ -1747,6 +1810,6 @@ setInterval(tick, 250);
 (function init() {
   const saved = store.get('shiftone-theme');
   document.documentElement.dataset.theme = saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  try { PREP_OPEN = location.hash === '#prep'; } catch { /* ignore */ }
+  try { PREP_OPEN = location.hash === '#prep' || location.hash === '#assess'; if (location.hash === '#assess') PREP_TAB = 'assess'; } catch { /* ignore */ }
   render();
 })();
