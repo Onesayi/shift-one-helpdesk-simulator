@@ -366,6 +366,40 @@ const SCENARIOS = [
       const a = finalAppt(t);
       if (a && a.dur <= 30 && !logged('notify-am', e => e.ticket === t.id).length) good.push('Checked the block balance: a short fix fits in what\'s left, no top-up needed.');
     },
+  },  // Read the error before you route it: three tickets in the style of an L1 technical support test.
+  {
+    id: 'kfl-backup403', extra: true, at: 140, window: [60, 360], slide: true, channel: 'alert', client: 'kfl', contact: null, from: 'Cloud backup monitoring', kb: 'PB-06',
+    title: 'M365 backup: 403 Forbidden on one SharePoint site',
+    body: 'ALERT  Keller & Finch cloud backup  Job "KFL-M365-Daily" finished with warnings. 41 of 42 SharePoint sites backed up.\nSite "Litigation-2026": 403 Forbidden (12 attempts). Last good backup of this site: none (site created 9 days ago).',
+    truth: { priority: 'P2', okPri: ['P1'], board: 'Infrastructure', skill: 'Backup', onsite: false, est: 30, dispatch: true, startBy: 740, closeAs: 'resolved',
+      why: 'The backup signed in fine (41 sites worked), so 403 means its account has no permission on that one site, not a bad password. A litigation site with client data and no backup at all: P2. A Backup engineer adds the account to the site.' },
+    fixNote: 'Litigation-2026 was created with its own permissions, so the backup account was never added. Added it as a site admin and re-ran the job: 42 of 42 sites backed up.',
+  },
+  {
+    id: 'bl-agent', extra: true, at: 200, window: [90, 390], slide: true, avoid: ['4512'], channel: 'email', client: 'bl', contact: 'bldesk', kb: 'PB-03',
+    title: 'Escalation: new server shows offline in RMM',
+    body: 'Escalating from the Brightline service desk. We built BL-FS02 yesterday and installed your RMM agent. The server works fine on our network and users can reach its shares, but your portal still shows it offline. The agent service is running and we\'ve restarted it twice. Brightline IT',
+    truth: { priority: 'P3', okPri: ['P4'], board: 'Infrastructure', skill: 'Network', onsite: false, est: 30, dispatch: true, startBy: 800, closeAs: 'resolved',
+      why: 'It works on the LAN, so the problem is on the way out: DNS, outbound 443 or a proxy. One new server that isn\'t monitored yet, with nothing down: P3. It goes to a network engineer, not back to Tier 1, because Brightline\'s desk already restarted the agent.' },
+    fixNote: 'BL-FS02 sits in the server VLAN, where web traffic has to go through the proxy, but the agent had no proxy set. Test-NetConnection to the RMM host on 443 failed direct and worked through the proxy. Added the proxy to the agent config and it checked in within a minute.',
+    evaluate(t, ded) {
+      if (logged('schedule', e => e.ticket === t.id && ['ana', 'ben'].includes(e.tech)).length) ded.push([5, 'Brightline\'s desk already restarted the agent. Sending it to our Tier 1 repeats their work.']);
+    },
+  },
+  {
+    id: 'oak-vague', extra: true, at: 150, window: [60, 300], slide: true, avoid: ['4507'], channel: 'email', client: 'oak', contact: 'kosei', kb: 'PB-02',
+    title: 'It\'s not working again',
+    body: 'Hi, the thing on the laptops isn\'t working again. Can someone fix it? Kwame',
+    infoReply: 'Sorry, I was rushing! It\'s the Lexia reading program on the Room 7 laptops. Since this morning it just says "Cannot reach the server". Everything else on the laptops works, and Room 4\'s laptops are fine. Screenshot attached. Kwame',
+    truth: { priority: 'P3', board: 'Infrastructure', skill: 'Network', onsite: false, est: 30, dispatch: true, startBy: 840, closeAs: 'resolved',
+      why: 'You can\'t triage "it\'s not working". Ask what, where and since when first (Pending, in Zendesk terms). His answer shows one room\'s laptops can\'t reach one website: a web filter problem, P3, for a network engineer remotely.' },
+    fixNote: 'Room 7\'s laptops moved to the new web filter policy last week, and it blocks Lexia\'s content server as "uncategorised". Allowed the domain for classrooms. Room 7 is reading again.',
+    evaluate(t, ded, good) {
+      const ask = logged('client-msg', e => e.ticket === t.id && e.kind === 'info')[0];
+      if (!ask) ded.push([15, 'Never asked Kwame what wasn\'t working. A ticket that says nothing needs questions before anything else.']);
+      else if (t.triagedAt != null && t.triagedAt < ask.at) ded.push([10, 'Triaged before you knew what was wrong. Ask first, then set the priority from the answer.']);
+      else good.push('Asked what, where and since when before triaging.');
+    },
   },
 ];
 
@@ -440,6 +474,8 @@ const DRILLS = [
     keys: ['4506', '4507', '4508', '4509', 'kfl-copier'] },
   { id: 'complaint', title: 'Complaints', blurb: 'An angry VIP on the phone: apologise, bring in the managers, and give the repeat fault to someone senior.',
     keys: ['oak-complaint', '4504', '4510'] },
+  { id: 'support', title: 'Technical support', blurb: 'Read the error before you route it: a 403, an agent that can\'t get out, and a ticket that says nothing at all.',
+    keys: ['kfl-backup403', 'bl-agent', 'oak-vague', '4512'] },
 ];
 const drillOf = seed => DRILLS.find(d => 'drill-' + d.id === seed) || null;
 

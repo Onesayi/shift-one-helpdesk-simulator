@@ -205,7 +205,8 @@ const PLAYBOOK = [
 <tr><td>Block hours</td><td>1 h</td><td>2 h</td><td>4 h</td><td>8 h</td></tr></tbody></table>
 <ul><li><b>P1s: update the client at least every 30 minutes</b>, even if the update is "still waiting on the ISP".</li>
 <li>When an appointment moves, tell the client before they notice.</li>
-<li>If a client has to chase us, we've already failed that ticket.</li></ul>` },
+<li>If a client has to chase us, we've already failed that ticket.</li>
+<li><b>A ticket that says nothing</b> ("it's not working") gets the <b>Ask for details</b> message before triage: what they were doing, what the screen says, a screenshot and since when. It waits on the client until they answer (Pending, in Zendesk terms). Don't ask for what the ticket already tells you.</li></ul>` },
   { id: 'PB-03', title: 'Boards and routing', tags: 'board routing skills tier help desk infrastructure field security projects', body: `
 <ul><li><b>Help Desk</b>: one user or a few users, fixable remotely. Tier 1 first.</li>
 <li><b>Infrastructure</b>: servers, backups, firewalls, internet circuits and monitoring alerts that need work.</li>

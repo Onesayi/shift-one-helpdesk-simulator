@@ -18,7 +18,7 @@ a.btn.primary { color: var(--on-accent); }
 .s-in-progress, .s-onsite { color: var(--warn); border-color: transparent; background: var(--warn-soft); }
 .s-completed { color: var(--good); border-color: transparent; background: var(--good-soft); }
 .s-needs-reassign, .s-approval-declined { color: var(--bad); border-color: transparent; background: var(--bad-soft); }
-.s-waiting-on-approval, .s-waiting-on-vendor { color: var(--med); border-color: transparent; background: var(--warn-soft); }
+.s-waiting-on-approval, .s-waiting-on-vendor, .s-waiting-on-client { color: var(--med); border-color: transparent; background: var(--warn-soft); }
 .s-closed, .s-merged { color: var(--muted); }
 
 .alert.info { background: var(--good-soft); border-color: var(--good); }
