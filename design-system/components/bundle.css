@@ -696,8 +696,8 @@ a.btn.primary { color: var(--on-accent); }
 .prep .mcq { display: grid; gap: 8px; margin: 10px 0; }
 .prep .mcq-opt { display: grid; grid-template-columns: auto auto 1fr; gap: 10px; align-items: start; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
 .prep .mcq-opt input { margin-top: 3px; }
-.prep .mcq-opt.right { border-color: var(--good); background: var(--good-soft); }
-.prep .mcq-opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.prep .mcq-opt.is-right { border-color: var(--good); background: var(--good-soft); }
+.prep .mcq-opt.is-wrong { border-color: var(--bad); background: var(--bad-soft); }
 .prep .mcq-why { border-radius: 8px; padding: 10px 12px; font-size: 14px; }
 .prep .mcq-why.ok { background: var(--good-soft); }
 .prep .mcq-why.bad { background: var(--bad-soft); }
