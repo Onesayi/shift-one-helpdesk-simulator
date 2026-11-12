@@ -64,6 +64,8 @@ const PAIRS = [
   ['on-accent', 'accent'], ['on-bad', 'bad'],
   ['good', 'good-soft'], ['warn', 'warn-soft'], ['bad', 'bad-soft'],
   ['crit', 'bad-soft'], ['high', 'warn-soft'], ['med', 'warn-soft'], ['low', 'good-soft'],
+  ['chrome-text', 'chrome'], ['chrome-text', 'chrome-2'], ['chrome-text', 'chrome-3'], ['chrome-muted', 'chrome'], ['chrome-muted', 'chrome-2'],
+  ['chrome-accent', 'chrome'], ['chrome-accent', 'chrome-2'], ['chrome', 'chrome-accent'],
   ['console-fg', 'console-bg'], ['term-fg', 'term-bg'], ['popup-fg', 'popup-bg'], ['ransom-fg', 'ransom-bg'],
 ];
 
