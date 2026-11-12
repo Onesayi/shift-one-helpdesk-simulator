@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+New: **A corporate MSP look for both desks.**
+
+- Navy app chrome: the top bar and sidebar are navy in both themes, with a cyan active state, like the PSA and RMM tools MSP staff work in all day. One corporate blue (`#0067c5`) does every interactive job on the light pages.
+- IBM Plex Sans and IBM Plex Mono (Google Fonts) replace Archivo and the system face, everywhere, for a plainer, more corporate voice.
+- Squared-off corners: two new tokens, `radius-control` (3px) and `radius-card` (4px), replace the hard-coded 6–14px radii. Card shadows are gone; borders do the separating.
+- The rainbow priority stripe is gone from the start screens and the hero's coloured word is the accent, so priority colours only ever mean priority. The primary desk card is navy with a cyan top edge.
+- New `chrome*` colour tokens with contrast tests; dark mode is a deep navy-black. Favicons, app icons, the README banner and every screenshot are regenerated.
+- The screenshot harnesses (`tools/shot.html`, `tools/dispatch-shot.html`) load the interview, night-shift and major-incident scripts again; without them the start scenes rendered blank.
+
 New: **Interview prep in Help Desk mode too.**
 
 - *Interview prep* is now in the help desk top bar and on its start page (`index.html#prep`), with 11 questions service desks ask Tier 1 candidates: identity checks before a reset, a phished password, a fake urgent CFO, printing, DNS, folder access, a leaver, an upset caller wanting admin rights, phone calls while busy, a site outage and ransomware.

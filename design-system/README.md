@@ -14,23 +14,24 @@ Shift One is a browser simulator of an IT service desk. A player sits a Tier 1 s
 
 ### Colour
 
+- The look is corporate MSP: a navy app chrome (`chrome`, `chrome-2`, `chrome-3`, `chrome-line`) frames a cool grey ground, white panels and one corporate blue. The topbar and sidebar are navy in both themes; inside them the `surface`, `text`, `muted` and `accent` tokens are re-pointed to `chrome`, `chrome-text`, `chrome-muted` and `chrome-accent` (a bright cyan), so ordinary buttons, tabs and nav items need no special classes there. No gradients.
 - The ground is `bg`; panels, cards and inputs sit on `surface`; second-level fills (row hover, stat tiles, suggestion buttons) use `surface-2`. Every divider is a 1px `border`.
 - Text is `text`; secondary text, labels and resting icons are `muted`.
 - `accent` is the only interactive hue: primary buttons, links, active nav and tabs, selection, focus. Pair it with `accent-soft` as a tint behind accent text (active nav, selected row, count badges).
 - State colours always come as a pair: `good`/`good-soft`, `warn`/`warn-soft`, `bad`/`bad-soft`. Use the strong colour as text or a 4px edge and the soft colour as the fill. Never put a strong state fill behind body text.
-- Priority has its own four-step ramp: `crit` (P1), `high` (P2), `med` (P3), `low` (P4). Badges put the priority colour on the matching soft tint (critical on `bad-soft`, high and medium on `warn-soft`, low on `good-soft`). On the start screens the same ramp appears as `p1`–`p4` and as the 4px brand stripe across the top of the topbar (40 / 30 / 20 / 10%).
+- Priority has its own four-step ramp: `crit` (P1), `high` (P2), `med` (P3), `low` (P4). Badges put the priority colour on the matching soft tint (critical on `bad-soft`, high and medium on `warn-soft`, low on `good-soft`). On the start screens the same ramp appears as `p1`–`p4`. Priority colour is for priority only: it never decorates headings or chrome.
 - Coordinator mode adds `int` and `int-border` for internal notes and `hatch` for off-shift cells.
 - Simulated machines use fixed colours that don't follow the theme: `console-*` (in-game command prompt), `term-*` (landing snippets), `desktop-1..3`, `taskbar`, `popup-*`, `ransom-*`. The toast is always dark (`toast-bg`) with a 4px tone edge (`toast-info`, `toast-good`, `toast-bad`, `toast-warn`). Grade tiles use `grade-a`…`grade-f` with a white letter.
-- Both themes are first-class. Dark is a cool blue-black (`bg` #0e131a) with lifted state colours; it is not an inversion.
+- Both themes are first-class. Dark is a deep navy-black (`bg` #08121f) with lifted state colours; it is not an inversion.
 - Every text colour reaches 4.5:1 on the grounds its usage note names, in both themes; `tests/design-system/tokens.test.js` checks it. Labels on an `accent` or `bad` fill use `on-accent` and `on-bad`, which are white in light and dark ink in dark, never a literal white.
 - The `focus` ring reaches 5:1 or better on every surface and tint in both themes (3:1 is the minimum). The `focus-ring` halo on text fields is `accent-soft` (1.2:1), so there the focus cue is the `accent` border it is paired with, never the halo alone.
 
 ### Type
 
-- The app runs on the platform UI face (`sans`: Segoe UI, system-ui) at 14px/1.5 (`body`). View titles are `view-title` (20px), the ticket title `panel-title` (16px), controls `control` (13px/600).
+- Everything is set in **IBM Plex Sans** (Google Fonts, 400–700) at 14px/1.5 (`body`), with **IBM Plex Mono** for mono. One family keeps it plain and corporate; hierarchy comes from size and weight, not a second display face. View titles are `view-title` (20px), the ticket title `panel-title` (16px), controls `control` (13px/600).
 - Small caps-style labels are `label` (12px/700, .06em) and `table-head` (11px/600, .06em). Priority and channel tags are `badge` (10.5px/800).
-- The start screens add a display face, **Archivo** (Google Fonts, variable width and weight): `hero` at 62px/800 with `font-stretch: 118%`, `section` at 36px/800 and 112%, `desk-title` at 22px/750 and 108%. Headings there use `text-wrap: balance`. Keep Archivo to the start screens.
-- Mono (`mono`: Cascadia Mono, Consolas, SF Mono) carries ticket IDs, SLA timers, terminals, audit logs and the landing's uppercase eyebrows (`eyebrow`, .1em).
+- The start screens use the same family larger and tighter: `hero` at 62px/700 (-.03em), `section` at 36px/700, `desk-title` at 22px/600. Headings there use `text-wrap: balance`. The one coloured word in the hero is `accent`.
+- Mono (`mono`: IBM Plex Mono, then Cascadia Mono, Consolas) carries ticket IDs, SLA timers, terminals, audit logs and the landing's uppercase eyebrows (`eyebrow`, .1em).
 - Every number that updates (clock, SLA, queue waits, scores) uses `font-variant-numeric: tabular-nums`.
 
 ### Spacing and layout
@@ -41,10 +42,10 @@ Shift One is a browser simulator of an IT service desk. A player sits a Tier 1 s
 
 ### Shape, borders and elevation
 
-- Corners are small and squared-off: `radius-8` for controls, `radius` (10px) for cards, `radius-12` for modals and pills, `radius-14` for the large start-screen and pricing cards. Small tags use `radius-4`/`radius-5`.
-- Borders do the separating. Cards get one resting `shadow`; only floating things get heavier ones (`shadow-call`, `shadow-toast`, `shadow-modal`, `shadow-queue`).
+- Corners are squared-off: `radius-control` (3px) on buttons, inputs, nav, tabs and chips, `radius-card` (4px) on every card, table, panel, modal and toast. Small tags use `radius-3`/`radius-4`/`radius-5`; avatars and dots stay round.
+- Borders do the separating. Cards get at most one resting `shadow`; only floating things get heavier ones (`shadow-call`, `shadow-toast`, `shadow-modal`, `shadow-queue`).
 - Alerts use a 4px left edge in the state colour on its soft tint. That edge belongs to alerts, the coaching call-to-action and toasts only; don't put it on ordinary cards.
-- Emphasis on a card is a 2px `accent` border (the highlighted plan, the harder shift). The primary desk card inverts to a `text` fill.
+- Emphasis on a card is a 2px `accent` border (the highlighted plan, the harder shift). The primary desk card takes the navy `chrome` fill with a 3px `chrome-accent` top edge.
 
 ### Motion and states
 
@@ -57,12 +58,12 @@ Shift One is a browser simulator of an IT service desk. A player sits a Tier 1 s
 
 - Line icons on a 24px grid, stroke 1.8, round caps and joins, no fill, drawn in `currentColor` (inline SVG in the source). In the sidebar they rest in `muted` and turn `accent` when active. Buttons size them at 15px, the call bar at 16px, nav at 19px.
 - The set is small and fixed: queue, directory, remote desktop, server room, knowledge base, phone, plus dispatch (calendar) and clients (building) in Coordinator mode. They live in `assets/Icons/`.
-- The marks are stroked outlines in `accent` at 2.2: a monitor with a prompt for the Help Desk, a calendar for the Service Coordinator. App icons are the same glyphs in white on an `accent` rounded square. They live in `assets/Logos/`.
+- The marks are stroked outlines in `accent` (`chrome-accent` in the topbar) at 2.2: a monitor with a prompt for the Help Desk, a calendar for the Service Coordinator. App icons are the same glyphs in white on a navy (`chrome`) square with a 6px corner. They live in `assets/Logos/`.
 - No icon font and no third-party set. If you need a new icon, draw it to the same 24px grid and stroke.
 
 ## Using this system
 
-- Load the tokens (`css/tokens.css` in this repository), the Archivo face (start screens only), then `components/bundle.css`. Components are plain HTML with the source's class names (`btn primary`, `prio p-high`, `status s-resolved`, `tbl clickable`); there is no JavaScript bundle.
+- Load the tokens (`css/tokens.css` in this repository), the IBM Plex Sans and IBM Plex Mono faces, then `components/bundle.css`. Components are plain HTML with the source's class names (`btn primary`, `prio p-high`, `status s-resolved`, `tbl clickable`); there is no JavaScript bundle.
 - Theme by setting `data-theme="light"` or `data-theme="dark"` on the root element.
 - Every component's README lists its markup and variants. Copy the markup; don't restyle it inline.
 
