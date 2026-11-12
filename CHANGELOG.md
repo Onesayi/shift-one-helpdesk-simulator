@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+New: **Interview prep in Help Desk mode too.**
+
+- *Interview prep* is now in the help desk top bar and on its start page (`index.html#prep`), with 11 questions service desks ask Tier 1 candidates: identity checks before a reset, a phished password, a fake urgent CFO, printing, DNS, folder access, a leaver, an upset caller wanting admin rights, phone calls while busy, a site outage and ransomware.
+- Each question works like the coordinator prep: a key point checklist that ticks as you type, a model answer, the linked knowledge base articles, and a button that starts the shift with the matching ticket.
+- The *Support assessment* tab is on both pages (`index.html#assess`), and your quiz picks and written answers are shared between them. Each prep page links to the other mode's questions.
+- The prep styles moved from `css/dispatch.css` to `css/styles.css` (no class names changed), and the shared answer store and assessment cards moved into `js/dispatch/interview.js`. New tests in `tests/helpdesk/interview.test.js`.
+
 New: **Keyboard focus you can see, everywhere.**
 
 - Every button, link, tab, sidebar item, queue row and card shows a solid 2px focus ring when you reach it with the keyboard (mouse clicks don't). The ring is a design token, `focus`, and reaches 5:1 or better on every background in both themes.

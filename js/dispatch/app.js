@@ -1539,67 +1539,16 @@ function renderHandover() {
 }
 
 // ---------------------------------------------------------------------------
-// Interview prep (PREP in interview.js). Answers are kept in this browser only.
+// Interview prep (PREP in interview.js). Answers are kept in this browser only; the shared
+// answer store and the support assessment cards live in interview.js, used by both modes.
 // ---------------------------------------------------------------------------
-const PREP_KEY = 'shiftone-prep';
-function prepAnswers() {
-  try { const a = JSON.parse(store.get(PREP_KEY) || '{}'); return a && typeof a === 'object' && !Array.isArray(a) ? a : {}; } catch { return {}; }
-}
-function savePrepAnswer(id, text) {
-  const a = prepAnswers();
-  if (text.trim()) a[id] = text; else delete a[id];
-  store.set(PREP_KEY, JSON.stringify(a));
-}
 function prepStats(a = prepAnswers()) {
   const done = PREP.filter(q => (a[q.id] || '').trim().length >= 40);
   const hit = PREP.reduce((x, q) => x + prepCovered(q, a[q.id]).filter(Boolean).length, 0);
   const all = PREP.reduce((x, q) => x + q.points.length, 0);
   return { answered: done.length, total: PREP.length, hit, all };
 }
-const prepPoints = (q, text) => {
-  const c = prepCovered(q, text);
-  return q.points.map((p, i) => `<li class="${c[i] ? 'g' : 'todo'}">${esc(p.label)}</li>`).join('');
-};
 const prepSummary = st => `<b>${st.answered}</b> of ${st.total} questions answered · <b>${st.hit}</b> of ${st.all} key points covered`;
-
-// Support assessment practice (ASSESS in interview.js). Answers share the prep store, keyed 'as-<id>'.
-function assessStats(a = prepAnswers()) {
-  const mcq = ASSESS.filter(x => x.kind === 'mcq'), wr = ASSESS.filter(x => x.kind === 'write');
-  return {
-    mcq: mcq.length, tried: mcq.filter(x => a['as-' + x.id]).length, right: mcq.filter(x => a['as-' + x.id] === x.a).length,
-    wr: wr.length, written: wr.filter(x => (a['as-' + x.id] || '').trim().length >= 40).length,
-    hit: wr.reduce((n, x) => n + prepCovered(x, a['as-' + x.id]).filter(Boolean).length, 0), all: wr.reduce((n, x) => n + x.points.length, 0),
-  };
-}
-const assessSummary = st => `Quiz: <b>${st.right}</b> of ${st.mcq} right (${st.tried} tried) · Written: <b>${st.written}</b> of ${st.wr} tasks written, <b>${st.hit}</b> of ${st.all} key points covered`;
-function assessFeedback(x, text) {
-  const shape = assessShape(x, text), traps = assessTraps(x, text);
-  return `${prepPoints(x, text)}${shape.map(c => `<li class="${c.ok ? 'g' : 'todo'}">${esc(c.label)}</li>`).join('')}${traps.map(t => `<li class="b">${esc(t.label)}</li>`).join('')}`;
-}
-function assessCard(x, i, a) {
-  const v = a['as-' + x.id] || '';
-  const head = `<div class="row"><span class="tid">${i + 1}</span><span class="chip muted">${esc(x.topic)}</span></div><h3>${esc(x.q.split('\n')[0])}</h3>${x.q.includes('\n') ? `<pre class="brief">${esc(x.q.split('\n').slice(1).join('\n'))}</pre>` : ''}`;
-  if (x.kind === 'mcq') {
-    return `<div class="card pad prep-q" id="as-${x.id}">${head}
-      <div class="mcq" role="radiogroup">${Object.entries(x.opts).map(([k, o]) => `<label class="mcq-opt ${v ? (k === x.a ? 'is-right' : k === v ? 'is-wrong' : '') : ''}"><input type="radio" name="as-${x.id}" value="${k}" data-mcq="${x.id}" ${v === k ? 'checked' : ''}><b>${k}</b><span>${esc(o)}</span></label>`).join('')}</div>
-      ${v ? `<div class="mcq-why ${v === x.a ? 'ok' : 'bad'}"><b>${v === x.a ? 'Right.' : `Not quite: it's ${x.a}.`}</b> ${esc(x.why[x.a])}${v !== x.a ? `<br><span class="muted">${v}: ${esc(x.why[v])}</span>` : ''}</div>
-      <details class="close-box"><summary>Why each option is right or wrong</summary><ul class="small">${Object.keys(x.opts).map(k => `<li><b>${k}.</b> ${esc(x.why[k])}</li>`).join('')}</ul></details>` : ''}
-    </div>`;
-  }
-  return `<div class="card pad prep-q" id="as-${x.id}">${head}
-    <label class="field"><span>Your answer, as you'd send it</span><textarea id="as-in-${x.id}" data-assess="${x.id}" rows="7" placeholder="Write it the way the client or the engineer would read it.">${esc(v)}</textarea></label>
-    <div class="muted small">A strong answer covers:</div>
-    <ul class="fb prep-points" id="as-pts-${x.id}">${assessFeedback(x, v)}</ul>
-    <details class="close-box"><summary>Model answer</summary><p class="model">${esc(x.model)}</p></details>
-  </div>`;
-}
-function renderAssess() {
-  const a = prepAnswers();
-  return `<div class="card pad"><p>A practice version of the skills test SaaS support desks send for L1 technical support roles: a Zendesk and networking quiz, then written tasks (a chat reply, triage, troubleshooting, client emails, an escalation note and a process fix). Graders weigh clear reasoning as much as the right answer, so the checklists look at what you cover and how, not just the facts. Your answers stay in this browser.</p>
-      <p class="small" id="as-sum">${assessSummary(assessStats(a))}</p>
-      <details class="close-box"><summary>Quick reference: Zendesk statuses, business rules and HTTP codes</summary><div class="article">${ASSESS_REF}</div></details></div>
-    ${ASSESS.map((x, i) => assessCard(x, i, a)).join('')}`;
-}
 
 function renderPrep() {
   const a = prepAnswers();
@@ -1625,6 +1574,7 @@ function renderPrep() {
     <div class="view-head"><h2>Interview prep</h2>${tabs}</div>
     <div class="card pad"><p>These are the questions MSPs ask service coordinators and dispatchers. Write your answer the way you'd say it, and the checklist under it ticks off the key points as you cover them. Then compare with the model answer and practise the skill in the sim. Your answers stay in this browser.</p>
       <p class="small" id="prep-sum">${prepSummary(prepStats(a))}</p>
+      <p class="muted small">Interviewing for a help desk or Tier 1 support role? <a href="index.html#prep">Try the help desk questions</a>.</p>
       <div class="row gap"><button class="btn" data-act="home">Back to the start page</button></div></div>
     ${cards}</div>`;
 }
