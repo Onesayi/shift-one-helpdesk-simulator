@@ -380,3 +380,27 @@ a.kb-link:hover { text-decoration: underline; }
   .coach-cta { flex-direction: column; align-items: flex-start; }
   .tbl.clickable th:nth-child(3), .tbl.clickable td:nth-child(3) { display: none; }
 }
+
+/* Interview prep and support assessment practice (both modes) */
+#app[data-phase="prep"] { grid-template-columns: 1fr; }
+#app[data-phase="prep"] #sidebar, #app[data-phase="prep"] #ticketpanel { display: none; }
+.prep .prep-q h3 { font-size: 17px; }
+.prep .prep-q .field { display: block; margin: 12px 0 8px; }
+.prep .prep-points { margin: 6px 0 10px; }
+.prep .prep-points li.todo { color: var(--muted); }
+.prep .prep-points li.todo::before { content: '○'; position: absolute; left: 0; color: var(--muted); }
+.prep details.close-box { margin-top: 8px; }
+.prep .prep-q > .row.gap { margin-top: 12px; }
+.prep .view-head .prep-tabs { margin-left: auto; }
+.prep .prep-q h3 { margin: 8px 0; }
+.prep pre.brief { white-space: pre-wrap; font: inherit; font-size: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 6px 0 4px; }
+.prep .mcq { display: grid; gap: 8px; margin: 10px 0; }
+.prep .mcq-opt { display: grid; grid-template-columns: auto auto 1fr; gap: 10px; align-items: start; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+.prep .mcq-opt input { margin-top: 3px; }
+.prep .mcq-opt.is-right { border-color: var(--good); background: var(--good-soft); }
+.prep .mcq-opt.is-wrong { border-color: var(--bad); background: var(--bad-soft); }
+.prep .mcq-why { border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+.prep .mcq-why.ok { background: var(--good-soft); }
+.prep .mcq-why.bad { background: var(--bad-soft); }
+.prep .prep-points li.b { color: var(--bad); }
+.prep p.model { white-space: pre-line; }

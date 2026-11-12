@@ -18,7 +18,8 @@ const HOLD_MAX = 45;  // callers hang up after this long on hold (timed shifts o
 const CALLBACK_SEC = 300; // a promised callback is due within this long (timed shifts only)
 
 let G = null;       // the whole game state
-let PAGE = 'start'; // which non-game page shows when no game is running
+let PAGE = 'start'; // which non-game page shows when no game is running: 'start', 'pricing' or 'prep'
+let PREP_TAB = 'helpdesk'; // which interview prep set shows: 'helpdesk' (HD_PREP) or 'assess' (ASSESS, index.html#assess)
 
 function newGame(mode, shift = 1) {
   const w = structuredClone(WORLD);
@@ -863,6 +864,7 @@ function renderDom() {
   const mainScroll = $('#main').scrollTop;
 
   $('#call-root').innerHTML = G && G.phase === 'play' ? renderCall() : '';
+  if (!G && PAGE === 'prep') { $('#main').innerHTML = renderPrep(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; return; }
   if (!G && PAGE === 'pricing') { $('#main').innerHTML = renderPricing(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; return; }
 
   if (!G || G.phase === 'start') { $('#main').innerHTML = renderStart(); $('#topbar').innerHTML = topbarStart(); $('#sidebar').innerHTML = ''; $('#ticketpanel').innerHTML = ''; $('#modal-root').innerHTML = ''; Landing.mount(); return; }
@@ -889,7 +891,7 @@ function renderDom() {
 
 function topbarStart() {
   return `<button class="brand as-link" data-act="home">${logo()}<span>Shift One</span><small>Help Desk Simulator</small></button><div class="grow"></div>
-    <nav class="top-links"><a href="dispatch.html">Service Coordinator</a><button class="${!G && PAGE === 'pricing' ? 'on' : ''}" data-act="pricing">Tutoring &amp; Pricing</button>${CONFIG.repoUrl ? `<a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">GitHub</a>` : ''}</nav>${themeBtn()}`;
+    <nav class="top-links"><button class="${!G && PAGE === 'prep' ? 'on' : ''}" data-act="prep">Interview prep</button><a href="dispatch.html">Service Coordinator</a><button class="${!G && PAGE === 'pricing' ? 'on' : ''}" data-act="pricing">Tutoring &amp; Pricing</button>${CONFIG.repoUrl ? `<a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">GitHub</a>` : ''}</nav>${themeBtn()}`;
 }
 
 function planHref(p) {
@@ -1292,6 +1294,11 @@ Address:  8.8.8.8
           <h3>Server room</h3><p>Tell one broken laptop from one broken floor. Restart the right thing, not everything.</p></div>
       </div></section>
 
+    <section class="l-sec"><div class="l-eyebrow">Interview prep</div>
+      <h2>Got a help desk interview coming up?</h2>
+      <p class="muted">${HD_PREP.length} questions service desks ask Tier 1 candidates, from "what do you check before a password reset?" to "what do you do in the first five minutes of ransomware?". Write your answer, see which key points it covers, compare it with a model answer, then practise that ticket in the sim.</p>
+      <div class="row gap"><button class="btn primary" data-act="prep" data-t="helpdesk">Start interview prep</button><button class="btn" data-act="prep" data-t="assess">Support assessment practice</button>${(() => { const st = hdPrepStats(); return st.answered ? `<span class="muted small">${st.answered} of ${st.total} answered so far</span>` : ''; })()}</div></section>
+
     <section class="l-sec"><div class="l-eyebrow">Graded like a team lead would</div>
       <h2>Your shift report says exactly where the points went.</h2>
       ${Landing.report({ grade: 'B', title: `Shift 2: ${SHIFTS[2].name}`, meta: 'Timed shift · these lines come straight from the grader', lines: [
@@ -1301,6 +1308,48 @@ Address:  8.8.8.8
         [5, 'Blamed the caller. The failed sign-ins weren\'t coming from his typing at all.'],
       ] })}</section>
     <footer class="site-foot">Built by ${esc(CONFIG.author)}${CONFIG.repoUrl ? ` · <a href="${esc(CONFIG.repoUrl)}" target="_blank" rel="noopener">Source on GitHub</a>` : ''} · ${esc(WORLD.company)} is a fictional company.</footer></div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Interview prep (HD_PREP in interview.js, plus the shared support assessment from
+// dispatch/interview.js). Answers are kept in this browser only, keyed 'hd-<id>' and 'as-<id>'.
+// ---------------------------------------------------------------------------
+function hdPrepStats(a = prepAnswers()) {
+  const done = HD_PREP.filter(q => (a['hd-' + q.id] || '').trim().length >= 40);
+  const hit = HD_PREP.reduce((x, q) => x + prepCovered(q, a['hd-' + q.id]).filter(Boolean).length, 0);
+  const all = HD_PREP.reduce((x, q) => x + q.points.length, 0);
+  return { answered: done.length, total: HD_PREP.length, hit, all };
+}
+const hdPrepSummary = st => `<b>${st.answered}</b> of ${st.total} questions answered · <b>${st.hit}</b> of ${st.all} key points covered`;
+
+function renderPrep() {
+  const a = prepAnswers();
+  const tabs = `<div class="seg prep-tabs" role="tablist"><button class="${PREP_TAB === 'helpdesk' ? 'on' : ''}" data-act="prepTab" data-t="helpdesk" role="tab" aria-selected="${PREP_TAB === 'helpdesk'}">Help desk interview</button><button class="${PREP_TAB === 'assess' ? 'on' : ''}" data-act="prepTab" data-t="assess" role="tab" aria-selected="${PREP_TAB === 'assess'}">Support assessment</button></div>`;
+  const other = '<p class="muted small">Interviewing for a service coordinator or dispatcher role? <a href="dispatch.html#prep">Try the coordinator questions</a>.</p>';
+  if (PREP_TAB === 'assess') return `<div class="report prep">
+    <div class="view-head"><h2>Interview prep</h2>${tabs}</div>
+    ${renderAssess()}
+    <div class="row gap"><button class="btn" data-act="home">Back to the start page</button></div></div>`;
+  const cards = HD_PREP.map((q, i) => {
+    const s = SCENARIOS.find(x => x.id === q.practise.ticket);
+    const arts = q.kb.map(k => KB.find(p => p.id === k)).filter(Boolean);
+    return `<div class="card pad prep-q" id="q-${q.id}">
+      <div class="row"><span class="tid">Q${i + 1}</span><h3 class="grow">${esc(q.q)}</h3></div>
+      <label class="field"><span>Your answer, as you'd say it out loud</span><textarea id="hd-${q.id}" data-hdprep="${q.id}" rows="4" placeholder="Talk it through: what you'd check, what you'd do, and why.">${esc(a['hd-' + q.id] || '')}</textarea></label>
+      <div class="muted small">A strong answer covers:</div>
+      <ul class="fb prep-points" id="hd-pts-${q.id}">${prepPoints(q, a['hd-' + q.id])}</ul>
+      <details class="close-box"><summary>Model answer</summary><p>${esc(q.model)}</p></details>
+      ${arts.map(p => `<details class="close-box"><summary>${p.id} · ${esc(p.title)}</summary><div class="article">${p.body}</div></details>`).join('')}
+      <div class="row gap"><button class="btn sm" data-act="start" data-m="practice" data-s="${q.practise.shift}">Practise it: Shift ${q.practise.shift}, ${esc(SHIFTS[q.practise.shift].name)}</button>${s ? `<span class="muted small">Look for ${esc(s.id)}: ${esc(s.title)}</span>` : ''}</div>
+    </div>`;
+  }).join('');
+  return `<div class="report prep">
+    <div class="view-head"><h2>Interview prep</h2>${tabs}</div>
+    <div class="card pad"><p>These are the questions service desks ask Tier 1 and help desk candidates. Write your answer the way you'd say it, and the checklist under it ticks off the key points as you cover them. Then compare with the model answer and practise the ticket in the sim. Your answers stay in this browser.</p>
+      <p class="small" id="hd-sum">${hdPrepSummary(hdPrepStats(a))}</p>
+      ${other}
+      <div class="row gap"><button class="btn" data-act="home">Back to the start page</button></div></div>
+    ${cards}</div>`;
 }
 
 function renderReport() {
@@ -1348,7 +1397,7 @@ function endShift() {
 // Event wiring
 // ---------------------------------------------------------------------------
 const ACT = {
-  start: d => newGame(d.m, Number(d.s) || 1),
+  start: d => { if (PAGE === 'prep') { PAGE = 'start'; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } } newGame(d.m, Number(d.s) || 1); },
   answer: () => answerCall(),
   hold: () => { holdCall(ticket(G.active)); render(); },
   resume: () => { resumeCall(ticket(G.active)); render(); },
@@ -1360,7 +1409,9 @@ const ACT = {
   isolate: () => isolate(),
   restart: () => restartDevice(),
   storageDel: d => storageDelete(d.h, d.i),
-  home: () => { G = null; PAGE = 'start'; render(); },
+  home: () => { G = null; PAGE = 'start'; try { if (location.hash) history.replaceState(null, '', location.pathname); } catch { /* ignore */ } render(); },
+  prep: d => { G = null; PAGE = 'prep'; if (d?.t) PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); $('#main').scrollTop = 0; window.scrollTo(0, 0); },
+  prepTab: d => { PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); },
   pricing: () => { G = null; PAGE = 'pricing'; render(); $('#main').scrollTop = 0; },
   theme: () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('shiftone-theme', r.dataset.theme); render(); },
   endShift: () => {
@@ -1429,6 +1480,32 @@ const onDraft = e => {
 };
 document.addEventListener('input', onDraft);
 document.addEventListener('change', onDraft);
+// Prep answers save as you type and update their own checklist, without a full re-render.
+document.addEventListener('input', e => {
+  const id = e.target.dataset?.hdprep, q = id && HD_PREP.find(x => x.id === id);
+  if (!q) return;
+  savePrepAnswer('hd-' + id, e.target.value);
+  const pts = document.getElementById('hd-pts-' + id), sum = document.getElementById('hd-sum');
+  if (pts) pts.innerHTML = prepPoints(q, e.target.value);
+  if (sum) sum.innerHTML = hdPrepSummary(hdPrepStats());
+});
+// Assessment answers: written tasks update their checklist as you type; a quiz pick redraws its card.
+document.addEventListener('input', e => {
+  const id = e.target.dataset?.assess, x = id && ASSESS.find(q => q.id === id);
+  if (!x) return;
+  savePrepAnswer('as-' + id, e.target.value);
+  const pts = document.getElementById('as-pts-' + id), sum = document.getElementById('as-sum');
+  if (pts) pts.innerHTML = assessFeedback(x, e.target.value);
+  if (sum) sum.innerHTML = assessSummary(assessStats());
+});
+document.addEventListener('change', e => {
+  const id = e.target.dataset?.mcq, i = ASSESS.findIndex(q => q.id === id);
+  if (i < 0) return;
+  savePrepAnswer('as-' + id, e.target.value);
+  const card = document.getElementById('as-' + id), sum = document.getElementById('as-sum');
+  if (card) card.outerHTML = assessCard(ASSESS[i], i, prepAnswers());
+  if (sum) sum.innerHTML = assessSummary(assessStats());
+});
 document.addEventListener('keydown', e => {
   if (!G) return;
   if (e.target.id === 'term-input') {
@@ -1489,5 +1566,6 @@ setInterval(() => {
   const saved = store.get('shiftone-theme');
   document.documentElement.dataset.theme = saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   if (location.hash === '#pricing') PAGE = 'pricing';
+  else if (location.hash === '#prep' || location.hash === '#assess') { PAGE = 'prep'; if (location.hash === '#assess') PREP_TAB = 'assess'; }
   render();
 })();
