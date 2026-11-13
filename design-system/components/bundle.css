@@ -637,6 +637,11 @@ a.btn.primary { color: var(--on-accent); }
 .appt.s-done { background: var(--good); opacity: .8; }
 .appt.s-missed, .appt.conflict { background: var(--bad-soft); color: var(--bad); border: 2px solid var(--bad); }
 .appt.sel { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.appt.s-booked { cursor: grab; touch-action: none; }
+.appt.dragging { opacity: .35; }
+.appt.drag-ghost { position: fixed; z-index: 1000; pointer-events: none; cursor: grabbing; box-shadow: var(--shadow, 0 6px 18px rgba(0,0,0,.25)); opacity: .9; }
+.appt-dragging, .appt-dragging * { cursor: grabbing !important; user-select: none; }
+.drop-mark { position: absolute; top: 6px; bottom: 6px; z-index: 3; pointer-events: none; border: 2px dashed var(--accent); border-radius: var(--radius-control); background: var(--accent-soft); font: 600 11px/1 var(--mono); color: var(--accent); padding: 4px 5px; white-space: nowrap; overflow: hidden; }
 .nowline { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--bad); z-index: 3; pointer-events: none; }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 2px 0; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }

@@ -632,13 +632,14 @@ function checkSlot(t, techId, start, dur, onsite) {
   return R;
 }
 
-function openSchedule(techId, start) {
+// `keep` carries an existing booking's length and work type over when it is moved.
+function openSchedule(techId, start, keep) {
   const t = ticket(G.pick);
   if (!t) return toast('Pick a ticket to schedule first: open it and press "Schedule".', 'bad');
   Object.assign(G.drafts, {
     'sc-tech': techId, 'sc-start': String(start),
-    'sc-dur': String(t.triage?.est || 60),
-    'sc-where': (t.triage?.onsite ?? TECHS[techId].onsite) ? 'onsite' : 'remote',
+    'sc-dur': String(keep?.dur || t.triage?.est || 60),
+    'sc-where': (keep ? keep.onsite : t.triage?.onsite ?? TECHS[techId].onsite) ? 'onsite' : 'remote',
   });
   modal({
     title: `Schedule #${t.id}`,
@@ -679,6 +680,23 @@ function openSchedule(techId, start) {
       toast(`#${t.id} booked with ${TECHS[tid].name} at ${hm(a.start)}.`, 'good');
     },
   });
+}
+
+// Drag to reschedule: dropping a booked appointment on the dispatch board opens the booking
+// dialog for its new technician and time, with the same checks as booking by clicking a slot.
+// The slot under the appointment's left edge (not the pointer) is the new start time.
+function dropSlot(x, trackLeft, trackWidth, from, span, grab = 0) {
+  const m = from + (x - trackLeft) / trackWidth * span - grab;
+  return from + Math.max(0, Math.min(span - SLOT, Math.round((m - from) / SLOT) * SLOT));
+}
+function rescheduleTo(apptId, techId, start) {
+  const a = G.appts.find(x => x.id === Number(apptId));
+  if (!a || a.state !== 'booked' || !TECHS[techId]) return false;
+  if (a.tech === techId && a.start === start) return false;
+  G.pick = a.ticket;
+  G.active = a.ticket;
+  openSchedule(techId, start, { dur: a.dur, onsite: a.onsite });
+  return true;
 }
 
 function unschedule(t) {
@@ -1042,6 +1060,8 @@ const I = {
 const CHANNEL = { email: 'Email', phone: 'Phone', alert: 'Alert', vendor: 'Vendor', carry: 'Carried over' };
 
 function requestRender() {
+  // Redrawing mid-drag would swap the board out from under the pointer; draw once it's dropped.
+  if (DRAG?.on) { G.dirty = true; liveUpdate(); return; }
   const a = document.activeElement;
   if (a && a.tagName === 'SELECT') { G.dirty = true; liveUpdate(); return; }
   render();
@@ -1214,12 +1234,12 @@ function renderDispatch() {
     const appts = G.appts.filter(a => a.tech === id && a.start >= from && a.start < to && a.state !== 'cancelled').map(a => {
       const tk = ticket(a.ticket), bad = a.state === 'missed' || (a.state === 'booked' && (a.atRisk || (sick != null && a.start >= sick)));
       return (a.onsite ? `<div class="blk k-travel" style="${pos(a.start - TRAVEL_MIN, TRAVEL_MIN)}" title="Travel"><span>Travel</span></div>` : '') +
-        `<button class="appt s-${a.state} ${bad ? 'conflict' : ''} ${tk.id === G.active ? 'sel' : ''}" style="${pos(a.start, a.dur)}" data-act="appt" data-a="${a.id}" title="#${tk.id} ${esc(tk.title)} · ${hm(a.start)}–${hm((a.start + a.dur) % DAY)}">
+        `<button class="appt s-${a.state} ${bad ? 'conflict' : ''} ${tk.id === G.active ? 'sel' : ''}" style="${pos(a.start, a.dur)}" data-act="appt" data-a="${a.id}" title="#${tk.id} ${esc(tk.title)} · ${hm(a.start)}–${hm((a.start + a.dur) % DAY)}${a.state === 'booked' ? ' · drag to reschedule' : ''}">
           <b>#${tk.id}</b> <span>${esc(client(tk).name)}</span></button>`;
     }).join('');
     return `<div class="drow"><div class="dtech"><b>${esc(x.name)}</b><div class="muted small">${esc(x.role)}</div><div class="small"><span class="dot ${cls}"></span>${esc(label)}</div>
         <div class="skills">${x.skills.map(s => `<span class="sk ${t && t.triage?.skill === s ? 'hit' : ''}">${s}</span>`).join('')}</div></div>
-      <div class="dtrack">${cells}${blocks}${appts}${!day ? `<div class="nowline" style="left:${nowPct()}%"></div>` : ''}</div></div>`;
+      <div class="dtrack" data-tech="${id}">${cells}${blocks}${appts}${!day ? `<div class="nowline" style="left:${nowPct()}%"></div>` : ''}</div></div>`;
   }).join('');
   const hours = [];
   // A 15-hour night gets a label every two hours, without the day prefix, so they don't collide.
@@ -1229,7 +1249,7 @@ function renderDispatch() {
   return `<div class="view-head"><h2>Dispatch Board</h2>
       <div class="seg">${(G.night ? [[0, 'Tonight (on call)'], [DAY, 'Friday (day team)']] : G.start >= DAY ? [[0, 'Today (Fri)']] : [[0, 'Today (Thu)'], [DAY, 'Tomorrow (Fri)']]).map(([d, l]) => `<button class="${G.day === d ? 'on' : ''}" data-act="day" data-d="${d}">${l}</button>`).join('')}</div></div>
     ${t ? `<div class="picking"><div><b>Scheduling #${t.id}</b> · ${esc(t.title)}<div class="muted small">${esc(client(t).name)}${t.triage ? ` · ${t.triage.priority} · needs ${esc(t.triage.skill)} · ${t.triage.onsite ? 'onsite' : 'remote'} · ${mins(t.triage.est)}` : ' · not triaged yet'}. Click a free slot on the board.</div></div><button class="btn sm" data-act="unpick">Cancel</button></div>`
-      : `<p class="hint">Pick a ticket below (or press "Schedule" on a ticket), then click a free slot. Grey hatching is outside working hours. Soft blocks (lunch, meetings, projects) can be bumped at a cost; jobs and travel can't.</p>`}
+      : `<p class="hint">Pick a ticket below (or press "Schedule" on a ticket), then click a free slot. Grey hatching is outside working hours. Soft blocks (lunch, meetings, projects) can be bumped at a cost; jobs and travel can't. Drag a booked appointment to move it to another time or technician.</p>`}
     ${banners()}
     <div class="card dscroll"><div class="dboard">
       <div class="drow dhead"><div class="dtech"></div><div class="dtrack hours">${hours.join('')}</div></div>
@@ -1775,6 +1795,67 @@ document.addEventListener('keydown', e => {
   if (!G) return;
   if (e.key === 'Escape' && G.modal && !G.modal.noCancel) ACT.modalCancel();
 });
+
+// Dragging booked appointments on the dispatch board. Pointer events cover mouse, pen and touch.
+let DRAG = null, DRAG_CLICK = false;
+function dragTarget(x, y) {
+  const track = document.elementFromPoint(x, y)?.closest('.dtrack[data-tech]');
+  if (!track) return null;
+  const r = track.getBoundingClientRect();
+  return { track, tech: track.dataset.tech, start: dropSlot(x, r.left, r.width, DRAG.from, DRAG.span, DRAG.grab), width: r.width };
+}
+function dragEnd() {
+  if (!DRAG) return;
+  DRAG.ghost?.remove();
+  DRAG.mark?.remove();
+  DRAG.el?.classList.remove('dragging');
+  document.body.classList.remove('appt-dragging');
+  DRAG = null;
+}
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest?.('.appt.s-booked[data-a]');
+  if (!el || !G || G.phase !== 'play' || G.modal || e.button !== 0) return;
+  const track = el.closest('.dtrack'), r = el.getBoundingClientRect(), tr = track.getBoundingClientRect();
+  const [from, to] = boardSpan();
+  DRAG = { id: Number(el.dataset.a), el, x0: e.clientX, y0: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height,
+    from, span: to - from, grab: (e.clientX - r.left) / tr.width * (to - from), on: false };
+});
+document.addEventListener('pointermove', e => {
+  if (!DRAG) return;
+  if (!DRAG.on) {
+    if (Math.hypot(e.clientX - DRAG.x0, e.clientY - DRAG.y0) < 6) return;
+    DRAG.on = true;
+    const g = DRAG.ghost = DRAG.el.cloneNode(true);
+    g.className += ' drag-ghost';
+    g.removeAttribute('data-act');
+    Object.assign(g.style, { left: '0', top: '0', width: DRAG.w + 'px', height: DRAG.h + 'px' });
+    document.body.appendChild(g);
+    DRAG.el.classList.add('dragging');
+    document.body.classList.add('appt-dragging');
+  }
+  e.preventDefault();
+  DRAG.ghost.style.transform = `translate(${e.clientX - DRAG.dx}px, ${e.clientY - DRAG.dy}px)`;
+  const at = dragTarget(e.clientX, e.clientY);
+  if (!at) { DRAG.mark?.remove(); DRAG.mark = null; return; }
+  if (!DRAG.mark) { DRAG.mark = document.createElement('div'); DRAG.mark.className = 'drop-mark'; }
+  if (DRAG.mark.parentNode !== at.track) at.track.appendChild(DRAG.mark);
+  const a = G.appts.find(x => x.id === DRAG.id);
+  Object.assign(DRAG.mark.style, { left: (at.start - DRAG.from) / DRAG.span * 100 + '%', width: (a ? a.dur : SLOT) / DRAG.span * 100 + '%' });
+  DRAG.mark.textContent = hm(at.start);
+});
+document.addEventListener('pointerup', e => {
+  if (!DRAG) return;
+  if (!DRAG.on) { DRAG = null; return; }
+  const at = dragTarget(e.clientX, e.clientY), id = DRAG.id;
+  dragEnd();
+  // The browser follows a drag with a click on whatever is under the pointer; don't open it.
+  DRAG_CLICK = true;
+  setTimeout(() => { DRAG_CLICK = false; }, 0);
+  if (at) rescheduleTo(id, at.tech, at.start);
+  render();
+});
+document.addEventListener('pointercancel', () => { if (DRAG?.on) { dragEnd(); render(); } else DRAG = null; });
+document.addEventListener('click', e => { if (DRAG_CLICK) { e.stopPropagation(); e.preventDefault(); DRAG_CLICK = false; } }, true);
 
 setInterval(tick, 250);
 
