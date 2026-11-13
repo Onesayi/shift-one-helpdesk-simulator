@@ -39,7 +39,7 @@ function load(storage = { getItem: () => null, setItem() {} }) {
     buildShift, newGame, onMinute, now, ticket, grade, endShift, logged, finalAppt, checkSlot,
     loadHistory, saveShift, bestScore, startHandover, handoverNeed, gradeHandover, teamEvent, DISRUPTIONS, TEAM_EVENTS,
     ASSESS, assessShape, assessTraps, assessStats, TEMPLATES, DRILLS, MAJOR, MAJOR_SCENARIOS, MAJOR_RESTORE, MAJOR_FIRST, PIR, majorChildren, declareMajor, submitPir, INCIDENTS, OUTAGE, OUTAGE_SCENARIOS, OUTAGE_PIR, OUTAGE_FIRST, OUTAGE_BLIP, OUTAGE_RELAPSE, OUTAGE_RESTORE, COMPLAINT, COMPLAINT_SM, CSAT_ESCALATE, followUpCsat, nextLeg, buildFriday, campaignOf, CAMPAIGN_LEGS, NIGHT_SCENARIOS, NIGHT_START, NIGHT_END, crew, isAfterHours, utilization, billingFor, postTime, weakestDrill, PREP, PLAYBOOK, prepCovered, prepAnswers, savePrepAnswer, prepStats,
-    answerCall, saveTriage, sendMessage, requestApproval, notify, vendorCase, merge, closeTicket, openSchedule, unschedule,
+    answerCall, saveTriage, sendMessage, requestApproval, notify, vendorCase, merge, closeTicket, openSchedule, unschedule, rescheduleTo, dropSlot,
   })`, ctx);
 }
 
