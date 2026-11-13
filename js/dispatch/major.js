@@ -75,17 +75,26 @@ const MAJOR_EVENTS = [
   { at: MAJOR_RESTORE, run: majorRestore },
 ];
 
-const isMajorSeed = seed => seed === 'major';
+// Every major-incident drill on the start page. Each one names its own outage, timings and review;
+// the functions below read the one being played through incident(). outage.js adds the second.
+const INCIDENTS = [];
+const incidentOf = seed => INCIDENTS.find(i => i.drill.id === seed) || null;
+const incident = () => incidentOf(G.drill?.id) || INCIDENTS[0];
+const isMajorSeed = seed => !!incidentOf(seed);
 
 function buildMajor(seed) {
-  const tickets = MAJOR_SCENARIOS.map(s => Object.assign(Object.create(s), { key: s.id })).sort((a, b) => a.at - b.at);
-  tickets.forEach((t, i) => { t.id = String(4801 + i); });
-  return { seed, drill: MAJOR, major: true, end: MAJOR_END, tickets, events: MAJOR_EVENTS.map(e => Object.assign({}, e)) };
+  const inc = incidentOf(seed);
+  const tickets = inc.scenarios.map(s => Object.assign(Object.create(s), { key: s.id })).sort((a, b) => a.at - b.at);
+  tickets.forEach((t, i) => { t.id = String(inc.firstId + i); });
+  return { seed, drill: inc.drill, major: true, end: inc.end, tickets, events: inc.events.map(e => Object.assign({}, e)) };
 }
+
+// A ticket of this shift by its scenario id, once it has arrived.
+const majorTicket = key => G.tickets.find(t => t.s.key === key || t.s.id === key) || null;
 
 // The ticket running the incident: the declared one, else the first unmerged ticket of the outage.
 function majorParent() {
-  const all = G.tickets.filter(t => t.s.group === MI_BASE.group);
+  const all = G.tickets.filter(t => t.s.group === incident().group);
   return all.find(t => t.major && !t.parent) || all.find(t => !t.parent) || null;
 }
 const majorChildren = p => G.tickets.filter(t => t.parent === p.id);
@@ -96,15 +105,16 @@ function majorPost(text) {
 }
 
 function majorRestore() {
-  for (const t of G.tickets.filter(x => x.s.group === MI_BASE.group)) t.flags.restored = true;
+  const inc = incident();
+  for (const t of G.tickets.filter(x => x.s.group === inc.group)) t.flags.restored = true;
   G.majorRestored = now();
-  majorPost('Microsoft 365 service health: Resolved. We rolled back the change that caused sign-in failures (MO881204). Users can sign in again.');
+  majorPost(inc.restoreText);
   const p = majorParent();
   if (p && p.status === 'Waiting on vendor') {
     const a = finalAppt(p);
-    workDone(p, a ? a.tech : 'maya', { kind: 'done', note: MI_FIXED });
+    workDone(p, a ? a.tech : 'maya', { kind: 'done', note: inc.fixed });
   }
-  toast('Microsoft 365 is back.', 'good');
+  toast(inc.restoreToast, 'good');
 }
 
 // What the post-incident review asks, and the right answers (PB-16).
@@ -117,27 +127,29 @@ const PIR = [
 ];
 
 function submitPir(t) {
-  const ans = Object.fromEntries(PIR.map(f => [f.id, G.drafts[`pir-${f.id}`]]));
-  if (PIR.some(f => !ans[f.id])) return toast('Answer every question in the review.', 'bad');
+  const inc = incident(), pir = inc.pir;
+  const ans = Object.fromEntries(pir.map(f => [f.id, G.drafts[`pir-${f.id}`]]));
+  if (pir.some(f => !ans[f.id])) return toast('Answer every question in the review.', 'bad');
   t.pir = Object.assign({ at: now() }, ans);
   record('pir', { ticket: t.id });
   post(t, 'system', 'Post-incident review sent to Dana Whitaker (Service Manager).', 'system');
-  later(2, () => post(t, 'sm', 'Thanks for the review. I\'ll take the service health alert to Friday\'s team meeting.', 'internal'));
+  later(2, () => post(t, 'sm', inc.pirThanks, 'internal'));
   toast('Post-incident review submitted.', 'good');
   render();
 }
 
 function majorEvaluate(t, ded, good) {
+  const inc = incident();
   const kids = majorChildren(t), mine = e => e.ticket === t.id;
   if (t.major) good.push('Declared a major incident.');
   else ded.push([10, 'Never declared a major incident, so the clients\' tickets couldn\'t be linked as one (PB-16).']);
 
   const sm = logged('notify-sm', mine)[0];
   if (!sm) ded.push([15, 'Every client was down and the Service Manager never heard.']);
-  else if (sm.at - MAJOR_FIRST > MAJOR_SM) ded.push([5, `Paged the Service Manager ${mins(sm.at - MAJOR_FIRST)} after the first call. Do it within ${MAJOR_SM} minutes.`]);
+  else if (sm.at - inc.first > MAJOR_SM) ded.push([5, `Paged the Service Manager ${mins(sm.at - inc.first)} after the first call. Do it within ${MAJOR_SM} minutes.`]);
   else good.push('Paged the Service Manager straight away.');
 
-  if (!t.flags.vendorCase) ded.push([10, 'Never opened a case with Microsoft, so you had no incident number or ETA to give clients.']);
+  if (!t.flags.vendorCase) ded.push([10, inc.noCase || 'Never opened a case with Microsoft, so you had no incident number or ETA to give clients.']);
 
   // Updates to everyone affected, at least every 30 minutes until it was fixed.
   const ups = logged('client-msg', e => mine(e) && e.kind === 'mi').map(e => e.at);
@@ -155,8 +167,16 @@ function majorEvaluate(t, ded, good) {
 
   if (!t.pir) ded.push([20, 'No post-incident review. Write it once the incident is closed (PB-16).']);
   else {
-    const wrong = PIR.filter(f => t.pir[f.id] !== f.a);
+    const wrong = inc.pir.filter(f => t.pir[f.id] !== f.a);
     wrong.forEach(f => ded.push([5, `Review: "${f.q}" should be "${f.opts[f.a]}".`]));
     if (!wrong.length) good.push('Wrote an accurate post-incident review.');
   }
 }
+
+INCIDENTS.push({
+  drill: MAJOR, scenarios: MAJOR_SCENARIOS, events: MAJOR_EVENTS, end: MAJOR_END, firstId: 4801,
+  group: MI_BASE.group, first: MAJOR_FIRST, restore: MAJOR_RESTORE, pir: PIR, fixed: MI_FIXED,
+  label: 'Microsoft 365 sign-in outage', restoreToast: 'Microsoft 365 is back.',
+  restoreText: 'Microsoft 365 service health: Resolved. We rolled back the change that caused sign-in failures (MO881204). Users can sign in again.',
+  pirThanks: 'Thanks for the review. I\'ll take the service health alert to Friday\'s team meeting.',
+});

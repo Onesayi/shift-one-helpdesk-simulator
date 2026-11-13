@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+New: **An Exchange Online outage, based on the real one of 12–13 November 2026.**
+
+- A second major-incident scenario on the start page (shift code `outage`, 08:00 to 11:30, practice mode). Outlook can't reach anyone's mailbox at four clients, Microsoft posts status updates as EX1550543 and then MO1550821, and its first recovery at 09:05 falls over twenty minutes later. It's mitigated at 10:20.
+- Seven tickets (#4821 to #4827): four clients' reports to link, a "should we reinstall Office?" email, a customer worried that delayed mail is lost, a fake "Microsoft support" call to Tom Keller that is its own Security ticket, and one Outlook left on "Work Offline" after everyone else is back.
+- The post-incident review gains two questions for this outage: was mail lost, and what should clients have heard when recovery first started.
+- PB-16 gets a section on vendor outages: the public status page, not reinstalling Office, not calling it fixed early, queued mail, and scam calls.
+- `major.js` now holds a list of incidents (`INCIDENTS`), so each scenario brings its own tickets, timings, restore message and review. The classic major incident plays and grades exactly as before. Tests in `tests/dispatch/outage.test.js`.
+
 New: **A tenth ticket on the night shift: a VIP who has to wait.**
 
 - 18:30, Helen Moore (Oakridge's principal) emails: the hall laptop won't take her password and her 09:00 assembly runs off it. She asks for a fix tonight. It's a P3 on a standard agreement, so PB-13 says don't wake Jordan. Acknowledge tonight and book Maya at 08:00 Friday (Ana has Jess's Mac).

@@ -162,6 +162,33 @@ Shift code `major`, from the start page: Thursday 08:00 to 11:00, practice mode,
 
 The review's answers: Microsoft's change to their sign-in service, four clients, first report 08:05, restored 09:50, and alert us from Microsoft's service health feed next time. Unlinked incident tickets lose 20 each as duplicates, and linking the printer or the expired password loses 40.
 
+## Exchange Online outage
+
+Shift code `outage`, from the start page: Thursday 08:00 to 11:30, practice mode, no handover, not saved to progress. It's modelled on the real Microsoft 365 outage of 12–13 November 2026 (Microsoft incidents EX1550543 and MO1550821), squeezed into one morning, with the simulator's own clients and wording. Outlook can't reach mailboxes for Harbor Dental, Keller & Finch, Brightline and Oakridge from 08:05. Sign-in works and Teams mostly does. It runs and grades exactly like the major incident above (PB-16), with its own review.
+
+What happens on Microsoft's side, posted on the incident ticket:
+
+| Time | Microsoft 365 status |
+|---|---|
+| 08:20 | Investigating EX1550543: some users can't reach their mailboxes from any Outlook app |
+| 08:50 | Now MO1550821, any region, servers unavailable and the rest overloaded. Check status.cloud.microsoft if the admin center won't load |
+| 09:05 | Some servers back and some users regaining access. Carl at Oakridge writes "It's back! Can we close this?" |
+| 09:25 | The restored servers fall over again. No ETA. Carl: "Spoke too soon" |
+| 09:55 | Steady recovery; queued mail is held and retried for up to 48 hours, not lost |
+| 10:20 | Mitigated: mailboxes load and queued mail is arriving. Maya confirms all four tenants |
+
+| # | Arrives | Ticket | Right answer |
+|---|---|---|---|
+| 4821 | 08:05 📞 | Harbor Dental: Outlook won't load any mailbox | Declare a major incident, P1 Infrastructure M365 remote. Page Dana, book Maya, open a Microsoft case |
+| 4822 | 08:12 ✉️ | Keller & Finch: should we reinstall Office? | Link to the incident (and no, they shouldn't) |
+| 4823 | 08:15 ✉️ | Brightline: mailboxes unreachable at HQ and Denver | Link to the incident |
+| 4824 | 08:30 📞 | Oakridge: some teachers have email, some don't | Link to the incident. It isn't their Wi-Fi |
+| 4825 | 08:40 📞 | Tom Keller: a "Microsoft" caller wants remote access | Separate P2 (P1 accepted), Security board, Security, remote. Maya checks his sign-ins. Paging Dana is fine. Don't link it |
+| 4826 | 09:40 ✉️ | Brightline: customers' emails to us are "delayed" | Link to the incident: queued, not lost |
+| 4827 | 10:40 ✉️ | Harbor Dental: everyone's email is back except Jamie's | Separate P3, Help Desk, M365, Ana. Outlook was left on "Work Offline". Don't link it |
+
+The trap is 09:05. Sending the *Resolution confirmation* or closing the incident before 10:20 costs the usual 15 (told it was fixed too early) or 25 (closed before the technician finished). Grading on the incident is the same table as the major incident above, with 10:20 as the restore time. The review adds two questions to the usual five: was any email lost (no: it was queued and delivered late), and what clients should have heard at 09:05 (recovery has started, but it isn't fixed until Microsoft confirms). The other answers: Microsoft's mailbox servers dropping out and overloading the rest, four clients, first report 08:05, restored 10:20, and keep a phone and text contact list for every client next time.
+
 ## Complaints
 
 Every seeded day shift (not `classic`, not the night) has one extra call on top of its 14 incidents: Helen Moore, Oakridge's principal, complaining that teachers' OneDrive keeps failing after two quick fixes. It arrives between 09:00 and 12:00, and its start-by time moves with it. It's also in the `drill-complaint` drill. Playbook article PB-15 covers it.

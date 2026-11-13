@@ -299,7 +299,7 @@ const PLAYBOOK = [
 <li><b>Tell the Account Manager.</b> Rob owns the relationship and the renewal, so he must never hear about a complaint from the client first.</li>
 <li><b>Fix the cause, not the symptom.</b> If quick fixes have already failed, book a Tier 2 or Tier 3 engineer. A third Tier 1 visit is the complaint happening again.</li></ol>
 <p>A low survey score left unanswered for an hour turns into a complaint to the Service Manager, and costs you more than the score did.</p>` },
-  { id: 'PB-16', title: 'Major incidents', tags: 'major incident outage multiple clients microsoft 365 bridge updates post-incident review pir', body: `
+  { id: 'PB-16', title: 'Major incidents', tags: 'major incident outage multiple clients microsoft 365 bridge updates post-incident review pir exchange outlook status page scam', body: `
 <p>A <b>major incident</b> is one fault hurting several clients at once: a Microsoft 365 outage, a shared hosting failure, our own RMM going down. You stop working ticket by ticket and run it as one incident.</p>
 <ol><li><b>Spot the pattern.</b> Two or three clients reporting the same symptom within minutes is not a coincidence.</li>
 <li><b>Declare it</b> on the first ticket and triage that one as a P1. Link every other client's ticket to it, so there is one place for notes, one technician and one set of updates.</li>
@@ -307,5 +307,11 @@ const PLAYBOOK = [
 <li><b>Open the vendor case</b> (Microsoft, the ISP, the host) to get an incident number and an ETA you can pass on.</li>
 <li><b>Update every affected client at least every 30 minutes</b>, even when the news is "no change". Updates sent from the incident reach every linked client. Always say when the next update is due.</li>
 <li><b>Keep the rest of the desk running.</b> Tickets that only look related (one printer, one expired password) are separate. Linking them to the incident hides them.</li>
-<li><b>Close it properly.</b> Confirm the fix to every linked client, then write the <b>post-incident review</b> for the Service Manager: the cause, who was affected, when it started and ended, and what changes so it goes better next time.</li></ol>` },
+<li><b>Close it properly.</b> Confirm the fix to every linked client, then write the <b>post-incident review</b> for the Service Manager: the cause, who was affected, when it started and ended, and what changes so it goes better next time.</li></ol>
+<h4>When the vendor is the one down</h4><ul>
+<li>If the Microsoft 365 admin center won't load, check the public status page (status.cloud.microsoft) for the incident number.</li>
+<li>Nobody fixes a cloud outage from a client's PC. Stop staff reinstalling Office or deleting Outlook profiles: the cached copy is the only mail they can read until it's back.</li>
+<li>"Some users are recovering" is not "fixed". Don't confirm a fix, or close the incident, until the vendor says it's resolved or mitigated.</li>
+<li>Mail sent during an Exchange Online outage is queued and retried, not lost. Say so in your updates.</li>
+<li>Outages bring out scammers posing as Microsoft support. A call like that is its own Security ticket, not part of the incident.</li></ul>` },
 ];
