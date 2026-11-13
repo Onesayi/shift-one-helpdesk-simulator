@@ -192,13 +192,14 @@ Shift code `night`, from the start page. You cover the desk from Thursday 17:00 
 |---|---|---|---|
 | 4601 | 17:45 | HDG-DC01 backup failed twice | P2 premium: Jordan tonight, before the 23:00 run |
 | 4602 | 18:10 | Oakridge printer jam sensor | P3: Luis on Friday morning, inside 07:30–11:30 |
-| 4603 | 19:30 (call) | Tom Keller's phone mail | P2 premium VIP: Jordan tonight |
-| 4604 | 20:45 | Jess's MacBook login loop | P2 on block hours: Ana at 08:00, after Rob approves a top-up. Flag it in the handover |
-| 4605 | 22:30 (call) | Brightline warehouse scanners down | P1 on standard: Jordan now, page Dana, update every 30 min, code the time Billable |
-| 4606 | 23:40 | Oakridge lab VM offline | Noise: close it |
-| 4607 | Fri 01:00 | Comcast maintenance notice | Pass it on to Lena, close as no action needed |
-| 4608 | Fri 03:00 | Front desk monitor flickers | P4: Luis on Friday at Harbor Dental's 12:00 window |
-| 4609 | Fri 05:30 | Maria typed her password into a phish | P1 Security: Jordan now, page Dana |
+| 4603 | 18:30 | Oakridge principal: hall laptop won't sign in, assembly at 09:00 | P3 on standard: acknowledge tonight, Maya at 08:00 Friday (Ana has Jess's Mac). Don't wake Jordan for a VIP |
+| 4604 | 19:30 (call) | Tom Keller's phone mail | P2 premium VIP: Jordan tonight |
+| 4605 | 20:45 | Jess's MacBook login loop | P2 on block hours: Ana at 08:00, after Rob approves a top-up. Flag it in the handover |
+| 4606 | 22:30 (call) | Brightline warehouse scanners down | P1 on standard: Jordan now, page Dana, update every 30 min, code the time Billable |
+| 4607 | 23:40 | Oakridge lab VM offline | Noise: close it |
+| 4608 | Fri 01:00 | Comcast maintenance notice | Pass it on to Lena, close as no action needed |
+| 4609 | Fri 03:00 | Front desk monitor flickers | P4: Luis on Friday at Harbor Dental's 12:00 window |
+| 4610 | Fri 05:30 | Maria typed her password into a phish | P1 Security: Jordan now, page Dana |
 
 Booking Jordan for work that could wait costs 15 on that ticket. Leaving work that needed Jordan until the morning costs 20.
 

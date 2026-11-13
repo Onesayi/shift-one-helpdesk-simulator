@@ -33,6 +33,14 @@ const NIGHT_SCENARIOS = [
     fixNote: 'A torn label was stuck over the paper-path sensor. Removed it and cleaned the sensor. Printed a test page and the newsletter.',
   },
   {
+    id: 'n-oak-assembly', at: 90, channel: 'email', client: 'oak', contact: 'hmoore', kb: 'PB-13',
+    title: 'Hall laptop won\'t take my password, assembly at 9',
+    body: 'Hi, the laptop in the hall won\'t accept my password. It just says "Your account or password is incorrect". Our 09:00 assembly runs off it tomorrow. Could someone please fix it tonight? I\'m happy to stay late. Helen Moore, Principal',
+    truth: { priority: 'P3', board: 'Help Desk', skill: 'M365', onsite: false, est: 30, dispatch: true, startBy: DAY + 510, closeAs: null, tonight: false,
+      why: 'One device, and the deadline is 09:00 tomorrow: P3. Being the principal doesn\'t raise it. Oakridge is on a standard agreement, so PB-13 says only a P1 wakes Jordan. Acknowledge tonight, then book the day team for 08:00. Ana has Jess\'s Mac at 08:00, so it\'s Maya, and she\'s finished well before assembly.' },
+    fixNote: 'Helen\'s password had expired, and the hall laptop only showed "incorrect password". Reset it with her on the phone, signed her in on the hall laptop, and opened the assembly slides to check.',
+  },
+  {
     id: 'n-keller-phone', at: 150, channel: 'phone', client: 'kfl', contact: 'tkeller', kb: 'PB-13',
     title: 'Partner\'s phone stopped getting email',
     body: 'Tom Keller. I changed my password this afternoon like your team asked, and now my phone won\'t get email at all. I\'m in court at nine tomorrow and I need the filing confirmations tonight. Can someone sort it now?',

@@ -10,7 +10,7 @@ const plain = x => JSON.parse(JSON.stringify(x));
 const DAY = 1440, NIGHT_START = 1020, NIGHT_END = DAY + 480;
 
 // Ticket numbers on the night shift, in arrival order.
-const N = { dc01: '4601', printer: '4602', keller: '4603', mac: '4604', warehouse: '4605', lab: '4606', maint: '4607', monitor: '4608', phish: '4609' };
+const N = { dc01: '4601', printer: '4602', assembly: '4603', keller: '4604', mac: '4605', warehouse: '4606', lab: '4607', maint: '4608', monitor: '4609', phish: '4610' };
 
 // Plays the night the way PB-13 says. Returns the game before it ends.
 function cleanNight(mode = 'timed') {
@@ -18,6 +18,7 @@ function cleanNight(mode = 'timed') {
   const answer = () => { if (g.G.ring) g.answer(); };
   g.to(NIGHT_START + 45, answer).triageRight(N.dc01).schedule(N.dc01, 'jordan', 1080);
   g.to(1090, answer).triageRight(N.printer).send(N.printer, 'ack').schedule(N.printer, 'luis', DAY + 510, { onsite: true });
+  g.to(1111, answer).triageRight(N.assembly).send(N.assembly, 'ack').schedule(N.assembly, 'maya', DAY + 480, { dur: 30 }).send(N.assembly, 'sched');
   g.to(1125, answer).bill(N.dc01).close(N.dc01, 'resolved');
   g.to(1171, answer).triageRight(N.keller).schedule(N.keller, 'jordan', 1185).send(N.keller, 'sched');
   g.to(1216, answer).send(N.keller, 'resolved');
@@ -49,7 +50,7 @@ test('the night shift is its own fixed set of tickets, numbered in arrival order
   assert.deepEqual(plain(sh.tickets.map(t => [t.id, t.key, t.at])), plain(again.tickets.map(t => [t.id, t.key, t.at])), 'same every time');
   assert.deepEqual(plain(sh.tickets.map(t => t.id)), plain(sh.tickets.map((_, i) => String(4601 + i))));
   assert.deepEqual(Object.fromEntries(sh.tickets.map(t => [t.key.replace(/^n-[a-z0-9]+-/, ''), t.id])), {
-    backup: N.dc01, printer: N.printer, phone: N.keller, mac: N.mac, warehouse: N.warehouse, lab: N.lab, maint: N.maint, monitor: N.monitor, phish: N.phish,
+    backup: N.dc01, printer: N.printer, assembly: N.assembly, phone: N.keller, mac: N.mac, warehouse: N.warehouse, lab: N.lab, maint: N.maint, monitor: N.monitor, phish: N.phish,
   });
   for (const s of NIGHT_SCENARIOS) {
     const T = s.truth, c = CLIENTS[s.client], at = s.id;
@@ -124,6 +125,21 @@ test('waking Jordan for work that could wait costs points', () => {
   const r = g.grade(N.monitor);
   assert.ok(!has(r, /Woke/));
   assert.ok(r.good.some(x => /day team/.test(x)), 'praised for leaving it to the day team');
+});
+
+test('a VIP on a standard agreement still waits for the day team', () => {
+  const g = game('timed', 'night').to(NIGHT_START + 90);
+  g.triageRight(N.assembly).send(N.assembly, 'ack').schedule(N.assembly, 'jordan', 1140);
+  assert.ok(has(g.grade(N.assembly), /Woke Jordan Blake at 18:30 for a P3 that could wait/));
+  const ok = game('timed', 'night').to(NIGHT_START + 90);
+  ok.triageRight(N.assembly).send(N.assembly, 'ack');
+  ok.schedule(N.assembly, 'maya', DAY + 480, { dur: 30 });
+  const r = ok.grade(N.assembly);
+  assert.ok(!has(r, /Woke/));
+  assert.ok(r.good.some(x => /day team/.test(x)), 'praised for leaving it to the day team');
+  const late = game('timed', 'night').to(NIGHT_START + 90);
+  late.triageRight(N.assembly).schedule(N.assembly, 'maya', DAY + 600, { dur: 30 });
+  assert.ok(has(late.grade(N.assembly), /It needed to start by Fri 08:30/), 'booked after the 09:00 assembly');
 });
 
 test('leaving urgent work for the morning costs more than booking it late', () => {
