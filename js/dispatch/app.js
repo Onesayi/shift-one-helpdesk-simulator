@@ -352,7 +352,7 @@ const TEMPLATES = {
   apology: { label: 'Apology and plan', text: (t, c) => `Hi ${greet(c)}, I'm sorry about #${t.id} and the trouble it has caused. You shouldn't have had to come back to us about this. Here's the plan: ${statusLine(t)} Our Service Manager, Dana Whitaker, knows and will call you today, and we'll check in with you on Monday to make sure it has stayed fixed.` },
   mi: {
     label: 'Major incident update', only: t => t.major,
-    text: (t, c) => `Hi ${greet(c)}, an update on the Microsoft 365 sign-in outage affecting several of our clients (incident #${t.id}): ${statusLine(t)} We'll update you again by ${hm(now() + MAJOR_CADENCE)}, sooner if anything changes.`,
+    text: (t, c) => `Hi ${greet(c)}, an update on the ${incident().label} affecting several of our clients (incident #${t.id}): ${statusLine(t)} We'll update you again by ${hm(now() + MAJOR_CADENCE)}, sooner if anything changes.`,
   },
   info: { label: 'Ask for details', text: (t, c) => `Hi ${greet(c)}, thanks for getting in touch about #${t.id}. So we can send the right person, could you tell us what you were trying to do and exactly what the screen says? A screenshot, and roughly when it started, would help too.` },
   declined: { label: 'Request declined', text: (t, c) => `Hi ${greet(c)}, we checked this request with an authorized approver at ${client(t).name} and it wasn't approved, so we're closing ticket #${t.id}. Please speak to them if you have questions.` },
@@ -1267,6 +1267,7 @@ function renderTicketPanel() {
 
 function renderPir(t) {
   if (!t.major || !t.closed) return '';
+  const PIR = incident().pir;
   if (t.pir) return `<div class="card pad pir"><b>Post-incident review</b><p class="muted small">Sent to Dana at ${hm(t.pir.at)}.</p><ul class="small">${PIR.map(f => `<li>${esc(f.q)} <b>${esc(f.opts[t.pir[f.id]])}</b></li>`).join('')}</ul></div>`;
   return `<div class="card pad pir"><b>Post-incident review</b><p class="small">The incident is closed. Tell Dana what happened while it's fresh (PB-16).</p>
     ${PIR.map(f => `<label class="field"><span>${esc(f.q)}</span><select id="d-pir-${f.id}" data-draft="pir-${f.id}"><option value="">Choose…</option>${Object.entries(f.opts).map(([k, l]) => `<option value="${k}" ${G.drafts['pir-' + f.id] === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`).join('')}
@@ -1323,7 +1324,7 @@ function renderActions(t) {
       <button class="btn sm primary" data-act="send">Send to ${esc(ct.name)}</button>`, false) : '';
 
   const others = t.major ? [] : G.tickets.filter(x => x !== t && isOpen(x) && (x.client === t.client || x.major) && !G.tickets.some(y => y.parent === t.id));
-  const canDeclare = G.drill?.id === 'major' && !t.major && !G.tickets.some(x => x.major && isOpen(x));
+  const canDeclare = isMajorSeed(G.drill?.id) && !t.major && !G.tickets.some(x => x.major && isOpen(x));
   const coord = section(t, 'coord', 'Approvals, escalations &amp; vendors', `
       <label class="field"><span>Request approval from</span><div class="reply"><select id="d-appr-${t.id}" data-draft="appr-${t.id}"><option value="">Choose a contact…</option>${Object.entries(c.contacts).map(([k, x]) => `<option value="${k}" ${G.drafts['appr-' + t.id] === k ? 'selected' : ''}>${esc(x.name)} · ${esc(x.role)}${x.auth ? ' ✓' : ''}</option>`).join('')}</select><button class="btn sm" data-act="approval">Ask</button></div></label>
       <div class="btn-grid"><button class="btn sm" data-act="notify" data-w="sm">Notify Service Manager</button><button class="btn sm" data-act="notify" data-w="am">Escalate to Account Manager</button></div>
@@ -1462,6 +1463,11 @@ function renderStart() {
       <h2>Microsoft 365 just went down for everyone.</h2>
       <p class="muted">${MAJOR_SCENARIOS.length} tickets in three hours, most of them the same outage. Declare a major incident, link every client to it, keep them all updated every 30 minutes, and keep the rest of the desk running. When it's fixed, write the post-incident review. It doesn't count towards your progress.</p>
       <div class="row gap"><button class="btn primary" data-act="start" data-m="practice" data-seed="major">Start the major incident</button></div></section>
+
+    <section class="l-sec"><div class="l-eyebrow">Major incident · based on 12–13 Nov 2026</div>
+      <h2>Outlook can't reach anyone's mailbox.</h2>
+      <p class="muted">Modelled on the real Microsoft 365 outage. ${OUTAGE_SCENARIOS.length} tickets in three and a half hours. It's Microsoft's fault, there's no ETA, and the first recovery doesn't hold. Run it as one incident, keep clients from "fixing" their PCs, don't call it fixed too early, and watch for the scammers it brings out. It doesn't count towards your progress.</p>
+      <div class="row gap"><button class="btn primary" data-act="start" data-m="practice" data-seed="outage">Start the email outage</button></div></section>
 
     <section class="l-sec drills"><div class="l-eyebrow">Skill drills · practice mode</div>
       <h2>Short on time? Drill one skill.</h2>
