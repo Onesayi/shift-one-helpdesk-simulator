@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+New: **A tenth ticket on the night shift: a VIP who has to wait.**
+
+- 18:30, Helen Moore (Oakridge's principal) emails: the hall laptop won't take her password and her 09:00 assembly runs off it. She asks for a fix tonight. It's a P3 on a standard agreement, so PB-13 says don't wake Jordan. Acknowledge tonight and book Maya at 08:00 Friday (Ana has Jess's Mac).
+- Night tickets from 18:30 on move up one number (#4603 is now the assembly laptop; the phish is #4610). The night answer key in `docs/COORDINATOR.md` and `tests/dispatch/night.test.js` are updated, and a new test checks the trap: booking Jordan for her costs 15.
+
 New: **A corporate MSP look for both desks.**
 
 - Navy app chrome: the top bar and sidebar are navy in both themes, with a cyan active state, like the PSA and RMM tools MSP staff work in all day. One corporate blue (`#0067c5`) does every interactive job on the light pages.
