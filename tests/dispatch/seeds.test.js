@@ -36,7 +36,8 @@ test('every seeded shift is well formed', () => {
   for (const seed of SEEDS) {
     const sh = buildShift(seed), today = sh.tickets.filter(t => t.at >= 0);
     const keys = today.map(t => t.key), at = `seed ${seed}`;
-    assert.deepEqual(plain(sh.tickets.filter(t => t.at < 0).map(t => t.id)), ['4471', '4476'], `${at}: carry-overs`);
+    const ups = sh.events.some(e => e.id === 'ups');
+    assert.deepEqual(plain(sh.tickets.filter(t => t.at < 0).map(t => t.id)), ups ? ['4471', '4476', '4478'] : ['4471', '4476'], `${at}: carry-overs, plus the UPS visit when Brightline moves it`);
     assert.deepEqual(plain(today.map(t => t.id)), plain(today.map((_, i) => String(4501 + i))), `${at}: numbered in arrival order`);
     for (let i = 1; i < today.length; i++) assert.ok(today[i].at >= today[i - 1].at, `${at}: sorted by arrival`);
     for (const tag of ['p1', 'noise', 'approval', 'onsite']) assert.ok(today.some(t => t.pick === tag), `${at}: has a ${tag} ticket`);

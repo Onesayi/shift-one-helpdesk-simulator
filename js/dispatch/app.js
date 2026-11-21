@@ -137,9 +137,9 @@ function spawnTicket(s, opts = {}) {
     t.triage = Object.assign({}, s.pre.triage);
     t.triagedAt = arrived; t.firstResponseAt = arrived; t.lastUpdateAt = arrived;
     const a = s.pre.appt;
-    addAppt({ tech: a.tech, start: a.start, dur: a.dur, ticket: t.id, onsite: false });
+    addAppt({ tech: a.tech, start: a.start, dur: a.dur, ticket: t.id, onsite: !!a.onsite });
     t.status = 'Scheduled';
-    post(t, 'system', `Carried over from yesterday. Booked with ${TECHS[a.tech].name}, today ${hm(a.start)}.`, 'system');
+    post(t, 'system', `Carried over from yesterday. Booked with ${TECHS[a.tech].name}, today ${hm(a.start)}${a.onsite ? ' onsite' : ''}.`, 'system');
   }
   if (opts.answered) { t.firstResponseAt = now(); t.lastUpdateAt = now(); }
   G.tickets.push(t);
@@ -219,7 +219,13 @@ function onMinute(m) {
   for (const a of G.appts) {
     if (a.state === 'booked' && a.start <= m) {
       const t = ticket(a.ticket), sick = G.techs[a.tech].sickAt;
-      if ((sick != null && a.start >= sick) || a.atRisk) {
+      if (shutOut(t, a)) {
+        // The client said they couldn't take a visit then: the tech turns up and can't do the work.
+        a.state = 'missed'; t.flags.shutOut = true;
+        record('appt-missed', { ticket: t.id, tech: a.tech });
+        t.status = 'Needs reassign';
+        post(t, a.tech, `I'm here, but they can't let me in until ${hm(G.disrupted[t.id].blocked[1])}. That's a wasted trip. Can you rebook me?`, 'tech');
+      } else if ((sick != null && a.start >= sick) || a.atRisk) {
         a.state = 'missed';
         record('appt-missed', { ticket: t.id, tech: a.tech });
         t.status = 'Needs reassign';
@@ -274,10 +280,11 @@ function teamEvent(ev, m) {
   if (ev.kind === 'move') {
     const t = ticket(ev.ticket), a = t && finalAppt(t);
     if (!t || !isOpen(t) || t.status === 'Completed' || (a && ['working', 'done'].includes(a.state))) return false;
-    G.disrupted[t.id] = { kind: 'move', at: m };
+    G.disrupted[t.id] = { kind: 'move', at: m, blocked: ev.blocked };
     post(t, ev.contact, ev.text, 'client');
     record('move-request', { ticket: t.id });
-    toast(`${contactOf(t, ev.contact).name} asked to move #${t.id} to tomorrow.`, 'bad');
+    toast(ev.blocked ? `${contactOf(t, ev.contact).name} can't take a visit ${hm(ev.blocked[0])}–${hm(ev.blocked[1])}. Move #${t.id}.`
+      : `${contactOf(t, ev.contact).name} asked to move #${t.id} to tomorrow.`, 'bad');
     return true;
   }
   let text = ev.text;
@@ -294,6 +301,12 @@ function teamEvent(ev, m) {
   G.news.push({ at: m, text });
   toast(text, 'bad');
   return true;
+}
+
+// A booking inside the time a client said they couldn't take the visit (a `move` with `blocked`).
+function shutOut(t, a) {
+  const b = G.disrupted[t.id]?.blocked;
+  return !!b && overlaps(a.start, a.start + a.dur, b[0], b[1]);
 }
 
 function chase(t, text) {
@@ -619,6 +632,7 @@ function checkSlot(t, techId, start, dur, onsite) {
     if (!b.soft) R.errors.push(`Clashes with "${b.label}" (${hm(b.start)}).`);
     else { R.warns.push(`Bumps ${tech.name.split(' ')[0]}'s ${b.kind === 'lunch' ? 'lunch' : `"${b.label}"`}.`); R.bumps.push(b.kind); }
   }
+  if (shutOut(t, { start, dur })) { const b = G.disrupted[t.id].blocked; R.warns.push(`${client(t).name} can't take a visit ${hm(b[0])}–${hm(b[1])}.`); }
   if (!t.triage) R.warns.push('This ticket isn\'t triaged yet.');
   else if (!tech.skills.includes(t.triage.skill)) R.warns.push(`Your triage says ${t.triage.skill}; ${tech.name} doesn't list that skill.`);
   else R.infos.push(`${tech.name} has ${t.triage.skill} skills.`);
@@ -825,7 +839,10 @@ function grade(t) {
 
   const hit = G.disrupted[t.id];
   if (hit && !t.parent) {
-    if (hit.kind === 'move' && a && a.start < DAY) ded.push([15, `${greet(contactOf(t))} asked to move this to tomorrow, but it stayed booked for today.`]);
+    if (hit.kind === 'move' && hit.blocked) {
+      if (t.flags.shutOut || (a && shutOut(t, a))) ded.push([20, `${greet(contactOf(t))} couldn't take a visit ${hm(hit.blocked[0])}–${hm(hit.blocked[1])}, but it stayed booked inside that time.`]);
+      else if (a) good.push('Moved the visit out of the time the client couldn\'t do.');
+    } else if (hit.kind === 'move' && a && a.start < DAY) ded.push([15, `${greet(contactOf(t))} asked to move this to tomorrow, but it stayed booked for today.`]);
     else if (hit.kind === 'move' && a) good.push('Moved the appointment to tomorrow, as the client asked.');
     if (t.contact && logged('client-msg', e => e.ticket === t.id && e.at >= hit.at && ['update', 'sched'].includes(e.kind)).length) good.push(`Told ${greet(contactOf(t))} about the new appointment.`);
     else if (t.contact) ded.push([10, hit.kind === 'move' ? `Never confirmed the new time with ${greet(contactOf(t))}.` : `${TECHS[hit.tech].name.split(' ')[0]} was off the board at ${hm(hit.at)}, and ${greet(contactOf(t))} never heard the appointment had moved.`]);

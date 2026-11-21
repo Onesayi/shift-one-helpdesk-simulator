@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+New: **A client asks to move a visit to later today.**
+
+- Seeded shifts can now draw a fourth disruption. Brightline's UPS battery swap (#4478, carried over and booked with Luis onsite at 14:00) runs into a fire inspection that shuts the comms room from 13:30 to 15:00, and Brightline asks for 15:30 instead. Drag the visit to 15:30, confirm the new time, and code the visit Billable.
+- A visit left inside 13:30–15:00 is a wasted trip: Luis can't get in, the ticket goes back to *Needs reassign*, and it costs 20. The booking dialog warns about any slot inside the inspection.
+- `move` disruptions take an optional `blocked: [start, end]`. A carried-over scenario with `needs: '<disruption id>'` only appears in shifts that draw that disruption, so classic and every other seed's tickets are unchanged. Carried-over appointments can now be onsite.
+
 New: **An Exchange Online outage, based on the real one of 12–13 November 2026.**
 
 - A second major-incident scenario on the start page (shift code `outage`, 08:00 to 11:30, practice mode). Outlook can't reach anyone's mailbox at four clients, Microsoft posts status updates as EX1550543 and then MO1550821, and its first recovery at 09:05 falls over twenty minutes later. It's mitigated at 10:20.
