@@ -108,3 +108,59 @@ test('in a seeded shift, disruptions happen on the clock', () => {
   assert.ok(g.G.blocks.some(b => b.kind === 'out' && b.tech === 'luis' && b.start === at));
   assert.match(g.G.news.at(-1).text, /until \d\d:\d\d/);
 });
+
+// Brightline can't take the carried-over UPS visit 13:30–15:00 (the 'ups' disruption, ticket #4478).
+const upsSeed = () => {
+  const { buildShift } = load();
+  return Array.from({ length: 200 }, (_, i) => 's' + i).find(s => {
+    const ev = buildShift(s).events;
+    return ev.some(e => e.id === 'ups') && !ev.some(e => e.id === 'van');
+  });
+};
+const upsGame = () => {
+  const g = game('timed', upsSeed()), at = g.G.events.find(e => e.id === 'ups').at;
+  g.to(at, () => { if (g.G.ring) g.answer(); });
+  return g;
+};
+
+test('the UPS visit is only carried over in shifts where Brightline asks to move it', () => {
+  const { buildShift } = load();
+  for (let i = 0; i < 200; i++) {
+    const sh = buildShift('s' + i), ups = sh.events.some(e => e.id === 'ups');
+    assert.equal(sh.tickets.some(t => t.id === '4478'), ups, `seed s${i}`);
+  }
+  assert.ok(!buildShift('classic').tickets.some(t => t.id === '4478'), 'never in classic');
+  const g = game('timed', upsSeed());
+  const a = g.G.appts.find(x => x.ticket === '4478');
+  assert.deepEqual(plain([a.tech, a.start, a.dur, a.onsite]), ['luis', 840, 60, true]);
+});
+
+test('Brightline moves the UPS visit: left at 14:00, Luis has a wasted trip, costs 20, and no confirmation costs 10', () => {
+  const g = upsGame();
+  assert.match(g.ticket('4478').thread.at(-1).text, /fire marshal is inspecting/);
+  g.to(841, () => { if (g.G.ring) g.answer(); });
+  assert.equal(g.ticket('4478').status, 'Needs reassign');
+  assert.match(g.ticket('4478').thread.at(-1).text, /can't let me in until 15:00/);
+  const r = g.grade('4478');
+  deducts(r, 20, /couldn't take a visit 13:30–15:00/);
+  deducts(r, 10, /Never confirmed the new time with Brightline team/);
+});
+
+test('Brightline moves the UPS visit: the booking dialog warns about the inspection', () => {
+  const g = upsGame(), t = g.ticket('4478');
+  assert.ok(g.E.checkSlot(t, 'luis', 870, 60, true).warns.some(w => /can't take a visit 13:30–15:00/.test(w)), '14:30 is inside it');
+  assert.ok(!g.E.checkSlot(t, 'luis', 930, 60, true).warns.some(w => /can't take a visit/.test(w)), '15:30 is clear');
+});
+
+test('Brightline moves the UPS visit: Luis at 15:30, confirmed and coded Billable, loses nothing', () => {
+  const g = upsGame();
+  g.schedule('4478', 'luis', 930, { onsite: true }).send('4478', 'sched');
+  g.to(991, () => { if (g.G.ring) g.answer(); });
+  assert.equal(g.ticket('4478').status, 'Completed');
+  g.send('4478', 'resolved').bill('4478').close('4478', 'resolved', 'Luis replaced both UPS battery packs; self-test passed.');
+  assert.equal(g.G.time.find(e => e.ticket === '4478').code, 'billable', 'standard covers remote support only');
+  const r = g.grade('4478');
+  assert.deepEqual(plain(r.ded), [], r.ded.map(d => d[1]).join(' | '));
+  praises(r, /Moved the visit out of the time the client couldn't do/);
+  praises(r, /Told Brightline team about the new appointment/);
+});

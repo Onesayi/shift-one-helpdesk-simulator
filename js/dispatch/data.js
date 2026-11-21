@@ -83,7 +83,8 @@ const TEAM_EVENTS = [
 //   out:  the tech is off the board for `dur` minutes from the moment it happens. Anything booked
 //         with them in that time (travel included) can't go ahead: move it and tell the client.
 //   move: the client asks to move a carried-over appointment to tomorrow. Skipped if the work
-//         has already started.
+//         has already started. With `blocked: [start, end]` the client can't take the visit in that
+//         time instead, so it moves later today, and a visit left inside it is wasted.
 const DISRUPTIONS = [
   { id: 'van', kind: 'out', tech: 'luis', window: [600, 780], dur: 90, label: 'Van broken down',
     text: 'Luis Romero: "My van won\'t start. Roadside assistance says 90 minutes, so I can\'t get to a site until {until}."' },
@@ -91,6 +92,8 @@ const DISRUPTIONS = [
     text: 'Dana Whitaker (Service Manager): "Our own VPN is down, so I\'ve pulled Maya onto it. She\'s off the board until {until}."' },
   { id: 'move', kind: 'move', ticket: '4476', contact: 'lpark', window: [660, 750],
     text: 'Hi, our Eastgate front desk is closing early today for staff training, so nobody will be there to test a scan. Could we move the scan-to-email setup to tomorrow instead? Thanks, Lena' },
+  { id: 'ups', kind: 'move', ticket: '4478', contact: 'bldesk', window: [570, 750], blocked: [810, 900],
+    text: 'Heads-up from the Brightline desk: the fire marshal is inspecting the HQ comms room today from 13:30 to 15:00, and nobody can be in there while they do. Could Luis come at 15:30 instead of 14:00? Brightline team' },
 ];
 
 const INTERNAL = {

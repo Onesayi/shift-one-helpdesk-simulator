@@ -99,6 +99,7 @@ A shift is built from a seed (the shift code), in [`buildShift()`](../js/dispatc
 | Luis's van breaks down | 10:00–13:00 | Luis is off the board for 90 min | Rebook anything in the gap (travel counts) and tell the client |
 | Internal VPN outage | 09:15–13:00 | Maya is off the board for 60 min | Same |
 | Lena moves the Eastgate scan-to-email | 11:00–12:30 | Lena asks to do it tomorrow instead. Skipped if the work has started | Book it for Friday and confirm the new time with Lena |
+| Brightline moves the UPS battery visit | 09:30–12:30 | Only in shifts that draw it, with an extra carried-over ticket, #4478: Luis onsite at 14:00 to replace the HQ comms room UPS batteries. A fire inspection shuts the room 13:30–15:00, and Brightline asks for 15:30 | Drag the visit to Luis at 15:30 (travel from 15:00, done by 16:30), confirm the new time, and code it Billable. Left inside 13:30–15:00, Luis has a wasted trip: −20 |
 
 Nothing can be booked with a tech while they're off the board, and a booking left in the gap is missed when its time comes: the client chases, just as with Ben.
 - **Numbering.** Tickets are numbered #4501 upward in arrival order.

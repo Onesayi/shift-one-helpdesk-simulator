@@ -9,6 +9,7 @@
 //               dispatch (true: needs a tech, false: must not get one), startBy (latest start, absolute minute),
 //               closeAs ('resolved' | 'noise' | 'declined' | null = may stay open at end of shift), why (feedback)
 //   pre       carried-over tickets: triage and appointment already set
+//   needs     carried-over tickets that only exist in shifts that draw this disruption (DISRUPTIONS in data.js)
 //   group     tickets that are really one incident (should be merged)
 //   sm        the Service Manager must be notified
 //   approval  replies from authorized contacts to "Request approval": { contactId: { text, ok } }
@@ -50,6 +51,15 @@ const SCENARIOS = [
       if (logged('client-msg', e => e.ticket === t.id && e.at >= (G.techs.ben.sickAt ?? DAY) && ['update', 'sched'].includes(e.kind)).length) good.push('Let Lena know the appointment had moved.');
       else ded.push([10, 'Lena was expecting Ben at 13:30. Tell the client when their appointment moves.']);
     },
+  },
+  {
+    id: '4478', at: -1, extra: true, channel: 'carry', client: 'bl', contact: 'bldesk', needs: 'ups', kb: 'PB-04',
+    title: 'Replace the UPS batteries in the HQ comms room',
+    body: 'Escalating from the Brightline service desk. The comms room UPS failed its self-test and says the batteries need replacing. We\'ve had the new batteries delivered to HQ. Booked with Luis for 14:00 tomorrow. Brightline team',
+    pre: { triage: { board: 'Field Services', priority: 'P3', skill: 'Hardware', onsite: true, est: 60 }, appt: { tech: 'luis', start: 840, dur: 60, onsite: true } },
+    truth: { priority: 'P3', board: 'Field Services', skill: 'Hardware', onsite: true, est: 60, dispatch: true, startBy: 960, closeAs: 'resolved',
+      why: 'When a client can\'t take a visit at the booked time, move it to a time they can, today if it still fits. Luis at 15:30 (travel from 15:00) is done by 16:30. Confirm the new time, and code the visit Billable: Brightline\'s standard agreement covers remote support only.' },
+    fixNote: 'Swapped both UPS battery packs in the comms room and ran a self-test: passed, 38 minutes of runtime at the current load. The old batteries are boxed for recycling at reception.',
   },
   {
     id: '4501', at: 0, window: [0, 120], channel: 'email', client: 'hdg', contact: 'lpark', kb: 'PB-03',
@@ -530,7 +540,6 @@ function buildShift(seed) {
 
   // Each ticket is a thin copy of its scenario, so methods and `this` keep working.
   const copy = (s, extra) => Object.assign(Object.create(s), { key: s.id }, extra);
-  const carried = SCENARIOS.filter(s => s.at < 0).map(s => copy(s));
   const today = [];
   for (const u of chosen) {
     const delta = classic || !u[0].window ? 0 : when(u[0].window) - u[0].at;
@@ -549,6 +558,8 @@ function buildShift(seed) {
     const delta = when(COMPLAINT.window) - COMPLAINT.at;
     today.push(copy(COMPLAINT, { at: COMPLAINT.at + delta, truth: Object.assign({}, COMPLAINT.truth, { startBy: COMPLAINT.truth.startBy + delta }) }));
   }
+  // Carried-over tickets, including any that only come with a disruption drawn above.
+  const carried = SCENARIOS.filter(s => s.at < 0 && (!s.needs || events.some(e => e.id === s.needs))).map(s => copy(s));
   // The day's tickets are numbered in the order they arrive.
   const order = s => { const i = SCENARIOS.indexOf(s); return i < 0 ? SCENARIOS.length : i; };
   today.sort((a, b) => a.at - b.at || order(Object.getPrototypeOf(a)) - order(Object.getPrototypeOf(b)));
