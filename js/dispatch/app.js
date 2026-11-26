@@ -1502,15 +1502,38 @@ function renderModal() {
     <div class="row gap end">${m.noCancel ? '' : '<button class="btn" data-act="modalCancel">Cancel</button>'}<button class="btn ${m.danger ? 'danger' : 'primary'}" data-act="modalOk">${esc(m.ok || 'OK')}</button></div></div></div>`;
 }
 
+// The playable opening: triage and dispatch Dr. Reyes's clinic outage (#4506). Grader lines are the
+// ones grade() and the scenario's evaluate() give for the same choices.
+function startDemo() {
+  const s = SCENARIOS.find(x => x.id === '4506'), T = s.truth, c = CLIENTS[s.client], who = c.contacts[s.contact];
+  const pr = p => +p.slice(1), at = hm(SHIFT_START + s.at + 5);
+  const fix = s.work({ flags: {} }, null, TECHS.sipho).note;
+  const tech = (id, extra) => {
+    const x = TECHS[id], ok = x.skills.includes(T.skill);
+    return { text: `${x.name} · ${x.role}${extra ? ` · ${extra}` : ''}`, from: x.name.split(' ')[0],
+      reply: ok ? fix : `This isn't my area. It needs someone with ${T.skill} skills. Handing it back to dispatch.`,
+      good: ok ? [`Booked ${x.name} for ${at}: right skills, in time.`] : [],
+      bad: ok ? [] : [[15, `Sent to ${x.name}, who can't do this: it needs ${T.skill} skills.`], [10, 'Harbor Dental\'s notes say only Sipho touches their firewall.']],
+      after: ok ? 'In the real shift you\'d now open the Comcast case, page the Service Manager and keep Dr. Reyes updated.' : 'Meanwhile the clinic is still down, with a waiting room full of patients.' };
+  };
+  return {
+    id: '#' + s.id, live: 'Incoming call', done: 'Ticket triaged', line: c.name, site: 'Northside clinic',
+    initials: who.name.replace(/^Dr\. /, '').split(' ').map(w => w[0]).join(''), who: who.name, first: who.name.replace(/^Dr\. (\w+) /, 'Dr. '),
+    role: `${who.role} · ${c.name}`,
+    facts: [['Agreement', `${c.agreement} · VIP`], ['P1 response', `${SLA[c.sla].P1} min`], ['Client note', c.notes.find(n => /Sipho/.test(n)), false]],
+    says: '"' + s.body.replace(/^This is Dr\. Reyes\. /, '') + '"',
+    note: 'Pick a priority, then a technician. Every line you see next comes from the real grader.',
+    steps: [
+      { ask: 'How urgent is it?', choices: ['P1', 'P2', 'P3', 'P4'].map(p => ({ text: `${p}${p === 'P1' ? ' · critical' : p === 'P2' ? ' · high' : p === 'P3' ? ' · normal' : ' · low'}`,
+        good: p === T.priority ? [`Priority ${p}.`] : [], bad: p === T.priority ? [] : [[Math.abs(pr(p) - pr(T.priority)) > 1 ? 20 : 10, `Priority ${p}; should be ${T.priority}. ${T.why}`]] })) },
+      { ask: 'Who do you send?', choices: [tech('luis', 'onsite'), tech('sipho', 'remote'), tech('maya'), tech('ben')] },
+    ],
+  };
+}
+
 function renderStart() {
   const best = bestScore(), runs = loadHistory().length;
   const sc = id => SCENARIOS.find(s => s.id === id);
-  const who = s => { const c = CLIENTS[s.client]; return `${s.from || c.contacts[s.contact]?.name || ''} · ${c.name}`; };
-  const CH = { email: 'Email', phone: 'Call', alert: 'Alert', vendor: 'Vendor' };
-  // Tickets arrive untriaged, so the preview shows the channel, not the answer.
-  const items = SCENARIOS.filter(s => !s.extra && s.at >= 0).sort((a, b) => a.at - b.at)
-    .map(s => ({ id: '#' + s.id, pri: 'p0', label: CH[s.channel] || s.channel, title: s.title, who: who(s) }));
-  const call = SCENARIOS.find(s => s.channel === 'phone' && s.truth.priority === 'P1');
   const at = id => hm(SHIFT_START + sc(id).at);
   const span = SHIFT_END - SHIFT_START, pct = m => ((m - SHIFT_START) / span * 100).toFixed(1);
   const blocks = baseBlocks().filter(b => b.start < DAY);
@@ -1519,15 +1542,16 @@ function renderStart() {
     if (x.end < SHIFT_END) bars.push(`<i class="sick" style="left:${pct(x.end)}%;right:0" title="Off shift"></i>`);
     return `<div class="board-row"><small>${esc(x.name.split(' ')[0])}</small><div class="board-track">${bars.join('')}</div></div>`;
   }).join('');
+  const demo = startDemo();
   const hdg = CLIENTS.hdg, approvers = Object.values(hdg.contacts).filter(c => c.auth).map(c => c.name);
   return `<div class="start landing">
     <div class="l-hero">
-      <div class="l-pitch">
-        <h1>Five techs. Five clients. One of you.</h1>
-        <p class="l-lede">You're the service coordinator at <b>Northbound IT</b>. Calls ring, alerts fire and clients email. You triage every ticket, keep clients updated, chase approvals and vendors, and put the <b>right technician on the right job</b> at the right time. The technicians do the work. How it goes depends on who you sent.</p></div>
-      ${Landing.queue({ key: 'dispatch', heading: 'Service board · New', items, foot: 'Every ticket here is in the game. Triage is up to you.',
-        call: call && { who: `Incoming call: ${who(call)}`, sub: call.title } })}
+      <h1>${esc(demo.who.replace(/^Dr\. \w+ /, 'Dr. '))} is on line 1. The ${esc(demo.site)} is down.</h1>
+      <p class="l-lede">No internet, no phones, no patient schedule, and a waiting room full of patients. You're the service coordinator at <b>Northbound IT</b>. You don't fix it: you decide how urgent it is and <b>who goes</b>.</p>
     </div>
+    ${Landing.call(demo)}
+    <div class="l-go"><button class="btn primary" data-act="start" data-m="shift">Clock in for a shift</button><button class="btn" data-act="start" data-m="practice">Practice, pause any time</button>
+      <p class="l-note">Five techs, five clients, about 18 minutes. Every shift draws different tickets at different times.</p></div>
     <div class="desks">
       <div class="desk primary"><span class="desk-role">Service coordinator · timed</span><h3>Thursday, ${hm(SHIFT_START)}–${hm(SHIFT_END)}</h3>
         <p>About 18 minutes at 1×; speed up when it's quiet. Every shift draws different tickets at different times.</p>
@@ -1764,6 +1788,7 @@ function renderProgress(h) {
 // Event wiring
 // ---------------------------------------------------------------------------
 const ACT = {
+  demoPick: d => Landing.pick(d.c, d.step),
   start: d => { if (PREP_OPEN) { PREP_OPEN = false; try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ } } newGame(d.m, d.seed ?? $('#seed-in')?.value); },
   prep: d => { G = null; PREP_OPEN = true; if (d?.t) PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); $('#main').scrollTop = 0; window.scrollTo(0, 0); },
   prepTab: d => { PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); },

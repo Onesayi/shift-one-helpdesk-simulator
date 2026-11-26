@@ -1260,20 +1260,19 @@ function renderStart() {
       <p class="l-lede">He's locked out for the third time today and has a client call at eleven. You're the new service desk technician at <b>${esc(WORLD.company)}</b>. What do you do?</p>
     </div>
     ${Landing.call({
-      id: cs.id, line: `${cu.phone} · Service Desk`, initials: cu.first[0] + cu.last[0], who: `${cu.first} ${cu.last}`, first: cu.first,
+      id: cs.id, live: 'Incoming call', done: 'Connected', line: `${cu.phone} · Service Desk`, initials: cu.first[0] + cu.last[0], who: `${cu.first} ${cu.last}`, first: cu.first,
       role: `${cu.title} · ${cu.location}`,
       facts: [['Account', `${cu.id} · locked`, true], ['Lockouts', '3 since 08:02'], ['Password', 'changed 08:00 today']],
       says: '"' + cs.body.replace(/ I've got a client call at eleven\.$/, '') + ' Can you just unlock it?"',
-      ask: 'Pick your first move',
       note: 'Pick one. Every line you see next comes from the real grader.',
-      choices: [
+      steps: [{ ask: 'Pick your first move', choices: [
         { text: 'Unlock him now. He\'s in a hurry.', reply: '"Thanks, finally!"', good: [], after: 'Twenty minutes later: account locked again. Source: ActiveSync ("Chris\'s iPhone").',
           bad: [[25, 'Changed Chris\'s account before verifying the caller.'], [10, 'Unlocked without fixing the source, so the account locked again.']] },
         { text: 'Verify him first, then ask if his phone gets work email.', reply: '"' + q('phone').a + '"',
           good: ['Verified the caller before touching the account.', 'Found the root cause: the old password saved in the iPhone Mail app.'], bad: [],
           after: 'That\'s the job: check who\'s asking, then find what actually changed.' },
         { text: 'Tell him to be more careful typing his password.', reply: '"' + q('typing').a + '"', good: [], bad: [q('typing').bad] },
-      ],
+      ] }],
     })}
     <div class="l-go"><button class="btn primary" data-act="start" data-m="shift" data-s="1">Clock in for Shift 1</button><button class="btn" data-act="start" data-m="practice" data-s="1">Practice, no timer</button>
       <p class="l-note">This call is in Shift 2. Shift 1 has ${byShift(1).length} tickets, and some callers aren't who they say they are.</p></div>
@@ -1430,7 +1429,7 @@ const ACT = {
   home: () => { G = null; PAGE = 'start'; try { if (location.hash) history.replaceState(null, '', location.pathname); } catch { /* ignore */ } render(); },
   prep: d => { G = null; PAGE = 'prep'; if (d?.t) PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); $('#main').scrollTop = 0; window.scrollTo(0, 0); },
   prepTab: d => { PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); },
-  demoPick: d => Landing.pick(d.c),
+  demoPick: d => Landing.pick(d.c, d.step),
   pricing: () => { G = null; PAGE = 'pricing'; render(); $('#main').scrollTop = 0; },
   theme: () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('shiftone-theme', r.dataset.theme); render(); },
   endShift: () => {

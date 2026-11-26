@@ -58,43 +58,57 @@ const Landing = (() => {
     <div><div class="lr-tag">Example report</div><h3>${esc(title)}</h3><div class="lr-meta">${esc(meta)}</div>
     <ul class="lr-lines">${lines.map(([pts, text]) => `<li class="${pts ? 'b' : 'g'}"><span>${pts ? '−' + pts : '+'}</span><span>${esc(text)}</span></li>`).join('')}</ul></div></div>`;
 
-  // The playable first call on the Help Desk start page. c: { id, who, role, facts: [[k, v, bad]],
-  // says, ask, choices: [{ text, reply, good: [], bad: [[pts, text]], after }], note }
-  let C = null, pickN = null;
+  // The playable opening on both start pages: one ticket, one or more steps, real grader lines.
+  // c: { id, line, initials, who, role, first, facts: [[k, v, bad]], says, note, live, done,
+  //      steps: [{ ask, choices: [{ text, reply, from, good: [], bad: [[pts, text]], after }] }] }
+  let C = null, picks = [];
   function call(c) {
+    if (C && C.id !== c.id) picks = [];
     C = c;
-    const ch = pickN == null ? null : c.choices[pickN];
-    const lines = ch ? [...ch.good.map(t => `<li class="g"><span>+</span><span>${esc(t)}</span></li>`),
-      ...ch.bad.map(([p, t]) => `<li class="b"><span>−${p}</span><span>${esc(t)}</span></li>`)].join('') : '';
-    return `<div class="lc${ch ? ' done' : ''}" id="lc">
-      <div class="lc-head"><span class="lc-led" aria-hidden="true"></span>${ch ? 'Connected' : 'Incoming call'} · ${esc(c.line)}<span class="lc-id">${esc(c.id)}</span></div>
+    const done = picks.length === c.steps.length;
+    const chosen = picks.map((n, i) => c.steps[i].choices[n]);
+    const lines = done ? [...chosen.flatMap(x => x.good.map(t => `<li class="g"><span>+</span><span>${esc(t)}</span></li>`)),
+      ...chosen.flatMap(x => x.bad.map(([p, t]) => `<li class="b"><span>−${p}</span><span>${esc(t)}</span></li>`))].join('') : '';
+    const last = done ? chosen[chosen.length - 1] : null;
+    const bubble = (who, text) => `<blockquote class="lc-say"><small>${esc(who)}</small>${esc(text)}</blockquote>`;
+    const step = (st, i) => i > picks.length ? '' : `<div class="lc-step${i < picks.length ? ' set' : ''}">
+          <p class="lc-q">${c.steps.length > 1 ? `<span class="lc-n">${i + 1}/${c.steps.length}</span>` : ''}${esc(st.ask)}</p>
+          <div class="lc-choices">${st.choices.map((x, j) => `<button class="lc-choice${picks[i] === j ? ' on' : ''}" data-act="demoPick" data-c="${j}" data-step="${i}" aria-pressed="${picks[i] === j}"><kbd aria-hidden="true">${j + 1}</kbd><span>${esc(x.text)}</span></button>`).join('')}</div></div>`;
+    return `<div class="lc${done ? ' done' : ''}" id="lc">
+      <div class="lc-head"><span class="lc-led" aria-hidden="true"></span>${esc(done ? c.done : c.live)} · ${esc(c.line)}<span class="lc-id">${esc(c.id)}</span></div>
       <div class="lc-body">
         <div class="lc-caller">
           <div class="lc-who"><span class="lc-av" aria-hidden="true">${esc(c.initials)}</span><div><b>${esc(c.who)}</b><small>${esc(c.role)}</small></div></div>
           <dl class="lc-facts">${c.facts.map(([k, v, bad]) => `<dt>${esc(k)}</dt><dd${bad ? ' class="bad"' : ''}>${esc(v)}</dd>`).join('')}</dl>
-          <blockquote class="lc-say"><small>${esc(c.first)}</small>${esc(c.says)}</blockquote>
-          ${ch ? `<blockquote class="lc-say"><small>${esc(c.first)}</small>${esc(ch.reply)}</blockquote>` : ''}
+          ${bubble(c.first, c.says)}
+          ${last && last.reply ? bubble(last.from || c.first, last.reply) : ''}
         </div>
         <div class="lc-pick">
-          <p class="lc-q">${esc(c.ask)}</p>
-          <div class="lc-choices">${c.choices.map((x, i) => `<button class="lc-choice${pickN === i ? ' on' : ''}" data-act="demoPick" data-c="${i}" aria-pressed="${pickN === i}"><kbd aria-hidden="true">${i + 1}</kbd><span>${esc(x.text)}</span></button>`).join('')}</div>
-          <div class="lc-result" aria-live="polite">${ch ? `<div class="lr-tag">From the grader</div><ul class="lr-lines">${lines}</ul>
-            ${ch.after ? `<p class="lc-after">${esc(ch.after)}</p>` : ''}
-            <button class="kb-link" data-act="demoPick" data-c="">Try a different move</button>` : `<p class="lc-hint">${esc(c.note)}</p>`}</div>
+          ${c.steps.map(step).join('')}
+          <div class="lc-result" aria-live="polite">${done ? `<div class="lr-tag">From the grader</div><ul class="lr-lines">${lines}</ul>
+            ${last.after ? `<p class="lc-after">${esc(last.after)}</p>` : ''}
+            <button class="kb-link" data-act="demoPick" data-c="">Try again</button>` : `<p class="lc-hint">${esc(c.note)}</p>`}</div>
         </div>
       </div></div>`;
   }
-  function pick(i) {
-    pickN = i === '' || i == null ? null : Math.max(0, Math.min(C.choices.length - 1, +i));
+  // step defaults to the one waiting for an answer; picking an earlier step again clears the later ones.
+  function pick(n, step) {
+    if (!C) return;
+    if (n === '' || n == null) picks = [];
+    else {
+      const i = step === '' || step == null ? Math.min(picks.length, C.steps.length - 1) : Math.min(+step, picks.length);
+      picks = picks.slice(0, i);
+      picks[i] = Math.max(0, Math.min(C.steps[i].choices.length - 1, +n));
+    }
     const el = document.getElementById('lc');
     if (el) el.outerHTML = call(C);
   }
-  // 1, 2, 3 answer the call while the start page is open, unless you're typing somewhere.
+  // 1, 2, 3... answer the current step while a start page is open, unless you're typing somewhere.
   document.addEventListener('keydown', e => {
     if (!C || !document.getElementById('lc') || e.altKey || e.ctrlKey || e.metaKey) return;
     if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
-    const n = +e.key;
-    if (n >= 1 && n <= C.choices.length) pick(n - 1);
+    const st = C.steps[Math.min(picks.length, C.steps.length - 1)], n = +e.key;
+    if (picks.length < C.steps.length && n >= 1 && n <= st.choices.length) pick(n - 1);
   });
 
   return { queue, mount, timeline, report, call, pick };
