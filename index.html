@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Content-Security-Policy: only this site's own scripts run. Keep in step with tools/deploy/security-headers.conf (see docs/SECURITY.md). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Shift One · Help Desk Simulator</title>
   <meta name="description" content="A browser-based IT service desk simulator: work real tickets with a directory, remote desktop, command prompt and server room.">
   <meta property="og:title" content="Shift One · Help Desk Simulator">

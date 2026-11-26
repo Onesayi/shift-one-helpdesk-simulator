@@ -5,3 +5,10 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
+# Never commit secrets (tests/security/static-site.test.js checks for these too)
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+id_ed25519*

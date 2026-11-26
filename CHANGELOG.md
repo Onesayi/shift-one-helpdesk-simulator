@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+New: **Security pass against a 20-point website checklist** ([docs/SECURITY.md](docs/SECURITY.md)).
+
+- Both pages now carry a Content-Security-Policy: only the site's own script files run, so injected code is blocked.
+- Fixed a saved assessment answer being shown unescaped when read back from `localStorage`.
+- `tools/deploy/security-headers.conf` adds CSP, HSTS, X-Frame-Options, nosniff, Referrer-Policy and Permissions-Policy in nginx. The nginx site now includes it inside each location that sets `Cache-Control`, which used to drop the server-level headers.
+- `tests/security/` checks the CSP, inline scripts, eval-style code, `rel="noopener"` and committed secrets.
+
 New: **A client asks to move a visit to later today.**
 
 - Seeded shifts can now draw a fourth disruption. Brightline's UPS battery swap (#4478, carried over and booked with Luis onsite at 14:00) runs into a fire inspection that shuts the comms room from 13:30 to 15:00, and Brightline asks for 15:30 instead. Drag the visit to 15:30, confirm the new time, and code the visit Billable.

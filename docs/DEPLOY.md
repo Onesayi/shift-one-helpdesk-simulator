@@ -126,6 +126,10 @@ DEPLOY_KEY_FILE=~/.ssh/loc_deploy SITE_URL=https://<your domain> tools/deploy/de
 
 **Logs:** `/var/log/nginx/shift-one.access.log` and `shift-one.error.log`.
 
+## Security headers
+
+`install-server.sh` installs `tools/deploy/security-headers.conf` as `/etc/nginx/snippets/shift-one-security.conf`, and the nginx site includes it. For the hand-made site on VPS 114, see [SECURITY.md](SECURITY.md#apply-the-headers-on-the-live-loc-server-vps-114).
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
