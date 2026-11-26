@@ -344,6 +344,8 @@ function saveTriage(t) {
   const d = k => G.drafts[`tri-${t.id}-${k}`];
   const f = { board: d('board'), priority: d('pri'), skill: d('skill'), onsite: d('where') === 'onsite', est: Number(d('est')) };
   if (!f.board || !f.priority || !f.skill || !d('where') || !f.est) return toast('Fill in every triage field first.', 'bad');
+  // "Needed by" is optional and not graded: the coordinator's own note of when the client needs it done.
+  if (d('due')) f.due = Number(d('due'));
   t.triage = f;
   if (t.triagedAt == null) t.triagedAt = now();
   record('triage', Object.assign({ ticket: t.id }, f));
@@ -633,6 +635,7 @@ function checkSlot(t, techId, start, dur, onsite) {
     else { R.warns.push(`Bumps ${tech.name.split(' ')[0]}'s ${b.kind === 'lunch' ? 'lunch' : `"${b.label}"`}.`); R.bumps.push(b.kind); }
   }
   if (shutOut(t, { start, dur })) { const b = G.disrupted[t.id].blocked; R.warns.push(`${client(t).name} can't take a visit ${hm(b[0])}–${hm(b[1])}.`); }
+  if (t.triage?.due != null && start + dur > t.triage.due) R.warns.push(`Finishes at ${hm(start + dur)}, after the ${hm(t.triage.due)} you noted it's needed by.`);
   if (!t.triage) R.warns.push('This ticket isn\'t triaged yet.');
   else if (!tech.skills.includes(t.triage.skill)) R.warns.push(`Your triage says ${t.triage.skill}; ${tech.name} doesn't list that skill.`);
   else R.infos.push(`${tech.name} has ${t.triage.skill} skills.`);
@@ -743,6 +746,44 @@ function utilization(id) {
     + G.blocks.filter(b => b.tech === id && b.kind === 'job' && b.start < until).reduce((s, b) => s + b.dur, 0);
   const avail = (sick != null ? Math.max(0, sick - x.start) : x.end - x.start) || 1;
   return Math.min(100, Math.round(booked / avail * 100));
+}
+
+// "Needed by" choices for triage: every half hour from now to the end of the last day on the board.
+function dueOptions() {
+  const out = [];
+  for (let m = Math.ceil((now() + 1) / 30) * 30; m <= DAY + SHIFT_END; m += 30)
+    if (G.night || (m % DAY >= SHIFT_START && m % DAY <= SHIFT_END)) out.push([m, hm(m)]);
+  return out;
+}
+
+// A booking finishes after the "needed by" time the coordinator noted when triaging.
+const lateFor = (t, a) => !!(t && a && t.triage && t.triage.due != null && ['booked', 'working'].includes(a.state) && a.start + a.dur > t.triage.due);
+
+// How a technician's time on the board splits up between from and to: minutes on jobs (with travel),
+// on other blocks (lunch, meetings, projects), already gone unused, and still free from now on.
+function capacity(id, from, to) {
+  const sick = G.techs[id].sickAt, [h0, h1] = hoursOf(id, from);
+  const w0 = Math.max(from, h0), w1 = Math.min(to, h1, sick ?? Infinity);
+  const out = { total: Math.max(0, w1 - w0), jobs: 0, other: 0, past: 0, free: 0 };
+  const appts = G.appts.filter(a => a.tech === id && !['cancelled', 'missed'].includes(a.state)).map(busyRange);
+  const blocks = G.blocks.filter(b => b.tech === id);
+  for (let m = w0; m < w1; m += 5) {
+    if (appts.some(([s, e]) => m >= s && m < e) || blocks.some(b => b.kind === 'job' && m >= b.start && m < b.start + b.dur)) out.jobs += 5;
+    else if (blocks.some(b => m >= b.start && m < b.start + b.dur)) out.other += 5;
+    else if (m < now()) out.past += 5;
+    else out.free += 5;
+  }
+  return out;
+}
+
+function capacityStrip(id, from, to) {
+  const c = capacity(id, from, to);
+  if (!c.total) return '';
+  const pct = v => (v / c.total * 100).toFixed(1) + '%';
+  const tight = c.free < 60;
+  return `<div class="cap" title="Jobs ${mins(c.jobs)} · other blocks ${mins(c.other)} · free ${mins(c.free)}">
+      <div class="cap-bar" aria-hidden="true"><i class="c-past" style="width:${pct(c.past)}"></i><i class="c-jobs" style="width:${pct(c.jobs)}"></i><i class="c-other" style="width:${pct(c.other)}"></i></div>
+      <span class="small ${tight ? 'warn-t' : 'muted'}">${c.free ? `${mins(c.free)} free` : 'Fully booked'}</span></div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1206,6 +1247,8 @@ function banners() {
     const hit = G.appts.filter(a => a.tech === b.tech && a.state === 'booked' && a.atRisk);
     if (hit.length) out.push(`<div class="alert crit">${esc(TECHS[b.tech].name)} is off the board ${hm(b.start)}–${hm(b.start + b.dur)} (${esc(b.label.toLowerCase())}). ${hit.length} appointment${hit.length > 1 ? 's' : ''} in that time can't go ahead: ${hit.map(a => '#' + a.ticket).join(', ')}.</div>`);
   }
+  const late = G.tickets.filter(t => isOpen(t) && lateFor(t, finalAppt(t)));
+  if (late.length) out.push(`<div class="alert warn">At risk: ${late.map(t => { const a = finalAppt(t); return `<button class="kb-link" data-act="open" data-id="${t.id}">#${t.id}</button> finishes ${hm(a.start + a.dur)}, needed by ${hm(t.triage.due)}`; }).join('; ')}.</div>`);
   const done = G.tickets.filter(t => isOpen(t) && t.status === 'Completed');
   if (done.length) out.push(`<div class="alert info">Completed by technicians, waiting for you to confirm and close: ${done.map(t => '#' + t.id).join(', ')}.</div>`);
   const low = G.tickets.filter(t => t.csat && t.csat.rating <= CSAT_LOW && t.csat.followed == null);
@@ -1248,6 +1291,8 @@ function renderDispatch() {
   const pastEdge = Math.floor(now() / SLOT) * SLOT;
   // On the night shift, tonight's board is Jordan alone and Friday's is the day team.
   const ids = crew().filter(id => !G.night || !!TECHS[id].night === !day);
+  // The picked ticket's "needed by" time, drawn across every row when it falls on this board.
+  const due = t?.triage?.due != null && t.triage.due > from && t.triage.due <= to ? t.triage.due : null;
   const rows = ids.map(id => [id, TECHS[id]]).map(([id, x]) => {
     const [cls, label] = techStatus(id, day ? from : now());
     const sick = G.techs[id].sickAt;
@@ -1261,12 +1306,13 @@ function renderDispatch() {
     const appts = G.appts.filter(a => a.tech === id && a.start >= from && a.start < to && a.state !== 'cancelled').map(a => {
       const tk = ticket(a.ticket), bad = a.state === 'missed' || (a.state === 'booked' && (a.atRisk || (sick != null && a.start >= sick)));
       return (a.onsite ? `<div class="blk k-travel" style="${pos(a.start - TRAVEL_MIN, TRAVEL_MIN)}" title="Travel"><span>Travel</span></div>` : '') +
-        `<button class="appt s-${a.state} ${bad ? 'conflict' : ''} ${tk.id === G.active ? 'sel' : ''}" style="${pos(a.start, a.dur)}" data-act="appt" data-a="${a.id}" title="#${tk.id} ${esc(tk.title)} · ${hm(a.start)}–${hm((a.start + a.dur) % DAY)}${a.state === 'booked' ? ' · drag to reschedule' : ''}">
+        `<button class="appt s-${a.state} ${bad ? 'conflict' : lateFor(tk, a) ? 'late' : ''} ${tk.id === G.active ? 'sel' : ''}" style="${pos(a.start, a.dur)}" data-act="appt" data-a="${a.id}" title="#${tk.id} ${esc(tk.title)} · ${hm(a.start)}–${hm((a.start + a.dur) % DAY)}${lateFor(tk, a) ? ` · ends after its needed-by time (${hm(tk.triage.due)})` : ''}${a.state === 'booked' ? ' · drag to reschedule' : ''}">
           <b>#${tk.id}</b> <span>${esc(client(tk).name)}</span></button>`;
     }).join('');
     return `<div class="drow"><div class="dtech"><b>${esc(x.name)}</b><div class="muted small">${esc(x.role)}</div><div class="small"><span class="dot ${cls}"></span>${esc(label)}</div>
+        ${capacityStrip(id, from, to)}
         <div class="skills">${x.skills.map(s => `<span class="sk ${t && t.triage?.skill === s ? 'hit' : ''}">${s}</span>`).join('')}</div></div>
-      <div class="dtrack" data-tech="${id}">${cells}${blocks}${appts}${!day ? `<div class="nowline" style="left:${nowPct()}%"></div>` : ''}</div></div>`;
+      <div class="dtrack" data-tech="${id}">${cells}${blocks}${appts}${!day ? `<div class="nowline" style="left:${nowPct()}%"></div>` : ''}${due != null ? `<div class="dueline" style="left:${(due - from) / span * 100}%" title="#${t.id} needed by ${hm(due)}"></div>` : ''}</div></div>`;
   }).join('');
   const hours = [];
   // A 15-hour night gets a label every two hours, without the day prefix, so they don't collide.
@@ -1275,13 +1321,13 @@ function renderDispatch() {
   const waiting = G.tickets.filter(needsScheduling);
   return `<div class="view-head"><h2>Dispatch Board</h2>
       <div class="seg">${(G.night ? [[0, 'Tonight (on call)'], [DAY, 'Friday (day team)']] : G.start >= DAY ? [[0, 'Today (Fri)']] : [[0, 'Today (Thu)'], [DAY, 'Tomorrow (Fri)']]).map(([d, l]) => `<button class="${G.day === d ? 'on' : ''}" data-act="day" data-d="${d}">${l}</button>`).join('')}</div></div>
-    ${t ? `<div class="picking"><div><b>Scheduling #${t.id}</b> · ${esc(t.title)}<div class="muted small">${esc(client(t).name)}${t.triage ? ` · ${t.triage.priority} · needs ${esc(t.triage.skill)} · ${t.triage.onsite ? 'onsite' : 'remote'} · ${mins(t.triage.est)}` : ' · not triaged yet'}. Click a free slot on the board.</div></div><button class="btn sm" data-act="unpick">Cancel</button></div>`
+    ${t ? `<div class="picking"><div><b>Scheduling #${t.id}</b> · ${esc(t.title)}<div class="muted small">${esc(client(t).name)}${t.triage ? ` · ${t.triage.priority} · needs ${esc(t.triage.skill)} · ${t.triage.onsite ? 'onsite' : 'remote'} · ${mins(t.triage.est)}${t.triage.due != null ? ` · <b>needed by ${hm(t.triage.due)}</b>` : ''}` : ' · not triaged yet'}. Click a free slot on the board.</div></div><button class="btn sm" data-act="unpick">Cancel</button></div>`
       : `<p class="hint">Pick a ticket below (or press "Schedule" on a ticket), then click a free slot. Grey hatching is outside working hours. Soft blocks (lunch, meetings, projects) can be bumped at a cost; jobs and travel can't. Drag a booked appointment to move it to another time or technician.</p>`}
     ${banners()}
     <div class="card dscroll"><div class="dboard">
       <div class="drow dhead"><div class="dtech"></div><div class="dtrack hours">${hours.join('')}</div></div>
       ${rows}</div></div>
-    <div class="legend muted small"><span><i class="swatch k-ticket"></i>Ticket</span><span><i class="swatch k-lunch"></i>Lunch</span><span><i class="swatch k-meeting"></i>Meeting / project</span><span><i class="swatch k-travel"></i>Travel</span><span><i class="swatch k-job"></i>Existing job</span><span><i class="swatch k-out"></i>Off the board</span><span><i class="swatch k-conflict"></i>Conflict</span></div>
+    <div class="legend muted small"><span><i class="swatch k-ticket"></i>Ticket</span><span><i class="swatch k-lunch"></i>Lunch</span><span><i class="swatch k-meeting"></i>Meeting / project</span><span><i class="swatch k-travel"></i>Travel</span><span><i class="swatch k-job"></i>Existing job</span><span><i class="swatch k-out"></i>Off the board</span><span><i class="swatch k-conflict"></i>Conflict</span><span><i class="swatch k-late"></i>Ends after needed-by</span><span>Bar under each name: jobs, other blocks, free time</span></div>
     <h4>Needs scheduling (${waiting.length})</h4>
     <div class="card">${waiting.length ? `<table class="tbl"><tbody>${waiting.map(w => `<tr class="${G.pick === w.id ? 'sel' : ''}"><td>${prioBadge(w.triage.priority)}</td><td><div class="tid">#${w.id}</div><div class="ttl">${esc(w.title)}</div></td><td>${esc(client(w).name)}</td><td class="small">${esc(w.triage.skill)} · ${w.triage.onsite ? 'onsite' : 'remote'} · ${mins(w.triage.est)}</td><td class="right"><button class="btn sm ${G.pick === w.id ? 'primary' : ''}" data-act="pick" data-id="${w.id}">${G.pick === w.id ? 'Picked' : 'Pick'}</button></td></tr>`).join('')}</tbody></table>`
       : '<div class="empty muted pad">Nothing waiting. Tickets appear here once they\'re triaged and need a technician.</div>'}</div>`;
@@ -1350,7 +1396,7 @@ function renderActions(t) {
   const c = client(t), d = k => G.drafts[`tri-${t.id}-${k}`];
   if (d('board') === undefined) {
     const tr = t.triage || {};
-    Object.assign(G.drafts, { [`tri-${t.id}-board`]: tr.board || '', [`tri-${t.id}-imp`]: '', [`tri-${t.id}-urg`]: '', [`tri-${t.id}-pri`]: tr.priority || '', [`tri-${t.id}-skill`]: tr.skill || '', [`tri-${t.id}-where`]: tr.onsite == null ? '' : tr.onsite ? 'onsite' : 'remote', [`tri-${t.id}-est`]: tr.est ? String(tr.est) : '' });
+    Object.assign(G.drafts, { [`tri-${t.id}-board`]: tr.board || '', [`tri-${t.id}-imp`]: '', [`tri-${t.id}-urg`]: '', [`tri-${t.id}-pri`]: tr.priority || '', [`tri-${t.id}-skill`]: tr.skill || '', [`tri-${t.id}-where`]: tr.onsite == null ? '' : tr.onsite ? 'onsite' : 'remote', [`tri-${t.id}-est`]: tr.est ? String(tr.est) : '', [`tri-${t.id}-due`]: tr.due != null ? String(tr.due) : '' });
   }
   const sel = (k, opts, ph, live) => `<select id="d-tri-${t.id}-${k}" data-draft="tri-${t.id}-${k}" ${live ? 'data-live="1"' : ''}><option value="">${ph}</option>${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(d(k)) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
   const opt = xs => xs.map(x => [x, x]);
@@ -1362,6 +1408,7 @@ function renderActions(t) {
       <label class="field"><span>Skill needed</span>${sel('skill', opt(SKILLS), 'Choose…')}</label>
       <label class="field"><span>Work type</span>${sel('where', [['remote', 'Remote'], ['onsite', 'Onsite visit']], 'Choose…')}</label>
       <label class="field"><span>Estimate</span>${sel('est', ESTIMATES.map(x => [x, mins(x)]), 'Choose…')}</label>
+      <label class="field"><span>Needed by <em class="muted">(optional)</em></span>${sel('due', dueOptions(), 'No deadline')}</label>
     </div><button class="btn primary sm" data-act="triage">${t.triage ? 'Update triage' : 'Save triage'}</button>`;
 
   const tpl = G.drafts['tpl-' + t.id] || 'ack';
