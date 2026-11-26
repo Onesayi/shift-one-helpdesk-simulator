@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+New: **Motion that tells you something**, built on [Anime.js](https://animejs.com) v4.4.1 (MIT).
+
+- New tickets slide into the queue with a short highlight, on both the Help Desk queue and the Service Board. Tickets already waiting when the shift starts don't animate.
+- SLA and first-response timers now have a bar under the time that empties as the target runs out. It turns amber with a quarter of the target left (at least 1 minute in Help Desk, 10 in Service Coordinator) and red at breach, and the timer shakes once when it breaches.
+- Dispatch Board drag: the job lifts when picked up, the drop outline glides between slots, and on release the job snaps into the new slot (or back where it was) before the Schedule dialog opens.
+- All of it is skipped when the device asks for reduced motion, or if Anime.js fails to load. Anime.js is saved in the repo at `js/vendor/anime.umd.min.js` so the Content-Security-Policy stays `script-src 'self'`. The motion code is in `js/fx.js`, with tests in `tests/motion/`.
+
 New: **Security pass against a 20-point website checklist** ([docs/SECURITY.md](docs/SECURITY.md)).
 
 - Both pages now carry a Content-Security-Policy: only the site's own script files run, so injected code is blocked.

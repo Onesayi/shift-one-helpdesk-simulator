@@ -876,6 +876,11 @@ function renderDom() {
   $('#ticketpanel').innerHTML = renderTicketPanel();
   $('#modal-root').innerHTML = renderModal();
   $('#main').scrollTop = mainScroll;
+  if (typeof FX !== 'undefined') {
+    const fresh = FX.fresh(G, G.tickets.map(t => t.id));
+    FX.arrive([...document.querySelectorAll('#main tr[data-id]')].filter(r => fresh.has(r.dataset.id)));
+    FX.breach(G, document.querySelectorAll('.sla.breach[data-sla]'));
+  }
 
   const th = $('#thread');
   if (th) th.scrollTop = th.scrollHeight;
@@ -972,8 +977,10 @@ const statusBadge = s => `<span class="status s-${s.toLowerCase()}">${s}</span>`
 function slaCell(t) {
   if (t.result) return `<span class="muted">${t.result.score}/100</span>`;
   if (G.mode === 'practice') return '<span class="muted">–</span>';
-  const l = slaLeft(t);
-  return `<span data-sla="${t.id}" class="sla ${l < 0 ? 'breach' : l < 60 ? 'soon' : ''}">${fmt(l)}</span>`;
+  const l = slaLeft(t), target = SLA_SEC[t.priority];
+  // Amber with a quarter of the target left (never less than a minute's warning), red once breached.
+  const cls = l < 0 ? 'breach' : l < Math.max(60, target / 4) ? 'soon' : '';
+  return `<span data-sla="${t.id}" class="sla ${cls}">${fmt(l)}<i class="sla-bar" aria-hidden="true"><i style="width:${Math.round(Math.max(0, Math.min(1, l / target)) * 100)}%"></i></i></span>`;
 }
 
 function renderQueue() {
@@ -1553,12 +1560,8 @@ setInterval(() => {
     const t = ticket(el.dataset.hold);
     if (t.call === 'hold') el.textContent = `${fmt(now() - t.holdSince)}${G.mode === 'shift' ? ` · hangs up at ${fmt(HOLD_MAX)}` : ''}`;
   });
-  document.querySelectorAll('[data-sla]').forEach(el => {
-    const t = ticket(el.dataset.sla);
-    const l = slaLeft(t);
-    el.textContent = fmt(l);
-    el.className = 'sla ' + (l < 0 ? 'breach' : l < 60 ? 'soon' : '');
-  });
+  document.querySelectorAll('[data-sla]').forEach(el => { el.outerHTML = slaCell(ticket(el.dataset.sla)); });
+  if (typeof FX !== 'undefined') FX.breach(G, document.querySelectorAll('.sla.breach[data-sla]'));
   if (G.w.outageUntil && !outage()) { G.w.outageUntil = 0; render(); }
 }, 1000);
 
