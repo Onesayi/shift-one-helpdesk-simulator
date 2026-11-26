@@ -1465,8 +1465,8 @@ function renderStart() {
   const hdg = CLIENTS.hdg, approvers = Object.values(hdg.contacts).filter(c => c.auth).map(c => c.name);
   return `<div class="start landing">
     <div class="l-hero">
-      <div class="l-pitch"><div class="l-badge"><span>Dispatch desk</span>Northbound IT · Managed services</div>
-        <h1>Five techs. Five clients. <em>One</em> of you.</h1>
+      <div class="l-pitch">
+        <h1>Five techs. Five clients. One of you.</h1>
         <p class="l-lede">You're the service coordinator at <b>Northbound IT</b>. Calls ring, alerts fire and clients email. You triage every ticket, keep clients updated, chase approvals and vendors, and put the <b>right technician on the right job</b> at the right time. The technicians do the work. How it goes depends on who you sent.</p></div>
       ${Landing.queue({ key: 'dispatch', heading: 'Service board · New', items, foot: 'Every ticket here is in the game. Triage is up to you.',
         call: call && { who: `Incoming call: ${who(call)}`, sub: call.title } })}
