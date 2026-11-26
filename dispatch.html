@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Content-Security-Policy: only this site's own scripts run. Keep in step with tools/deploy/security-headers.conf (see docs/SECURITY.md). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Shift One · Service Coordinator</title>
   <meta name="description" content="A browser-based MSP service coordinator simulator: triage tickets, answer calls, and dispatch the right technician at the right time.">
   <meta property="og:title" content="Shift One · Service Coordinator Simulator">

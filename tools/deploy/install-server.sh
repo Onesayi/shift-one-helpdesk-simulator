@@ -35,6 +35,8 @@ fi
 
 if [ "$mode" = nginx ]; then
   command -v nginx >/dev/null || { apt-get update -q && apt-get install -y -q nginx-light; }
+  mkdir -p /etc/nginx/snippets
+  install -m 644 "$here/security-headers.conf" /etc/nginx/snippets/shift-one-security.conf
   sed -e "s|__PORT__|$port|g" -e "s|__ROOT__|$root|g" "$here/shift-one.nginx.conf" > /etc/nginx/sites-available/shift-one
   ln -sfn /etc/nginx/sites-available/shift-one /etc/nginx/sites-enabled/shift-one
   # nginx's stock welcome site isn't needed (Library of Code proxies to our port, not 80), and its

@@ -472,7 +472,7 @@ function assessCard(x, i, a) {
   if (x.kind === 'mcq') {
     return `<div class="card pad prep-q" id="as-${x.id}">${head}
       <div class="mcq" role="radiogroup">${Object.entries(x.opts).map(([k, o]) => `<label class="mcq-opt ${v ? (k === x.a ? 'is-right' : k === v ? 'is-wrong' : '') : ''}"><input type="radio" name="as-${x.id}" value="${k}" data-mcq="${x.id}" ${v === k ? 'checked' : ''}><b>${k}</b><span>${esc(o)}</span></label>`).join('')}</div>
-      ${v ? `<div class="mcq-why ${v === x.a ? 'ok' : 'bad'}"><b>${v === x.a ? 'Right.' : `Not quite: it's ${x.a}.`}</b> ${esc(x.why[x.a])}${v !== x.a ? `<br><span class="muted">${v}: ${esc(x.why[v])}</span>` : ''}</div>
+      ${v ? `<div class="mcq-why ${v === x.a ? 'ok' : 'bad'}"><b>${v === x.a ? 'Right.' : `Not quite: it's ${x.a}.`}</b> ${esc(x.why[x.a])}${v !== x.a ? `<br><span class="muted">${esc(v)}: ${esc(x.why[v])}</span>` : ''}</div>
       <details class="close-box"><summary>Why each option is right or wrong</summary><ul class="small">${Object.keys(x.opts).map(k => `<li><b>${k}.</b> ${esc(x.why[k])}</li>`).join('')}</ul></details>` : ''}
     </div>`;
   }
