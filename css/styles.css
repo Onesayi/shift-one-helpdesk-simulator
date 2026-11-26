@@ -133,6 +133,15 @@ textarea { resize: vertical; }
 .sla { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; }
 .sla.soon { color: var(--warn); }
 .sla.breach { color: var(--bad); }
+.sla[data-sla], .sla[data-resp] { display: inline-grid; gap: 3px; min-width: 3.5em; }
+.sla-bar { display: block; height: 3px; background: var(--border); border-radius: 1px; overflow: hidden; }
+.sla-bar > i { display: block; height: 100%; background: var(--good); }
+.sla.soon .sla-bar > i { background: var(--warn); }
+.sla.breach .sla-bar > i { background: var(--bad); }
+/* A ticket that has just arrived carries a short highlight (js/fx.js adds and removes the class). */
+tr.fx-new > td { animation: fx-new 1.6s ease-out; }
+@keyframes fx-new { from { background: var(--accent-soft); } }
+@media (prefers-reduced-motion: reduce) { tr.fx-new > td { animation: none; } }
 .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: var(--radius-card); margin-left: 4px; vertical-align: middle; }
 .chip.bad { background: var(--bad-soft); color: var(--bad); }
 .chip.warn { background: var(--warn-soft); color: var(--warn); }

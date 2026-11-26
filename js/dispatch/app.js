@@ -1108,6 +1108,11 @@ function renderDom() {
   $('#ticketpanel').innerHTML = renderTicketPanel();
   $('#modal-root').innerHTML = renderModal();
   $('#call-root').innerHTML = renderCall();
+  if (typeof FX !== 'undefined') {
+    const fresh = FX.fresh(G, G.tickets.map(t => t.id));
+    FX.arrive([...document.querySelectorAll('#main tr[data-id]')].filter(r => fresh.has(r.dataset.id)));
+    FX.breach(G, document.querySelectorAll('.sla.breach[data-resp]'));
+  }
   $('#main').scrollTop = mainScroll;
   if (dScroll != null && $('.dscroll')) $('.dscroll').scrollLeft = dScroll;
   const th = $('#thread');
@@ -1124,6 +1129,7 @@ function liveUpdate() {
   const c = $('#clock');
   if (c) c.textContent = hm(now());
   document.querySelectorAll('[data-resp]').forEach(el => { const t = ticket(el.dataset.resp); if (t) el.outerHTML = respCell(t); });
+  if (typeof FX !== 'undefined') FX.breach(G, document.querySelectorAll('.sla.breach[data-resp]'));
   document.querySelectorAll('.nowline').forEach(el => { el.style.left = nowPct() + '%'; });
   const r = $('#ring-left');
   if (r && G.ring) r.textContent = `${G.ring.until - now()} min to voicemail`;
@@ -1172,9 +1178,13 @@ function respCell(t) {
   if (t.closed) return '<span class="bad-t" data-resp="' + t.id + '">none</span>';
   const age = now() - t.arrived;
   if (!t.triage) return `<span class="sla ${age > 15 ? 'soon' : ''}" data-resp="${t.id}" title="Waiting for a first response">${age}m</span>`;
-  const left = t.arrived + SLA[client(t).sla][t.triage.priority] - now();
-  return `<span class="sla ${left < 0 ? 'breach' : left < 10 ? 'soon' : ''}" data-resp="${t.id}" title="Minutes left to respond">${left}m</span>`;
+  const target = SLA[client(t).sla][t.triage.priority], left = t.arrived + target - now();
+  // Amber with a quarter of the target left (never less than 10 minutes' warning), red once breached.
+  const cls = left < 0 ? 'breach' : left < Math.max(10, target / 4) ? 'soon' : '';
+  return `<span class="sla ${cls}" data-resp="${t.id}" title="Minutes left to respond">${left}m${slaBar(left / target)}</span>`;
 }
+// The share of the response target still left, as a bar that drains under the minutes.
+const slaBar = f => `<i class="sla-bar" aria-hidden="true"><i style="width:${Math.round(Math.max(0, Math.min(1, f)) * 100)}%"></i></i>`;
 
 function needsScheduling(t) {
   if (!isOpen(t) || !t.triage) return false;
@@ -1845,31 +1855,37 @@ document.addEventListener('pointermove', e => {
     const g = DRAG.ghost = DRAG.el.cloneNode(true);
     g.className += ' drag-ghost';
     g.removeAttribute('data-act');
-    Object.assign(g.style, { left: '0', top: '0', width: DRAG.w + 'px', height: DRAG.h + 'px' });
+    Object.assign(g.style, { width: DRAG.w + 'px', height: DRAG.h + 'px' });
     document.body.appendChild(g);
+    if (typeof FX !== 'undefined') FX.lift(g);
     DRAG.el.classList.add('dragging');
     document.body.classList.add('appt-dragging');
   }
   e.preventDefault();
-  DRAG.ghost.style.transform = `translate(${e.clientX - DRAG.dx}px, ${e.clientY - DRAG.dy}px)`;
+  Object.assign(DRAG.ghost.style, { left: e.clientX - DRAG.dx + 'px', top: e.clientY - DRAG.dy + 'px' });
   const at = dragTarget(e.clientX, e.clientY);
   if (!at) { DRAG.mark?.remove(); DRAG.mark = null; return; }
   if (!DRAG.mark) { DRAG.mark = document.createElement('div'); DRAG.mark.className = 'drop-mark'; }
   if (DRAG.mark.parentNode !== at.track) at.track.appendChild(DRAG.mark);
   const a = G.appts.find(x => x.id === DRAG.id);
-  Object.assign(DRAG.mark.style, { left: (at.start - DRAG.from) / DRAG.span * 100 + '%', width: (a ? a.dur : SLOT) / DRAG.span * 100 + '%' });
+  const left = (at.start - DRAG.from) / DRAG.span * 100 + '%';
+  DRAG.mark.style.width = (a ? a.dur : SLOT) / DRAG.span * 100 + '%';
+  if (typeof FX !== 'undefined') FX.glide(DRAG.mark, left); else DRAG.mark.style.left = left;
   DRAG.mark.textContent = hm(at.start);
 });
 document.addEventListener('pointerup', e => {
   if (!DRAG) return;
   if (!DRAG.on) { DRAG = null; return; }
   const at = dragTarget(e.clientX, e.clientY), id = DRAG.id;
+  // The copy springs into the drop outline, or back to where the job was, then the move goes ahead.
+  const ghost = DRAG.ghost, home = (at && DRAG.mark ? DRAG.mark : DRAG.el).getBoundingClientRect();
+  DRAG.ghost = null;
   dragEnd();
   // The browser follows a drag with a click on whatever is under the pointer; don't open it.
   DRAG_CLICK = true;
   setTimeout(() => { DRAG_CLICK = false; }, 0);
-  if (at) rescheduleTo(id, at.tech, at.start);
-  render();
+  const go = () => { if (at && G && G.phase === 'play') rescheduleTo(id, at.tech, at.start); render(); };
+  if (typeof FX !== 'undefined') FX.settle(ghost, home, go); else { ghost.remove(); go(); }
 });
 document.addEventListener('pointercancel', () => { if (DRAG?.on) { dragEnd(); render(); } else DRAG = null; });
 document.addEventListener('click', e => { if (DRAG_CLICK) { e.stopPropagation(); e.preventDefault(); DRAG_CLICK = false; } }, true);
