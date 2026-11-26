@@ -1253,8 +1253,8 @@ function renderStart() {
   }).join('');
   return `<div class="start landing">
     <div class="l-hero">
-      <div class="l-pitch"><div class="l-badge"><span>New starter</span>${esc(WORLD.company)} · Service desk</div>
-        <h1>Your queue is <em>already</em> filling up.</h1>
+      <div class="l-pitch">
+        <h1>Your queue is already filling up.</h1>
         <p class="l-lede">You're the new service desk technician at <b>${esc(WORLD.company)}</b>. Work real tickets with a directory, remote desktop, a command prompt and a server room. Some callers aren't who they say they are. You're graded on <b>what actually changed</b>, how safely you did it, and how fast.</p></div>
       ${Landing.queue({ key: 'tier1', heading: 'My queue · Service Desk', items, foot: 'Every ticket here is in the game.',
         call: call && { who: `Incoming call: ${who(call.requester)}`, sub: call.title } })}

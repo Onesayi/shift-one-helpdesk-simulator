@@ -311,7 +311,7 @@ textarea { resize: vertical; }
 .hero .kb-link + .kb-link { margin-top: 4px; }
 a.kb-link { text-decoration: none; }
 a.kb-link:hover { text-decoration: underline; }
-.coach-cta { display: flex; align-items: center; gap: 16px; justify-content: space-between; border-left: 4px solid var(--accent); }
+.coach-cta { display: flex; align-items: center; gap: 16px; justify-content: space-between; }
 
 /* ---------- Phone calls (shared by help desk and coordinator modes) ---------- */
 .warn-t { color: var(--warn); }

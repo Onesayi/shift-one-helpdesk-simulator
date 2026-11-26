@@ -24,7 +24,7 @@
 
 <p align="center"><img src="docs/demo.gif" alt="Demo: verifying a user, unlocking their account and closing the ticket with 100/100" width="88%"></p>
 
-## 💡 Why this exists
+## Why this exists
 
 Most IT support training is multiple choice. Real help desks aren't. The hard parts are *judgement* calls:
 
@@ -37,22 +37,22 @@ Most IT support training is multiple choice. Real help desks aren't. The hard pa
 
 I built it to sharpen my own help desk skills, and I use it to tutor students preparing for their first IT support role.
 
-## ✨ Features
+## Features
 
 | | |
 |---|---|
-| 🎫 **Ticket queue** | Priorities, live SLA countdowns, requester chat with scripted questions or your own typed words (ask them to "try again" and they only confirm if it's really fixed), categories, resolution notes, resolve, escalate to the right team, **or link duplicates** to a parent incident |
-| 📞 **Live phone calls** | Calls ring in real time and go to voicemail if missed. Answering a second call puts the first on hold, and callers hang up after 45 seconds. Busy with something urgent? Promise a callback within 5 minutes, then keep it. You can only ask questions or verify identity while the caller is on the line |
-| 👥 **Directory** | Active Directory-style user management: reset password (with *must change* / *unlock* options), unlock, reset MFA, sign out sessions, disable, group membership, profile edits, **identity verification by one-time code**, lockout source, recent sign-ins and an audit trail of recent changes |
-| 🖥️ **Remote desktop** | Consent-based sessions with a live screen preview, installed apps, Windows services, time zone + DNS settings, **network isolation** for compromised devices |
+| **Ticket queue** | Priorities, live SLA countdowns, requester chat with scripted questions or your own typed words (ask them to "try again" and they only confirm if it's really fixed), categories, resolution notes, resolve, escalate to the right team, **or link duplicates** to a parent incident |
+| **Live phone calls** | Calls ring in real time and go to voicemail if missed. Answering a second call puts the first on hold, and callers hang up after 45 seconds. Busy with something urgent? Promise a callback within 5 minutes, then keep it. You can only ask questions or verify identity while the caller is on the line |
+| **Directory** | Active Directory-style user management: reset password (with *must change* / *unlock* options), unlock, reset MFA, sign out sessions, disable, group membership, profile edits, **identity verification by one-time code**, lockout source, recent sign-ins and an audit trail of recent changes |
+| **Remote desktop** | Consent-based sessions with a live screen preview, installed apps, Windows services, time zone + DNS settings, **network isolation** for compromised devices |
 | ⌨️ **Command prompt** | A working CLI: `ipconfig /all`, `nslookup`, `ping`, `tzutil`, `tasklist`, `taskkill`, `sc query`, `net start`, `netsh`, `gpupdate`, command history with ↑/↓ |
-| 🗄️ **Server room** | Alerts, network topology, access points (reboot vs PoE power-cycle), switches, core router, a carrier WAN circuit with line test, servers, their services and disk contents |
-| 📚 **Knowledge base** | 20 SOP articles written like a real internal wiki |
-| 📊 **Shift report** | Letter grade, per-ticket breakdown of what you did well and what cost points, call stats, "collateral damage" section |
+| **Server room** | Alerts, network topology, access points (reboot vs PoE power-cycle), switches, core router, a carrier WAN circuit with line test, servers, their services and disk contents |
+| **Knowledge base** | 20 SOP articles written like a real internal wiki |
+| **Shift report** | Letter grade, per-ticket breakdown of what you did well and what cost points, call stats, "collateral damage" section |
 | ⏱️ **Two shifts, two modes** | Shift 1 *Day One* (11 tickets) and Shift 2 *Phones On* (9 harder tickets, mostly calls), each timed or untimed practice |
-| 🌗 **Polish** | Light/dark theme, fully responsive, keyboard-friendly, zero dependencies |
+| **Polish** | Light/dark theme, fully responsive, keyboard-friendly, zero dependencies |
 
-## 📞 New: Shift 2, Phones On
+## New: Shift 2, Phones On
 
 **The harder help desk shift.** Nine new tickets, seven of them live phone calls, and most can't be fixed by the first thing you try. Calls ring while you're working other tickets, so you juggle holds, call back voicemails, and still have to find the real root cause.
 
@@ -73,38 +73,38 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 
 | # | Ticket | Channel | Skill it tests |
 |---|---|---|---|
-| 1 | Locked out for the third time today | 📞 Call | Root cause: the old password is still saved in his phone's Mail app. Unlock without fixing it and he locks again |
+| 1 | Locked out for the third time today | Call | Root cause: the old password is still saved in his phone's Mail app. Unlock without fixing it and he locks again |
 | 2 | All my files end in .locked | Portal | Ransomware first response: isolate fast, don't restart, escalate to Security |
-| 3 | VPN won't connect from home | 📞 Call | Reading the error, the audit trail, and restoring access only after verifying the caller |
-| 4 | "IT" called and asked me to approve a sign-in | 📞 Call | MFA fatigue: reset the password, end sessions, **reset MFA**, escalate |
-| 5–6 | Nothing works at the Denver office (×2 callers) | 📞 Calls | Major incident: line test, one escalation, link the duplicate |
+| 3 | VPN won't connect from home | Call | Reading the error, the audit trail, and restoring access only after verifying the caller |
+| 4 | "IT" called and asked me to approve a sign-in | Call | MFA fatigue: reset the password, end sessions, **reset MFA**, escalate |
+| 5–6 | Nothing works at the Denver office (×2 callers) | Calls | Major incident: line test, one escalation, link the duplicate |
 | 7 | "Not enough space" on the Marketing drive | Portal | Following a runbook exactly: what you may delete, and what you must never delete |
-| 8 | Needs admin rights NOW for a client demo | 📞 Call | De-escalating an angry caller and solving the real need without admin rights |
-| 9 | Reset a colleague's password so I can read her email | 📞 Call | Saying no to account sharing, and offering the proper route |
+| 8 | Needs admin rights NOW for a client demo | Call | De-escalating an angry caller and solving the real need without admin rights |
+| 9 | Reset a colleague's password so I can read her email | Call | Saying no to account sharing, and offering the proper route |
 
-## 🗓️ New: Service Coordinator mode
+## New: Service Coordinator mode
 
 **Run the dispatch desk at a managed service provider.** A second simulator ([`dispatch.html`](dispatch.html)) puts you in the MSP service coordinator's seat, the remote role that MSP staffing firms like Support Adventure place with MSPs. You don't fix tickets. You triage them, answer the phones, keep clients inside their SLAs, chase approvals and vendors, and put the right technician on the right job at the right time.
 
 | | |
 |---|---|
-| 🏢 **Northbound IT** | A fictional MSP with 5 technicians (Tier 1 to Tier 3, a field tech, a remote engineer in Cape Town) and 5 clients on premium, standard, co-managed and block-hours agreements |
-| 📞 **Live phones** | Calls ring on a sim clock. Miss one and it becomes a voicemail and an unhappy client |
-| 🧭 **Triage** | Impact × urgency matrix, boards, skills, remote vs onsite, estimates, plus overrides for security incidents and backups |
-| 🗓️ **Dispatch Board** | Today and tomorrow for every tech: lunch, meetings, project time, travel, existing jobs. It blocks double-booking and warns about skills, onsite windows, block hours and approvals |
-| 🧑‍🔧 **Simulated technicians** | Booked work runs itself. The wrong skills bounce back, P1s can pull a tech off other work, and a tech goes home sick mid-morning. Random shifts add more: a van breaks down, an internal outage takes an engineer away, or a client asks to move their appointment |
-| 🤝 **Coordination** | Client message templates, authorized-contact approvals, Service Manager and Account Manager escalations, ISP and RMA vendor cases, merging duplicates, closing with a reason |
-| 🧾 **Time entries** | Every finished job leaves a time entry. Code it covered, billable or block hours by the client's agreement, and watch prepaid blocks run down |
-| 📅 **Campaign** | Thursday's day shift, the on-call night, then Friday, on one clock. Open work carries over, your handover is your only briefing, and each ticket is graded once, when it's finished |
-| 🌃 **After-hours on-call** | Cover the desk from 17:00 to 08:00 with one engineer. Decide what's worth waking them for, put the rest on Friday's board, and hand over to the day coordinator at 08:00 |
-| ⭐ **Client satisfaction** | Resolved tickets get a 1–5 survey that scores how you handled them: late replies, chasers and missed updates all cost stars. Reply to anything 3 or under, and watch your CSAT on the report |
-| 😠 **Complaints** | Every seeded shift has an angry VIP on the phone. Apologise and give a plan, bring in the Service Manager and Account Manager, and give the repeat fault to someone senior. Leave a low survey score unanswered for an hour and the client complains over your head |
-| 🚨 **Major incident** | Microsoft 365 goes down for four clients at once. Declare a major incident, link every client's ticket to it, send updates that reach them all every 30 minutes, keep the rest of the desk running, then write the post-incident review |
-| 📭 **Exchange Online outage** | Based on the real Microsoft 365 outage of 12–13 Nov 2026: Outlook can't reach any mailbox, Microsoft has no ETA and its first recovery falls over. Run it as one incident, stop clients reinstalling Office, don't call it fixed too early, and spot the fake "Microsoft support" call |
-| 🎯 **Skill drills** | Seven short practice rounds, one skill each (triage, alerts, approvals, onsite windows, P1s, complaints, technical support). The report suggests the one you need most |
-| 💬 **Interview prep** | In both modes. The help desk page has 11 Tier 1 questions, each linked to the ticket that practises it ([`index.html#prep`](index.html#prep)); the coordinator page has 11 questions MSPs ask service coordinators. Write your answer, watch it tick off the key points, compare it with a model answer, then practise that skill in a drill ([`dispatch.html#prep`](dispatch.html#prep)). A second tab practises an L1 technical support skills test: a Zendesk and HTTP quiz, plus written tasks (chat reply, triage, troubleshooting, client emails, escalation note) checked for key points, traps and length ([`dispatch.html#assess`](dispatch.html#assess)) |
-| 🌙 **Shift handover** | At 17:00 you brief the on-call engineer: flag the open P1/P2s, pending vendor cases and approvals, and anything nobody owns, each with a next step. It's graded like one more ticket |
-| 📈 **KPI report** | Time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches and technician utilization, plus per-ticket feedback explaining the right call |
+| **Northbound IT** | A fictional MSP with 5 technicians (Tier 1 to Tier 3, a field tech, a remote engineer in Cape Town) and 5 clients on premium, standard, co-managed and block-hours agreements |
+| **Live phones** | Calls ring on a sim clock. Miss one and it becomes a voicemail and an unhappy client |
+| **Triage** | Impact × urgency matrix, boards, skills, remote vs onsite, estimates, plus overrides for security incidents and backups |
+| **Dispatch Board** | Today and tomorrow for every tech: lunch, meetings, project time, travel, existing jobs. It blocks double-booking and warns about skills, onsite windows, block hours and approvals |
+| **Simulated technicians** | Booked work runs itself. The wrong skills bounce back, P1s can pull a tech off other work, and a tech goes home sick mid-morning. Random shifts add more: a van breaks down, an internal outage takes an engineer away, or a client asks to move their appointment |
+| **Coordination** | Client message templates, authorized-contact approvals, Service Manager and Account Manager escalations, ISP and RMA vendor cases, merging duplicates, closing with a reason |
+| **Time entries** | Every finished job leaves a time entry. Code it covered, billable or block hours by the client's agreement, and watch prepaid blocks run down |
+| **Campaign** | Thursday's day shift, the on-call night, then Friday, on one clock. Open work carries over, your handover is your only briefing, and each ticket is graded once, when it's finished |
+| **After-hours on-call** | Cover the desk from 17:00 to 08:00 with one engineer. Decide what's worth waking them for, put the rest on Friday's board, and hand over to the day coordinator at 08:00 |
+| **Client satisfaction** | Resolved tickets get a 1–5 survey that scores how you handled them: late replies, chasers and missed updates all cost stars. Reply to anything 3 or under, and watch your CSAT on the report |
+| **Complaints** | Every seeded shift has an angry VIP on the phone. Apologise and give a plan, bring in the Service Manager and Account Manager, and give the repeat fault to someone senior. Leave a low survey score unanswered for an hour and the client complains over your head |
+| **Major incident** | Microsoft 365 goes down for four clients at once. Declare a major incident, link every client's ticket to it, send updates that reach them all every 30 minutes, keep the rest of the desk running, then write the post-incident review |
+| **Exchange Online outage** | Based on the real Microsoft 365 outage of 12–13 Nov 2026: Outlook can't reach any mailbox, Microsoft has no ETA and its first recovery falls over. Run it as one incident, stop clients reinstalling Office, don't call it fixed too early, and spot the fake "Microsoft support" call |
+| **Skill drills** | Seven short practice rounds, one skill each (triage, alerts, approvals, onsite windows, P1s, complaints, technical support). The report suggests the one you need most |
+| **Interview prep** | In both modes. The help desk page has 11 Tier 1 questions, each linked to the ticket that practises it ([`index.html#prep`](index.html#prep)); the coordinator page has 11 questions MSPs ask service coordinators. Write your answer, watch it tick off the key points, compare it with a model answer, then practise that skill in a drill ([`dispatch.html#prep`](dispatch.html#prep)). A second tab practises an L1 technical support skills test: a Zendesk and HTTP quiz, plus written tasks (chat reply, triage, troubleshooting, client emails, escalation note) checked for key points, traps and length ([`dispatch.html#assess`](dispatch.html#assess)) |
+| **Shift handover** | At 17:00 you brief the on-call engineer: flag the open P1/P2s, pending vendor cases and approvals, and anything nobody owns, each with a next step. It's graded like one more ticket |
+| **KPI report** | Time to triage, first response in SLA, missed calls, client chasers, wrong-tech dispatches and technician utilization, plus per-ticket feedback explaining the right call |
 
 <table>
 <tr>
@@ -119,7 +119,7 @@ I built it to sharpen my own help desk skills, and I use it to tutor students pr
 
 Every shift draws 16–18 tickets from a pool of 25 and shuffles when they arrive, so no two shifts play the same. Each shift has a short code you can type in to replay it (or share it with a tutor), and the code `classic` gives the original fixed shift. The pool includes a clinic-wide outage that needs an ISP case, three duplicate reports of one M365 outage, a paralegal asking for partner-only files, a client out of prepaid hours, an RMA install that has to fit a dental clinic's lunch hour, and a lookalike-domain request to forward the managing partner's mail to Gmail, and a leased copier that only the vendor may touch. Design notes, the research behind it and a tutor answer key are in **[docs/COORDINATOR.md](docs/COORDINATOR.md)**.
 
-## 📸 Screenshots
+## Screenshots
 
 <table>
 <tr>
@@ -146,7 +146,7 @@ Every shift draws 16–18 tickets from a pool of 25 and shuffles when they arriv
 
 <p align="center"><img src="docs/screenshots/mobile.png" alt="Shift One on two phones" width="70%"><br><b>Works on phones too</b></p>
 
-## 🎯 Scenarios
+## Scenarios
 
 **Shift 1: Day One.** Eleven tickets, each testing a real Tier 1 skill. Several contain a trap that catches technicians who skip process. (Shift 2's tickets are [listed above](#-new-shift-2-phones-on).)
 
@@ -166,7 +166,7 @@ Every shift draws 16–18 tickets from a pool of 25 and shuffles when they arriv
 
 > Instructors: full walkthroughs and an answer key are in the [Tutor Guide](docs/TUTOR_GUIDE.md).
 
-## 🧮 How grading works
+## How grading works
 
 Every action (unlocking an account, restarting a service, running a command) is appended to an **event log**. Closing a ticket runs that ticket's grader against the **world state** and the log.
 
@@ -196,7 +196,7 @@ flowchart LR
 | Soft skills | Telling an upset caller to "calm down", or asking a user for their password | −10 |
 | Major incidents | Escalating a second report of the same outage instead of linking it | −10 |
 
-## 🚀 Run it locally
+## Run it locally
 
 No install, no build. Just a static site.
 
@@ -214,7 +214,7 @@ The repo includes a GitHub Actions workflow that publishes to **GitHub Pages** o
 
 To host it on your own Linux box or container as well (nginx on a port behind a reverse proxy, deployed over SSH on every push, with one-command rollback), see [docs/DEPLOY.md](docs/DEPLOY.md).
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 flowchart TB
@@ -263,7 +263,7 @@ flowchart TB
 - **Data-driven scenarios.** A new ticket is one object in `scenarios.js`; see [Authoring scenarios](docs/AUTHORING.md).
 - **Honest simulation.** Fake answers don't work: ping by IP still succeeds when DNS is broken, an offline AP ignores reboot requests, and killing an adware process doesn't stop it respawning.
 
-## 🎓 Tutoring & pricing
+## Tutoring & pricing
 
 The simulator is free. I also offer paid coaching built around it:
 
@@ -276,7 +276,7 @@ The simulator is free. I also offer paid coaching built around it:
 
 Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tutoring & Pricing** page. Payments use hosted checkout links (Paystack in South Africa, or Stripe elsewhere), so no backend or card data touches the site. Setup: [docs/BILLING.md](docs/BILLING.md).
 
-## 🧠 Skills demonstrated
+## Skills demonstrated
 
 **Service coordination:** PSA-style triage (impact × urgency), SLA management, skills-based dispatch and scheduling, client communication, approvals from authorized contacts, vendor/RMA management, block-hours billing, major incident handling.
 
@@ -284,7 +284,7 @@ Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tuto
 
 **Software:** vanilla JavaScript state management, event-sourced scoring, accessible responsive UI with CSS design tokens and dark mode, automated screenshot and GIF pipeline (headless Chromium + Pillow), CI/CD to GitHub Pages.
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [x] 11 scenarios, 5 tools, working command prompt
 - [x] Shift 2 *Phones On*: 9 harder tickets, live calls with hold and voicemail, root-cause traps
@@ -302,7 +302,7 @@ Pricing lives in [`js/config.js`](js/config.js) and appears on the in-app **Tuto
 
 Have an idea? [Request a scenario](../../issues/new?template=scenario_request.md).
 
-## 🔧 Regenerating screenshots
+## Regenerating screenshots
 
 ```bash
 pip install pillow
@@ -311,11 +311,11 @@ python tools/screenshots.py
 
 Renders every screenshot, the phone mockup, the demo GIF and the banner with headless Edge/Chrome. Scenes are staged in [`tools/shot.html`](tools/shot.html).
 
-## 📄 License
+## License
 
 Source-available for portfolio review and personal learning. Commercial use, redistribution, or use in paid training requires permission. See [LICENSE](LICENSE).
 
-## 👤 Author
+## Author
 
 **Alistair Nhiwatiwa**, IT Support Technician · CompTIA Network+ · studying toward CCNA
 Eight years as the sole IT support function for a 24/7 hotel and spa in Kempton Park, South Africa.
