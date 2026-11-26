@@ -1237,14 +1237,9 @@ const PRI = { Critical: 'p1', High: 'p2', Medium: 'p3', Low: 'p4' };
 const mmss = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 
 function renderStart() {
-  const U = WORLD.users, who = id => U[id] ? `${U[id].first} ${U[id].last} · ${U[id].dept}` : id;
+  const U = WORLD.users;
   const sc = id => SCENARIOS.find(s => s.id === id);
   const byShift = n => SCENARIOS.filter(s => (s.shift || 1) === n);
-  const items = [1, 2].flatMap(n => byShift(n).sort((a, b) => a.at - b.at)).map(s => ({
-    id: s.id, pri: PRI[s.priority], label: s.priority, title: s.title,
-    who: s.external ? `${s.external} · email` : `${who(s.requester)} · ${s.channel === 'phone' ? 'phone' : 'portal'}`,
-  }));
-  const call = SCENARIOS.find(s => s.channel === 'phone');
   const desk = (n, tags) => {
     const sh = SHIFTS[n], best = store.get(bestKey(n)), count = byShift(n).length;
     return `<div class="desk ${n === 1 ? 'primary' : ''}"><span class="desk-role">Tier 1 · Shift ${n}${n > 1 ? ' · harder' : ''}</span>
@@ -1258,14 +1253,30 @@ function renderStart() {
     const u = U[id], st = u.locked ? ['lock', 'Locked'] : u.disabled ? ['dis', 'Disabled'] : ['ok', 'Active'];
     return `<span>${esc(u.first)} ${esc(u.last)} · ${esc(u.empId)} · ${esc(u.dept)}</span><span class="chip ${st[0]}">${st[1]}</span>`;
   }).join('');
+  const cs = SCENARIOS.find(s => s.id === 'INC-20201'), cu = U[cs.requester], q = id => cs.questions.find(x => x.id === id);
   return `<div class="start landing">
     <div class="l-hero">
-      <div class="l-pitch">
-        <h1>Your queue is already filling up.</h1>
-        <p class="l-lede">You're the new service desk technician at <b>${esc(WORLD.company)}</b>. Work real tickets with a directory, remote desktop, a command prompt and a server room. Some callers aren't who they say they are. You're graded on <b>what actually changed</b>, how safely you did it, and how fast.</p></div>
-      ${Landing.queue({ key: 'tier1', heading: 'My queue · Service Desk', items, foot: 'Every ticket here is in the game.',
-        call: call && { who: `Incoming call: ${who(call.requester)}`, sub: call.title } })}
+      <h1>Line 1 is ringing. It's ${esc(cu.first)} from ${esc(cu.dept)}.</h1>
+      <p class="l-lede">He's locked out for the third time today and has a client call at eleven. You're the new service desk technician at <b>${esc(WORLD.company)}</b>. What do you do?</p>
     </div>
+    ${Landing.call({
+      id: cs.id, line: `${cu.phone} · Service Desk`, initials: cu.first[0] + cu.last[0], who: `${cu.first} ${cu.last}`, first: cu.first,
+      role: `${cu.title} · ${cu.location}`,
+      facts: [['Account', `${cu.id} · locked`, true], ['Lockouts', '3 since 08:02'], ['Password', 'changed 08:00 today']],
+      says: '"' + cs.body.replace(/ I've got a client call at eleven\.$/, '') + ' Can you just unlock it?"',
+      ask: 'Pick your first move',
+      note: 'Pick one. Every line you see next comes from the real grader.',
+      choices: [
+        { text: 'Unlock him now. He\'s in a hurry.', reply: '"Thanks, finally!"', good: [], after: 'Twenty minutes later: account locked again. Source: ActiveSync ("Chris\'s iPhone").',
+          bad: [[25, 'Changed Chris\'s account before verifying the caller.'], [10, 'Unlocked without fixing the source, so the account locked again.']] },
+        { text: 'Verify him first, then ask if his phone gets work email.', reply: '"' + q('phone').a + '"',
+          good: ['Verified the caller before touching the account.', 'Found the root cause: the old password saved in the iPhone Mail app.'], bad: [],
+          after: 'That\'s the job: check who\'s asking, then find what actually changed.' },
+        { text: 'Tell him to be more careful typing his password.', reply: '"' + q('typing').a + '"', good: [], bad: [q('typing').bad] },
+      ],
+    })}
+    <div class="l-go"><button class="btn primary" data-act="start" data-m="shift" data-s="1">Clock in for Shift 1</button><button class="btn" data-act="start" data-m="practice" data-s="1">Practice, no timer</button>
+      <p class="l-note">This call is in Shift 2. Shift 1 has ${byShift(1).length} tickets, and some callers aren't who they say they are.</p></div>
     <div class="desks">${desk(1, ['Portal tickets', 'Start here'])}${desk(2, ['Live phone calls', 'Holds &amp; voicemail', 'Root-cause traps'])}
       <a class="desk alt" href="dispatch.html"><span class="desk-role">MSP · Northbound IT</span><h3>Service Coordinator</h3>
         <p>Don't fix it, dispatch it. Triage, SLAs, approvals and a live schedule of five technicians. A different shift every time.</p>
@@ -1419,6 +1430,7 @@ const ACT = {
   home: () => { G = null; PAGE = 'start'; try { if (location.hash) history.replaceState(null, '', location.pathname); } catch { /* ignore */ } render(); },
   prep: d => { G = null; PAGE = 'prep'; if (d?.t) PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); $('#main').scrollTop = 0; window.scrollTo(0, 0); },
   prepTab: d => { PREP_TAB = d.t; try { history.replaceState(null, '', location.pathname + (PREP_TAB === 'assess' ? '#assess' : '#prep')); } catch { /* ignore */ } render(); },
+  demoPick: d => Landing.pick(d.c),
   pricing: () => { G = null; PAGE = 'pricing'; render(); $('#main').scrollTop = 0; },
   theme: () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('shiftone-theme', r.dataset.theme); render(); },
   endShift: () => {
